@@ -7,6 +7,7 @@ from napari.layers import Points, Image
 from typing import Tuple
 from magicgui import magicgui
 from bigfish.detection import detect_spots
+from magicgui.widgets import FunctionGui
 from sklearn.linear_model import LinearRegression
 
 from Sequential_Fish.chromatic_abberrations import CALIBRATION_FOLDER
@@ -17,14 +18,18 @@ from .calibration import fit_polynomial_transform_3d
 from .calibration import update_calibration_index
 from .correction import apply_polynomial_transform_3d_to_signal
 
-_calibration_widgets = []
+_calibration_widgets :'list[NapariWidget]' = []
 
 def register_calibration_widget(cls) :
     _calibration_widgets.append(cls)
     return cls
 
-def initiate_all_calibration_widgets() :
-    return {type(cls()) : cls() for cls in _calibration_widgets}
+def initiate_all_calibration_widgets() -> 'list[FunctionGui]' :
+
+    widget_list = []
+    for cls in _calibration_widgets :
+        widget_list.extend(cls().get_widgets())
+    return widget_list
         
 
 
@@ -90,7 +95,6 @@ class BeadsDetector(NapariWidget) :
 @register_calibration_widget
 class ChromaticAberrationCorector(NapariWidget) :
     def __init__(self, degree = 2):
-        super().__init__()
 
         self.model_x = LinearRegression()
         self.model_y = LinearRegression()
@@ -102,6 +106,11 @@ class ChromaticAberrationCorector(NapariWidget) :
         self.voxel_size = (1,1,1)
         self.degree = degree
         self.timestamp = get_datetime()
+        self.save_widget = self._create_save_widget()
+        
+        super().__init__()
+
+        self.register_widget(self.save_widget)
 
     def _create_widget(self):
         """
