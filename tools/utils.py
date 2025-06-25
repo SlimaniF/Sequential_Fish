@@ -5,6 +5,7 @@ import re, os, warnings
 from skimage import io
 from czifile import imread as _imread
 from bigfish.stack import read_image as _read_image
+from datetime import datetime
 
 import warnings
 
@@ -106,7 +107,7 @@ def open_image(path:str, image_number=None) :
     return im
 
 def get_datetime():
-    return dt.datetime.now().strftime("%Y%m%d %H-%M-%S")
+    return datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
 
 
 def _find_one_or_NaN(path, regex) :
@@ -226,3 +227,4 @@ def open_cycle(
     image_stack = reorder_image_stack(image_stack, channel_map=stack_map)
 
     return image_stack
+
