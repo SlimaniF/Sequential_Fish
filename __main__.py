@@ -4,7 +4,7 @@ import pandas as pd
 import warnings
 
 from Sequential_Fish import __run_cache_path__ as run_cache_path
-from Sequential_Fish import viewer, pipeline, analysis
+from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations
 from Sequential_Fish.run_saves import create_run_dataframe, check_run_dataframe, check_run, run_status, get_run_cache
 from Sequential_Fish._pipeline_scripts import PIPELINE_SCRIPTS
 from Sequential_Fish.pipeline_parameters import RUN_PATH
@@ -13,7 +13,7 @@ from Sequential_Fish.pipeline_parameters import RUN_PATH
 
 def main():
 
-    MODULES = ['viewer', 'pipeline', 'analysis', 'status']
+    MODULES = ['viewer', 'pipeline', 'analysis', 'status', 'calibration']
 
     run_dataframe = get_run_cache()
     run_dataframe = check_run_dataframe(run_dataframe)
@@ -69,6 +69,9 @@ def main():
     
     elif module == "status" :
         run_status()
+
+    elif module == "calibration" :
+        chromatic_abberrations.run()
     
     else:
         print(f"Unknown module: {module}")
