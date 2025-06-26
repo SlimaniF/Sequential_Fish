@@ -12,6 +12,7 @@ from napari.types import LayerDataTuple
 from magicgui import magicgui
 from magicgui import widgets
 
+from ..customtypes import NapariWidget
 from .utils import open_image, open_segmentation
 from .utils import pad_to_shape
 from .utils import reorder_image_stack
@@ -39,6 +40,16 @@ class table_dict_type(TypedDict) :
 #######
 
 ##  Load tab
+_LOAD_WIDGETS : 'list[NapariWidget]' = []
+def register_load_widget(cls) :
+    _LOAD_WIDGETS.append(cls)
+    return cls
+
+def initiate_load_widgets(**kwargs) -> 'list[NapariWidget]':
+    widget_list = []
+    for cls in _LOAD_WIDGETS :
+        widget_list.extend(cls().get_widgets())
+    return widget_list
 
 def fish_container(
         voxel_size,
@@ -121,19 +132,35 @@ def segmentation_container(
     return buttons_container, widget_maker
 
 ##  Location tab
+##  Load tab
+_LOCATION_WIDGETS = []
+def register_location_widget(cls) :
+    _LOCATION_WIDGETS.append(cls)
+    return cls
+
+def initiate_location_widgets(**kwargs) :
+    return [cls(**kwargs) for cls in _LOCATION_WIDGETS]
+
 def locations_container(
         table_dict,
         Viewer,
         *linked_widgets,
         ) :
     
-    location_table = location_selector(table_dict, Viewer, *linked_widgets)
 
     location_container = widgets.Container(widgets=[location_table.widget], labels=False, layout='vertical',)
 
     return location_container
 
 ##  Analysis tab
+_ANALYSIS_WIDGETS = []
+def register_analysis_widget(cls) :
+    _ANALYSIS_WIDGETS.append(cls)
+    return cls
+
+def initiate_analysis_widgets(**kwargs) :
+    return [cls(**kwargs) for cls in _ANALYSIS_WIDGETS]
+
 def analysis_container(
         table_dict, 
         voxel_size
@@ -151,14 +178,17 @@ def analysis_container(
 #######
 
 #Load data widgets
-class load_spots :
-    def __init__(
-            self, 
-            table_dict : table_dict_type,
-            voxel_size :tuple, 
-            color_table,
-            ):
-        
+class SpotsLoader(NapariWidget) :
+    """
+    Allow user to load detected spots as layer points
+    """
+    def __init__(    
+        self, 
+        table_dict : table_dict_type,
+        voxel_size :tuple, 
+        color_table,
+        **kwargs
+    ) :
 
         self.Spots = table_dict['Spots']
         self.Detection = table_dict['Detection'].loc[:,['detection_id']]
@@ -169,7 +199,7 @@ class load_spots :
 
         self.voxel_size = voxel_size
         self.color_table = color_table
-        self.widget = self.create_button()
+        super().__init__()
 
     def update(self, locations) :
 
@@ -200,8 +230,7 @@ class load_spots :
         self.populations = ['all'] + list(data['population'].unique()) 
         self.target = list(data['target'].unique())
 
-
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
             target={"choices":self.target},
             population={"choices" : self.populations},
@@ -270,13 +299,17 @@ class load_spots :
             return layerdata
         return load
     
-class load_clusters :
+class ClustersLoader(NapariWidget) :
+    """
+    Allow user to load detected cluster as Points layer.
+    """
 
     def __init__(
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple, 
-            color_table
+            color_table,
+            *kwargs
             ):
         
         self.Clusters = table_dict['Clusters']
@@ -288,10 +321,9 @@ class load_clusters :
 
         self.voxel_size = voxel_size
         self.color_table = color_table
-        self.widget = self.create_button()
+        super().__init__()
 
     def update(self, locations) :
-
 
         data = pd.merge(
             self.Clusters,
@@ -320,7 +352,7 @@ class load_clusters :
         self.target = list(self.data['target'].unique())
 
 
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
             target={"choices":self.target},
             drift_correction={
@@ -381,12 +413,13 @@ class load_clusters :
             return layerdata
         return load
 
-class load_fish :
+class FishSignalLoader(NapariWidget) :
     def __init__(
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple, 
             color_table : pd.DataFrame,
+            **kwargs
             ):
         
         #Table
@@ -401,7 +434,7 @@ class load_fish :
 
         self.color_table = color_table
         self.voxel_size = voxel_size
-        self.widget = self.create_button()
+        super().__init__()
 
     def update(self, locations) :
         self.data = pd.merge(
@@ -412,7 +445,7 @@ class load_fish :
         self.data = self.data.sort_values(['location', 'full_path'])
         self.target = sorted(list(self.Gene_map['target'].unique()))
 
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
                 target = {'choices' : self.target},
                 drift_correction={
@@ -483,11 +516,12 @@ class load_fish :
 
         return load
     
-class load_dapi :
+class DapiSignalLoader(NapariWidget) :
     def __init__(
             self, 
             table_dict : table_dict_type,
-            voxel_size :tuple, 
+            voxel_size :tuple,
+            **kwargs
             ):
     
 
@@ -501,7 +535,7 @@ class load_dapi :
         self.update(list(self.Acquisition['location'].unique()))
 
         self.voxel_size = voxel_size
-        self.widget = self.create_button()
+        super().__init__()
 
     def update(self, locations) :
         self.data = pd.merge(
@@ -583,11 +617,12 @@ class load_dapi :
 
         return load_dapi
     
-class load_beads :
+class BeadsSignalLoader(NapariWidget) :
     def __init__(
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple,
+            **kwargs,
             ):
 
         self.Gene_map = table_dict['Gene_map']
@@ -600,7 +635,7 @@ class load_beads :
         self.update(list(self.Acquisition['location'].unique()))
         
         self.voxel_size = voxel_size
-        self.widget = self.create_button()
+        super().__init__()
 
 
     def update(self, locations) :
@@ -625,7 +660,7 @@ class load_beads :
         self.target = list(joined_names.index)
         self.target_names = targets_names
 
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
                 target = {
                     "widget_type" : "ComboBox",
@@ -705,7 +740,7 @@ class load_beads :
 
         return load
     
-class load_segmentation :
+class SegmentationLoader(NapariWidget) :
     
     def __init__(
             self,
@@ -713,6 +748,7 @@ class load_segmentation :
             voxel_size :tuple,
             table_dict : table_dict_type, 
             segmentation_folder_name:str = "/segmentation/",
+            **kwargs
             ):
         
         Drift = table_dict['Drift']
@@ -723,7 +759,7 @@ class load_segmentation :
 
         self.segmentation_fullpath = run_path + segmentation_folder_name
         self.voxel_size = voxel_size
-        self.widget = self.create_widget()
+        super().__init__()
 
     def update(self,locations) :
         self.data = pd.merge(
@@ -794,20 +830,25 @@ class load_segmentation :
         return load_segmentation
 
 ## Analysis widgets
-class multichannel_cluster :
-    def __init__(self, table_dict, voxel_size):
+class MultichannelCluster(NapariWidget) :
+    def __init__(
+            self, 
+            table_dict, 
+            voxel_size,
+            **kwargs
+            ):
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
         self.Spots = table_dict['Spots']
         self.Gene_map = table_dict['Gene_map']
         self.voxel_size = voxel_size
         self.update(list(table_dict['Acquisition']['location'].unique()))
-        self.widget = self.create_widget()
+        super().__init__()
 
     def update(self, locations) :
         self.Acquisition = self.ref_Acquisition.loc[self.ref_Acquisition['location'].isin(locations)]
 
-    def create_widget(self) :
+    def _create_widget(self) :
         @magicgui(
                 cluster_radius = {
                     "widget_type" : "SpinBox",
@@ -878,7 +919,7 @@ class multichannel_cluster :
         
         return multichannel_DBSCAN
 
-class spot_count_map_maker :
+class SpotCountMapper(NapariWidget) :
     def __init__(self, table_dict, voxel_size):
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
@@ -886,12 +927,12 @@ class spot_count_map_maker :
         self.Gene_map = table_dict['Gene_map']
         self.voxel_size = voxel_size
         self.update(list(table_dict['Acquisition']['location'].unique()))
-        self.widget = self.create_widget()
+        super().__init__()
 
     def update(self, locations) :
         self.Acquisition = self.ref_Acquisition.loc[self.ref_Acquisition['location'].isin(locations)]
 
-    def create_widget(self) :
+    def _create_widget(self) :
         @magicgui(
                 targets ={
                     "widget_type" : "Select",
@@ -924,14 +965,15 @@ class spot_count_map_maker :
         return generate_spot_count_map
 
 #Location widget
-class location_selector :
+class LocationSelector(NapariWidget) :
     def __init__(self, table_dict: table_dict_type, Viewer : napari.Viewer, *linked_widgets):
         self.Full_Acquisiton = table_dict['Acquisition'].copy()
         self.location_choices = list(self.Full_Acquisiton['location'].unique())
-        self.widget = self.create_table()
         self.selection = self.location_choices.copy()
         self.Viewer = Viewer
         self.linked_widgets = linked_widgets
+        super().__init__()
+        
     def update_location(self) :
         for layer in self.Viewer.layers.copy() :
             self.Viewer.layers.remove(layer)
@@ -941,7 +983,7 @@ class location_selector :
             widget.update(self.selection)
             widget.widget.update()
 
-    def create_table(self) :
+    def _create_widget(self) :
         @magicgui(
             selected_location={
                 "widget_type" : "Select",
