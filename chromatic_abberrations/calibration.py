@@ -60,6 +60,7 @@ def update_calibration_index(
 
     with open(CALIBRATION_FOLDER + '/index.json', 'w') as index_file:
         json.dump(index, index_file, indent=2)
+    
 
 def load_calibration(
         reference_wavelength: int,

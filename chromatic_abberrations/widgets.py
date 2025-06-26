@@ -3,15 +3,20 @@ Widgets for chromatic abberrations correction calibration.
 """
 
 import os, joblib
+import numpy as np
+from pathlib import Path
+from typing import Tuple, Union, List
 from napari.layers import Points, Image
 from typing import Tuple
 from magicgui import magicgui
 from bigfish.detection import detect_spots
 from magicgui.widgets import FunctionGui
 from sklearn.linear_model import LinearRegression
+from itertools import cycle
 
 from Sequential_Fish.chromatic_abberrations import CALIBRATION_FOLDER
-from ..tools import get_datetime
+from ..tools import get_datetime, reorder_image_stack, get_voxel_size
+from ..tools.utils import open_image 
 from ..customtypes import NapariWidget
 from .calibration import match_beads
 from .calibration import fit_polynomial_transform_3d
@@ -33,6 +38,111 @@ def initiate_all_calibration_widgets() -> 'list[FunctionGui]' :
         
 
 
+@register_calibration_widget    
+class ImageOpener(NapariWidget) :
+    
+    def __init__(self):
+        super().__init__()
+
+    def _create_widget(self):
+        
+        @magicgui(
+                auto_call=False,
+                call_button="Load image",
+                image_path = {'label' : 'Image path'},
+                is_3D_stack = {'label' : "3D stack"},
+                scale = {'label' : "Voxel size(zyx)(nm)"},
+        )
+        def open_and_order_image(
+                image_path : Path,
+                is_3D_stack : bool,
+                scale : Tuple[int,int,int] = (1,1,1)
+        ) -> List[Image] :
+            
+            if  not os.path.isfile(image_path) :
+                raise FileNotFoundError(f"Couldn't find file at {image_path}")
+            
+            if (np.array(scale) < 1).any() :
+                raise ValueError("Please set voxel size with integers >= 1.")
+            
+            image_path = str(image_path.resolve())
+            image = open_image(image_path)
+            image = np.squeeze(image)
+
+            pre_map = np.argsort(image.shape)
+            if image.ndim ==  2 + 1 + is_3D_stack : # xy + channel + z : is multichannel
+                
+                if is_3D_stack:
+                    image_map = {
+                        'c' : pre_map[0],
+                        'z' : pre_map[1],
+                        'y' : pre_map[2],
+                        'x' : pre_map[3]
+                    }
+                else :
+                    image_map = {
+                        'c' : pre_map[0],
+                        'y' : pre_map[1],
+                        'x' : pre_map[2]
+                    }
+
+                image = reorder_image_stack(
+                    image,
+                    channel_map=image_map,
+                    is_3D=is_3D_stack
+                )
+
+                return [
+                    Image(
+                    data=image[..., chan],
+                    name = f"beads signal channel {chan}",
+                    scale= scale,
+                    colormap = cmap,
+                    blending= 'additive',
+                    interpolation2d= 'cubic',
+                    interpolation3d= 'cubic',
+                    units='nm'
+                ) for chan, cmap in zip(range(0,image.shape[-1]), cycle(['red','green','blue']))
+                ]
+            
+            elif image.ndim  == 2 + is_3D_stack : # xy + z : is monochannel
+                pass #then is monochannel
+
+            else :
+                raise ValueError(f"Wrong number of dimensions, expected {2 + 1 + is_3D_stack} for multichannel or {2+ is_3D_stack} for monochannel.")
+
+            return [Image(
+                data=image,
+                scale= scale,
+                name= "beads signal monochannel",
+                blending= 'additive',
+                interpolation2d= 'cubic',
+                interpolation3d= 'cubic',
+                units='nm'
+            )]
+
+        def update_scale_on_path_change(event) :
+            """
+            Read metadata of image when user selects a new file.
+            """
+
+            image_path = open_and_order_image.image_path.value
+            if not image_path or not os.path.isfile(image_path): pass
+            else :
+                try :
+                    voxel_size = get_voxel_size(image_path)
+                    voxel_size = [
+                        int(v) if isinstance(v, (int,float)) else 1 for v in voxel_size
+                    ]
+                except ValueError as e :
+                    voxel_size = (1,1,1)
+
+                open_and_order_image.scale.value = voxel_size
+        
+        open_and_order_image.image_path.changed.connect(update_scale_on_path_change)
+
+        return open_and_order_image
+
 @register_calibration_widget
 class BeadsDetector(NapariWidget) :
     """
@@ -40,11 +150,9 @@ class BeadsDetector(NapariWidget) :
     """
     def __init__(
             self,
-            voxel_size = (200,97,97),
             beads_radius = (300,150,150)
             ):
         
-        self.default_voxel_size = voxel_size
         self.default_beads_radius = beads_radius
         super().__init__()
 
@@ -53,7 +161,6 @@ class BeadsDetector(NapariWidget) :
         @magicgui(
             beads_image = {'label' : 'Image'},
             threshold = {'label' : 'Threshold', 'min': 1, 'max': 2**64-1},
-            voxel_size = {'annotation' : Tuple[int,int,int], 'label' : 'Voxel size (zyx)'},
             beads_radius = {'annotation' : Tuple[int,int,int], 'label' : 'Beads radius (zyx)'},
             auto_call=False,
             call_button="Detect beads"
@@ -63,10 +170,11 @@ class BeadsDetector(NapariWidget) :
             beads_image : Image,
             threshold : int = 490,
             beads_radius = self.default_beads_radius,
-            voxel_size = self.default_voxel_size,
         ) -> Points :
             
             print("Detecting beads...")
+            
+            voxel_size = tuple(beads_image.scale)
             coordinates = detect_spots(
                 beads_image.data,
                 threshold=threshold,
@@ -85,7 +193,7 @@ class BeadsDetector(NapariWidget) :
                 size=8
                 )
             
-            print(f"Found {len(detect_beads.data)} beads for {beads_image.name}.")
+            print(f"Found {len(detected_beads.data)} beads for {beads_image.name}.")
 
             return detected_beads
         
@@ -191,13 +299,13 @@ class ChromaticAberrationCorector(NapariWidget) :
                 )
         def save_fit_model(
             reference_wavelength : int,
-            corrected_wavelength : int
+            corrected_wavelength : int,
         ) :
             
             if not os.path.isdir(self.calibration_folder) : os.makedirs(self.calibration_folder)
-            filename = self.calibration_folder + f"/{reference_wavelength}_{corrected_wavelength}_{self.timestamp}" 
+            filename = self.calibration_folder + f"/{reference_wavelength}_{corrected_wavelength}_{self.timestamp}.joblib" 
 
-            joblib.dump({
+            res = joblib.dump({
                 'x_fit' : self.model_x,
                 'y_fit' : self.model_y,
                 'z_fit' : self.model_z,
@@ -214,10 +322,11 @@ class ChromaticAberrationCorector(NapariWidget) :
             )
 
             update_calibration_index(
-                calib_folder=self.calibration_folder,
                 reference_wavelength=reference_wavelength,
                 corrected_wavelength=corrected_wavelength,
                 filename= filename
             )
+            
+            print(f"Calibration saved at {filename}")
         
         return save_fit_model

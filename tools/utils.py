@@ -8,6 +8,8 @@ from bigfish.stack import read_image as _read_image
 from datetime import datetime
 
 import warnings
+from aicsimageio import AICSImage
+from typing import Optional, Tuple
 
 
 class MappingError(Exception) :
@@ -18,7 +20,7 @@ class MappingError(Exception) :
 
 def auto_map_channels(image: np.ndarray, color_number: int, cycle_number: int, has_bead_channel = True) :
     """
-    Assume z is the smallest dimension
+    Assume z is the smallest spatial dimension
     """
 
     dim = image.ndim
@@ -61,20 +63,32 @@ def auto_map_channels(image: np.ndarray, color_number: int, cycle_number: int, h
     return map_
 
 
-def reorder_image_stack(image, channel_map) :
+def reorder_image_stack(image, channel_map, is_3D = True) :
     """
     will order image to cycles-zyxc
     """
     
     dim = image.ndim
-    if dim == 5 :
-        new_order = (channel_map['cycles'], channel_map['z'], channel_map['y'], channel_map['x'], channel_map['c'])
-        ref_order = [0,1,2,3,4]
-    elif dim == 4 :
-        new_order = (channel_map['z'], channel_map['y'], channel_map['x'], channel_map['c'])
-        ref_order = [0,1,2,3]
+    if is_3D :
+        if dim == 5 :
+            new_order = (channel_map['cycles'], channel_map['z'], channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2,3,4]
+        elif dim == 4 :
+            new_order = (channel_map['z'], channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2,3]
+        else :
+            raise AssertionError()
     else :
-        raise AssertionError()
+        if dim == 4 :
+            new_order = (channel_map['cycles'], channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2,3]
+        elif dim == 3 :
+            new_order = (channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2]
+        else :
+            raise AssertionError()
+
+
 
     image = np.moveaxis(image, new_order, ref_order)
     return image
@@ -228,3 +242,21 @@ def open_cycle(
 
     return image_stack
 
+def get_voxel_size(filepath: str) -> Optional[Tuple[Optional[int], Optional[int], Optional[int]]]:
+    """
+    Returns voxel size in nanometers (nm) as a tuple (X, Y, Z).
+    Any of the dimensions may be None if not available.
+    /WARINING\ : the unit might not be nm
+    """
+    try:
+        img = AICSImage(filepath)
+        voxel_sizes = img.physical_pixel_sizes  # values in meters
+        if voxel_sizes is None:
+            return None
+        x = voxel_sizes.X * 1e3 if voxel_sizes.X else None
+        y = voxel_sizes.Y * 1e3 if voxel_sizes.Y else None
+        z = voxel_sizes.Z * 1e3 if voxel_sizes.Z else None
+        return (z, y, x)
+    except Exception as e:
+        raise ValueError(f"Failed to read voxel size from {filepath}: {e}")
+        return None
