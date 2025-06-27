@@ -10,14 +10,16 @@ from tqdm import tqdm
 
 from napari.types import LayerDataTuple
 from magicgui import magicgui
-from magicgui import widgets
+from magicgui.widgets import Widget
 
 from ..customtypes import NapariWidget
-from .utils import open_image, open_segmentation
+from ..tools.utils import open_image
+from .utils import open_segmentation
 from .utils import pad_to_shape
 from .utils import reorder_image_stack
 from .utils import reshape_stack
 from .utils import correct_map
+
 
 from pbwrap.preprocessing.alignement import shift_array
 from ._density import multichannel_clustering, spot_count_map
@@ -35,122 +37,40 @@ class table_dict_type(TypedDict) :
 
 
 
-#######
-# WIDGETS CONTAINER
-#######
-
 ##  Load tab
 _LOAD_WIDGETS : 'list[NapariWidget]' = []
 def register_load_widget(cls) :
     _LOAD_WIDGETS.append(cls)
     return cls
 
-def initiate_load_widgets(**kwargs) -> 'list[NapariWidget]':
+def initiate_load_widgets(
+        table_dict : dict, 
+        voxel_size : tuple,
+        color_table : dict,
+        run_path : str
+) -> 'list[NapariWidget]':
     widget_list = []
     for cls in _LOAD_WIDGETS :
-        widget_list.extend(cls().get_widgets())
+        widget_list.extend(cls(table_dict= table_dict, voxel_size=voxel_size, color_table=color_table, run_path=run_path).get_widgets())
     return widget_list
 
-def fish_container(
-        voxel_size,
-        table_dict,
-        color_table : Literal['map_id','target','color','colormaps'],
-        ) :
-    
-    fish_loader = load_fish(
-        voxel_size=voxel_size,
-        table_dict=table_dict,
-        color_table= color_table,
-    )
-
-
-    beads_loader = load_beads(
-        voxel_size=voxel_size,
-        table_dict=table_dict,
-    )
-
-    widgets_maker = [fish_loader, beads_loader]
-    buttons_container = widgets.Container(widgets=[fish_loader.widget, beads_loader.widget], labels=False, layout='vertical', name= 'Fish signal')
-
-    return buttons_container, widgets_maker
-
-def dapi_container(
-        voxel_size,
-        table_dict,
-        ) :
-    
-    dapi_loader = load_dapi(
-        voxel_size=voxel_size,
-        table_dict=table_dict,
-    )
-    
-    widget_makers = [dapi_loader]
-    buttons_container = widgets.Container(widgets=[dapi_loader.widget], labels=False, layout='vertical')
-
-    return buttons_container, widget_makers
-
-def detection_container(
-        voxel_size,
-        table_dict,
-        color_table : pd.DataFrame,
-        ) :
-
-    spots_loader = load_spots(
-        table_dict=table_dict,
-        voxel_size=voxel_size,
-        color_table=color_table,
-    )
-
-    clusters_loader = load_clusters(
-        table_dict=table_dict,
-        voxel_size=voxel_size,
-        color_table = color_table,
-    )
-
-    widgets_maker = [spots_loader, clusters_loader]
-    buttons_container = widgets.Container(widgets=[spots_loader.widget, clusters_loader.widget], labels=False, layout='vertical')
-
-    return buttons_container, widgets_maker
-
-def segmentation_container(
-        run_path :str,
-        table_dict : table_dict_type,
-        voxel_size : tuple,
-        segmentation_folder_name : str = "/segmentation/"
-) :
-    
-    segmentation_loader = load_segmentation(
-        run_path= run_path,
-        table_dict=table_dict,
-        voxel_size= voxel_size,
-        segmentation_folder_name= segmentation_folder_name
-    )
-
-    widget_maker = [segmentation_loader]
-    buttons_container = widgets.Container(widgets=[segmentation_loader.widget], labels=False, layout='vertical')
-
-    return buttons_container, widget_maker
-
 ##  Location tab
-##  Load tab
 _LOCATION_WIDGETS = []
 def register_location_widget(cls) :
     _LOCATION_WIDGETS.append(cls)
     return cls
 
-def initiate_location_widgets(**kwargs) :
-    return [cls(**kwargs) for cls in _LOCATION_WIDGETS]
-
-def locations_container(
-        table_dict,
+def initiate_location_widgets(
+        *,
+        tables_dict,
         Viewer,
-        *linked_widgets,
-        ) :
-    
+        linked_widgets,
+) :
+    widget_list = []
+    for cls in _LOCATION_WIDGETS :
+        widget_list.extend(cls(table_dict=tables_dict, Viewer=Viewer, linked_widgets=linked_widgets).get_widgets())
+    return widget_list
 
-    location_container = widgets.Container(widgets=[location_table.widget], labels=False, layout='vertical',)
-
-    return location_container
 
 ##  Analysis tab
 _ANALYSIS_WIDGETS = []
@@ -158,26 +78,24 @@ def register_analysis_widget(cls) :
     _ANALYSIS_WIDGETS.append(cls)
     return cls
 
-def initiate_analysis_widgets(**kwargs) :
-    return [cls(**kwargs) for cls in _ANALYSIS_WIDGETS]
+def initiate_analysis_widgets(
+        voxel_size : tuple,
+        table_dict : dict,
+        color_table : dict,
 
-def analysis_container(
-        table_dict, 
-        voxel_size
-        ) :
-    
-    multichannel_cluster_instance = multichannel_cluster(table_dict, voxel_size)
-    spots_count_map_instance = spot_count_map_maker(table_dict, voxel_size)
-    instances = [multichannel_cluster_instance, spots_count_map_instance]
-    container = widgets.Container(widgets=[multichannel_cluster_instance.widget, spots_count_map_instance.widget], labels=False, layout='vertical')
-
-    return container, instances
+) :
+    widget_list = []
+    for cls in _ANALYSIS_WIDGETS :
+        widget_list.extend(cls(voxel_size=voxel_size, table_dict=table_dict, color_table=color_table, ).get_widgets())
+    return widget_list
 
 #######
 # INDIVIDUAL WIDGETS
 #######
 
 #Load data widgets
+
+@register_load_widget
 class SpotsLoader(NapariWidget) :
     """
     Allow user to load detected spots as layer points
@@ -298,7 +216,8 @@ class SpotsLoader(NapariWidget) :
                         'Points')
             return layerdata
         return load
-    
+
+@register_load_widget    
 class ClustersLoader(NapariWidget) :
     """
     Allow user to load detected cluster as Points layer.
@@ -309,7 +228,7 @@ class ClustersLoader(NapariWidget) :
             table_dict : table_dict_type,
             voxel_size :tuple, 
             color_table,
-            *kwargs
+            **kwargs
             ):
         
         self.Clusters = table_dict['Clusters']
@@ -413,6 +332,7 @@ class ClustersLoader(NapariWidget) :
             return layerdata
         return load
 
+@register_load_widget
 class FishSignalLoader(NapariWidget) :
     def __init__(
             self, 
@@ -515,7 +435,8 @@ class FishSignalLoader(NapariWidget) :
             return layerdata
 
         return load
-    
+
+@register_load_widget   
 class DapiSignalLoader(NapariWidget) :
     def __init__(
             self, 
@@ -546,7 +467,7 @@ class DapiSignalLoader(NapariWidget) :
         self.data = self.data.sort_values(['location', 'full_path'])
         self.target = sorted(list(self.Gene_map['target'].unique()))
 
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
                 call_button="Load dapi signal",
                 radio_button = {
@@ -616,7 +537,8 @@ class DapiSignalLoader(NapariWidget) :
             return layerdata
 
         return load_dapi
-    
+
+@register_load_widget   
 class BeadsSignalLoader(NapariWidget) :
     def __init__(
             self, 
@@ -739,7 +661,8 @@ class BeadsSignalLoader(NapariWidget) :
             return layerdata
 
         return load
-    
+
+@register_load_widget    
 class SegmentationLoader(NapariWidget) :
     
     def __init__(
@@ -770,7 +693,7 @@ class SegmentationLoader(NapariWidget) :
             suffixes= ('','_drift')
         )
 
-    def create_widget(self) :
+    def _create_widget(self) :
 
         @magicgui(
                 call_button= "Load segmentation",
@@ -830,6 +753,7 @@ class SegmentationLoader(NapariWidget) :
         return load_segmentation
 
 ## Analysis widgets
+@register_analysis_widget
 class MultichannelCluster(NapariWidget) :
     def __init__(
             self, 
@@ -919,8 +843,14 @@ class MultichannelCluster(NapariWidget) :
         
         return multichannel_DBSCAN
 
+@register_analysis_widget
 class SpotCountMapper(NapariWidget) :
-    def __init__(self, table_dict, voxel_size):
+    def __init__(
+            self, 
+            table_dict, 
+            voxel_size,
+            **kwargs,
+            ):
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
         self.Spots = table_dict['Spots']
@@ -965,8 +895,15 @@ class SpotCountMapper(NapariWidget) :
         return generate_spot_count_map
 
 #Location widget
+@register_location_widget
 class LocationSelector(NapariWidget) :
-    def __init__(self, table_dict: table_dict_type, Viewer : napari.Viewer, *linked_widgets):
+    def __init__(
+            self, 
+            table_dict: table_dict_type, 
+            Viewer : napari.Viewer, 
+            linked_widgets : 'list[Widget]',
+            **kwargs
+            ):
         self.Full_Acquisiton = table_dict['Acquisition'].copy()
         self.location_choices = list(self.Full_Acquisiton['location'].unique())
         self.selection = self.location_choices.copy()

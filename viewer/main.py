@@ -4,13 +4,10 @@ import pandas as pd
 import os
 
 from numpy.random import shuffle
-from .widgets import fish_container
-from .widgets import detection_container
-from .widgets import dapi_container
-from .widgets import segmentation_container
-from .widgets import locations_container
-from .widgets import analysis_container
-from magicgui import widgets as wi
+from .widgets import initiate_analysis_widgets
+from .widgets import initiate_load_widgets
+from .widgets import initiate_location_widgets
+from magicgui.widgets import Container
 
 from ..run_saves.gui import select_path
 
@@ -26,36 +23,73 @@ def main() :
     tables_dict = {
         table : pd.read_feather(run_path + '/result_tables/' + table + '.feather')  for table in TABLES
     }
-    voxel_size = tables_dict['Detection'].iat[0,'voxel_size']
+    voxel_size = tables_dict['Detection'].at[0,'voxel_size']
 
     #Init viewer
     Viewer = napari.Viewer(title=os.path.basename(run_path))
     color_table = create_color_table(tables_dict)
 
-    #Loading panel
-    fish_buttons, fish_widgets = fish_container(voxel_size, tables_dict, color_table)
-    dapi_buttons, dapi_widgets = dapi_container(voxel_size, tables_dict)
-    segmentation_buttons, segmentation_widget = segmentation_container(run_path, tables_dict, voxel_size)
-    detection_buttons, detection_widgets = detection_container(voxel_size, tables_dict, color_table=color_table)
-    
-    load_data_tab = wi.Container(widgets=[fish_buttons, dapi_buttons, segmentation_buttons, detection_buttons], labels=False, layout='vertical', name= 'Load data')
+    #Loading tab
+    load_data_widgets = initiate_load_widgets(
+        voxel_size=voxel_size,
+        table_dict=tables_dict,
+        color_table=color_table,
+        run_path=run_path,
+    )
+    load_data_container = Container(
+        widgets=load_data_widgets,
+        labels=False
+    )
 
+    #Analysis tab
+    analysis_widgets = initiate_analysis_widgets(
+        table_dict = tables_dict, 
+        voxel_size = voxel_size,
+        color_table=color_table,
+        )
+    analysis_container = Container(
+        widgets= analysis_widgets,
+        labels=False
+    )
+    
+    # Location tab
+    linked_widgets = []
+    linked_widgets.extend(load_data_widgets)
+    linked_widgets.extend(analysis_widgets)
+    location_widgets = initiate_location_widgets(
+        tables_dict=tables_dict, 
+        Viewer=Viewer,
+        linked_widgets=linked_widgets 
+        )
+    location_container = Container(
+        widgets= location_widgets,
+        labels=False
+    )
+
+
+    #Docking tabs
     Viewer.window.add_dock_widget(
-        load_data_tab, 
+        load_data_container, 
         name='Data', 
         area='right', 
         add_vertical_stretch=True, 
         tabify=True
         )
 
-    #Analysis panel
-    multichannel_DBSCAN_container, multichannel_DBSCAN_instance = analysis_container(tables_dict, voxel_size)
-    Viewer.window.add_dock_widget(multichannel_DBSCAN_container, name='Analysis', area='right', add_vertical_stretch=True, tabify=True)
+    Viewer.window.add_dock_widget(
+        analysis_container, 
+        name='Analysis', 
+        area='right', 
+        add_vertical_stretch=True, 
+        tabify=True
+        )
 
-    #Location panel
-    location_table = locations_container(tables_dict, Viewer, *detection_widgets, *fish_widgets, *dapi_widgets, *segmentation_widget, *multichannel_DBSCAN_instance)
-    Viewer.window.add_dock_widget(location_table, name='Locations', area='left', add_vertical_stretch=True,)
-
+    Viewer.window.add_dock_widget(
+        location_container, 
+        name='Locations', 
+        area='left', 
+        add_vertical_stretch=True,
+        )
 
     #Scale bar
     Viewer.scale_bar.visible = True
@@ -70,7 +104,6 @@ def create_color_table(tables_dict) :
     colors = get_colors_list(target_number, remove_black=True, remove_grey=True, remove_brown=True)
     shuffle(colors)
     color_table['color'] = colors
-
 
     colormaps_dict = {
         "blue" : _get_blue_colors (),
