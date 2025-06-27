@@ -94,7 +94,6 @@ def initiate_analysis_widgets(
 #######
 
 #Load data widgets
-
 @register_load_widget
 class SpotsLoader(NapariWidget) :
     """
