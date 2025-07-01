@@ -63,12 +63,12 @@ before each draw balls are replaced in the urn.
 \subsection{Unique distribution}
 To begin, let us consider a system containing a unique distribution $I$ of single molecules randomly placed amongst the $v$ positions of the cell.
 
-\subsubsection{Self co-localization probability}
-The probability that a specific single molecule $i$ is found at position $m$ is the probability to draw the ball numbered
-$m$:
+\subsubsection{Voxel occupancy by a distribution}
+First let us consider how single molecules from an unique distribution occupy the voxels forming volume $V$. We call a voxel from this distribution $m$, the 
+probability that this voxel m is drawn at any draw ($i \in I$) is:
 
 \[
-    \hspace{3.5cm} p_i(X=m) = \frac{1}{v} \hspace{2cm} \forall  i \in I; \forall m \in V
+    \hspace{3.5cm} p_i(m) = \frac{1}{v} \hspace{2cm} \forall  i \in I; \forall m \in V
 \]
 Then the probability to not draw the specific location \textit{m} is:
 \[
@@ -82,15 +82,14 @@ On the contrary the probability that the location \textit{m} was drawn at least 
 \begin{equation}
 p_k(X_m \geq 1) = 1-(1 - \frac{1}{v})^k
 \end{equation}
-To study self co-localization we are interested to know how many different positions have been drawn in k-trials. To do so let us 
-define the observation variable $\epsilon$.
+We define the observation variable $\epsilon$ to study occupancy of positions $m \in V$:
 \[
 \forall m \in V, \epsilon (m) = \begin{cases}
     0 \text{ if } X_m = 0 \\
     1 \text{ if } X_m \geq 1
 \end{cases}
 \]
-The expected number of \textbf{different} positions $ N^{unique}_{pos} $ drawn is then the expectancy of $ \epsilon $ in the volume after k draws.
+The expected number of \textbf{different} positions $ \mu_{uniquepos} $ drawn is then the expectancy of $ \epsilon $ in the volume after k draws.
 \[
     \mu_{uniquepos} = \sum_{m \in V}p_k(X_m = 0).0 + p_k(X_m \geq 1).1
 \]
@@ -102,20 +101,33 @@ The expected number of \textbf{different} positions $ N^{unique}_{pos} $ drawn i
 \end{equation}
 Where $\mu_{up}$ is the mean number of occupied position.
 The expected number of different positions drawn is, in other words, the expected number of draws \textbf{that discovered a new position}.
-To adress self co-localization probability we are interested to know the number of draws that \textbf{didn't} discover a new position,
-in other words, duplicates draws or \textbf{self co-localization events}. To do so, we remove from the total number of picks (k) the
-number of picks that discover a new position.
+
+\subsubsection{Self co-localization expectancy}
+
+From the voxel occupancy expectancy defined as the number of draws that discovered a new position, we can find the number of duplicates draw by removing the 
+number of draws that discovered a new position to the total number of draws.
 \[
-\mu_{self colocalization} = k - v(1-(1-\frac{1}{v})^k)
+    \mu_{duplicate pos} = k-  v(1-{(1-\frac{1}{v})}^k) \\
 \]
-\begin{equation}
-p_{self colocalization}  = \frac{\mu_{sc}}{k} = 1 - \frac{v}{k}(1-{(1-\frac{1}{v})}^k)
-\end{equation}
-\textit{\textbf{Notes:}}
-\begin{itemize}
-    \item This is true for any distribution \textit{I} of single molecule \textit{i} of abundancy $ k_i $ (i.e. number of single molecule).
-    \item If $k = 1$, $p_{self colocalization} = 0$
-\end{itemize}
+However, to properly count the number of self co-localization we have to take into account the multiplicity of single molecules in voxel when making a duplicate
+draw at this position. For example if a position m is drawn $Xm = 2$ times, the number of duplicate draw is 1 while the number of molecules that self-colocalize is
+at $m$ is 2, that is to say the first duplicate draw at a position will create 2 self co-localization events but any subsequent draw will add only one. To adress 
+this we create a new observation variable $s_m(X_m)$:
+\[
+    s_m(X_m) = \begin{cases}
+    0 \text{ if } X_m < 2 \\
+    X_m \text{ if } X_m \geq 2
+\end{cases}
+\]
+The expectancy of self colocalizing singe molecules at $m$ is:
+\[
+    \mu_{selfcolocalization} = E(s_m(X_m)) = \sum_{X_m=0}^{k}s(X_m)p_m(X_m)
+\]
+\[\begin{split}
+    \Rightarrow \mu_{sc} &= 0 + 0 + \sum_{X_m=2}^{k}s(X_m)p_m(X_m) \\
+    &= 
+\end{split}
+\]
 
 \subsubsection{Self dependency of any distribution within the volume}
 

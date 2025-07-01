@@ -1,7 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1750687776.38273 "/home/floric/miniconda3/envs/dev/lib/python3.9/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" "colocalisation_model.pdf" "colocalisation_model" 1750687776.69492 0
+["pdflatex"] 1751275721.48901 "/home/floric/miniconda3/envs/dev/lib/python3.9/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" "colocalisation_model.pdf" "colocalisation_model" 1751275721.76651 0
   "/etc/texmf/web2c/texmf.cnf" 1750337464.45558 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/floric/miniconda3/envs/dev/lib/python3.9/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" 1750687776.19603 20229 c98612b78c9a8baead31e93bd1201d4e ""
+  "/home/floric/miniconda3/envs/dev/lib/python3.9/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" 1751275721.3172 20750 62fc88b5939774b449fb138e2d2a59c5 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/tcrm1000.tfm" 1136768653 1536 e07581a4bb3136ece9eeb4c3ffab8233 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
@@ -73,8 +73,8 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1750337476.29758 5472669 54eaf61a88b6b7896ebd0dac973cb29c ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1750337528 8214100 11692caa1a0331de85e3e54bd38525b3 ""
-  "colocalisation_model.aux" 1750687776.66303 2754 3a64ac8f7f2038304fb099f3fd89ee5c "pdflatex"
-  "colocalisation_model.tex" 1750687776.19603 20229 c98612b78c9a8baead31e93bd1201d4e ""
+  "colocalisation_model.aux" 1751275721.7382 2884 b677a72aa7c60a29676f9ba1121a4889 "pdflatex"
+  "colocalisation_model.tex" 1751275721.3172 20750 62fc88b5939774b449fb138e2d2a59c5 ""
   (generated)
   "colocalisation_model.aux"
   "colocalisation_model.log"
