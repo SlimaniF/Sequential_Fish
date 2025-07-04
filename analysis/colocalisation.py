@@ -425,8 +425,6 @@ def create_coloc_rate_expectancy(
     
     return coloc_probabilty, selfcoloc_probabilty
 
-
-
 def _compute_cell_distribution_populations(
         Spots : pd.DataFrame,
 ) :

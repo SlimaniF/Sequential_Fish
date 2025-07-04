@@ -48,3 +48,7 @@ def apply_polynomial_transform_3d_spots(
     new_coords_pixel = np.stack([new_z_nm, new_y_nm, new_x_nm], axis=1) / voxel_size
 
     return new_coords_pixel
+
+def get_polynomial_features(degree : int) :
+    poly = PolynomialFeatures(degree)
+    return poly

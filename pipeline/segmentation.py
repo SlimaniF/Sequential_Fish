@@ -9,8 +9,7 @@ import pbwrap.segmentation as segm
 import bigfish.plot as plot
 
 from tqdm import tqdm
-from Sequential_Fish.pipeline.utils import open_location
-from Sequential_Fish.tools.utils import open_image, reorder_image_stack
+from Sequential_Fish.tools import open_location
 
 #### USER PARAMETERS
 

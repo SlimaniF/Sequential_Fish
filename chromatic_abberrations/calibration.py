@@ -4,7 +4,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import NearestNeighbors
 
-from Sequential_Fish.chromatic_abberrations import CALIBRATION_FOLDER
+from .constant import CALIBRATION_FOLDER
 from ..customtypes import Calibration
 
 def match_beads(coords1 : np.array, coords2 : np.array, max_dist=5):

@@ -9,8 +9,7 @@ import os, sys
 import warnings
 import numpy as np
 import pandas as pd
-from Sequential_Fish.tools import open_image, reorder_image_stack
-from Sequential_Fish.pipeline.utils import open_location
+from Sequential_Fish.tools import open_location
 from concurrent.futures import ThreadPoolExecutor
 from pbwrap.detection.multithread import multi_thread_full_detection, build_Spots_and_Cluster_df
 from tqdm import tqdm

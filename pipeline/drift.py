@@ -6,7 +6,7 @@ import os, sys
 import pandas as pd
 import warnings
 import pbwrap.preprocessing.alignement as prepro
-from Sequential_Fish.pipeline.utils import open_location
+from Sequential_Fish.tools import open_location
 from tqdm import tqdm
 
 def main(run_path) :
