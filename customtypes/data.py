@@ -1,5 +1,6 @@
 from numpy import ndarray
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
 from typing import TypedDict
 
 class Calibration(TypedDict) :
@@ -9,6 +10,8 @@ class Calibration(TypedDict) :
     x_inv_fit : LinearRegression
     y_inv_fit : LinearRegression
     z_inv_fit : LinearRegression
+    polynomial_features : PolynomialFeatures
+    polynomial_features_inv : PolynomialFeatures
     voxel_size : ndarray
     degree : int
     reference_wavelength : int

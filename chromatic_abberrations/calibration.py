@@ -61,7 +61,6 @@ def update_calibration_index(
     with open(CALIBRATION_FOLDER + '/index.json', 'w') as index_file:
         json.dump(index, index_file, indent=2)
     
-
 def load_calibration(
         reference_wavelength: int,
         corrected_wavelength: int,
@@ -71,8 +70,53 @@ def load_calibration(
     calibration_key = _make_calibration_key(reference_wavelength, corrected_wavelength)
 
     if calibration_key not in index.keys() :
-        raise FileNotFoundError(f"No calibration found for reference wavelength {reference_wavelength} and corrected  wavelength {corrected_wavelength}.")
+        raise KeyError(f"No calibration found for reference wavelength {reference_wavelength} and corrected  wavelength {corrected_wavelength}.")
 
-    calibration = joblib.load(CALIBRATION_FOLDER + f"/{index[calibration_key]}")
+    calibration = joblib.load(index[calibration_key])
 
     return calibration
+
+def save_fit_model(
+        x_fit,
+        y_fit,
+        z_fit,
+        polynomial_features,
+        polynomial_features_inv,
+        x_inv_fit,
+        y_inv_fit,
+        z_inv_fit,
+        voxel_size,
+        degree,
+        reference_wavelength,
+        corrected_wavelength,
+        timestamp,
+    ) :
+        
+    if not os.path.isdir(CALIBRATION_FOLDER) : os.makedirs(CALIBRATION_FOLDER)
+    filename = CALIBRATION_FOLDER + f"/{reference_wavelength}_{corrected_wavelength}_{timestamp}.joblib" 
+
+    res = joblib.dump({
+        'x_fit' : x_fit,
+        'y_fit' : y_fit,
+        'z_fit' : z_fit,
+        'polynomial_features' : polynomial_features,
+        'polynomial_features_inv' : polynomial_features_inv,
+        'x_inv_fit' : x_inv_fit,
+        'y_inv_fit' : y_inv_fit,
+        'z_inv_fit' : z_inv_fit,
+        'voxel_size' : voxel_size,
+        'degree' : degree,
+        'reference_wavelength' : reference_wavelength,
+        'corrected_wavelength' : corrected_wavelength,
+        'timestamp' : timestamp,
+    },
+    filename
+    )
+
+    update_calibration_index(
+        reference_wavelength=reference_wavelength,
+        corrected_wavelength=corrected_wavelength,
+        filename= filename
+    )
+    
+    print(f"Calibration saved at {filename}")

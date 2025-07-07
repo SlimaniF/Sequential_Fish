@@ -16,6 +16,8 @@ def apply_polynomial_transform_3d_to_signal(
     zz, yy, xx = np.meshgrid(np.arange(z), np.arange(y), np.arange(x), indexing='ij')
     coords = np.stack([zz.ravel(), yy.ravel(), xx.ravel()], axis=1)
 
+    if isinstance(voxel_size, tuple) : voxel_size = np.array(voxel_size)
+
     X_poly = poly.transform(coords * voxel_size)
     new_z_nm = model_z.predict(X_poly)
     new_y_nm = model_y.predict(X_poly)

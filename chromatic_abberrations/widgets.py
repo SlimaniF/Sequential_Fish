@@ -12,6 +12,7 @@ from magicgui import magicgui
 from bigfish.detection import detect_spots
 from magicgui.widgets import FunctionGui
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
 from itertools import cycle
 
 from Sequential_Fish.chromatic_abberrations import CALIBRATION_FOLDER
@@ -21,6 +22,7 @@ from ..customtypes import NapariWidget
 from .calibration import match_beads
 from .calibration import fit_polynomial_transform_3d
 from .calibration import update_calibration_index
+from .calibration import save_fit_model
 from .correction import apply_polynomial_transform_3d_to_signal
 
 _calibration_widgets :'list[NapariWidget]' = []
@@ -207,6 +209,8 @@ class ChromaticAberrationCorector(NapariWidget) :
         self.model_x = LinearRegression()
         self.model_y = LinearRegression()
         self.model_z = LinearRegression()
+        self.polynomial_features = PolynomialFeatures()
+        self.polynomial_features_inv = PolynomialFeatures()
         self.inv_model_x = LinearRegression()
         self.inv_model_y = LinearRegression()
         self.inv_model_z = LinearRegression()
@@ -253,13 +257,13 @@ class ChromaticAberrationCorector(NapariWidget) :
                 max_dist= int(max(voxel_size) * 4)
             )
 
-            poly, self.model_x, self.model_y, self.model_z = fit_polynomial_transform_3d(
+            self.polynomial_features, self.model_x, self.model_y, self.model_z = fit_polynomial_transform_3d(
                                                 beads,
                                                 dist, 
                                                 degree=degree
                                                 )
             
-            poly, self.inv_model_x, self.inv_model_y, self.inv_model_z = fit_polynomial_transform_3d(
+            self.polynomial_features_inv, self.inv_model_x, self.inv_model_y, self.inv_model_z = fit_polynomial_transform_3d(
                                                 beads,
                                                 dist, 
                                                 degree=degree
@@ -268,7 +272,7 @@ class ChromaticAberrationCorector(NapariWidget) :
 
             image_corrected = apply_polynomial_transform_3d_to_signal(
                 image_abberation.data,
-                poly=poly,
+                poly=self.polynomial_features,
                 model_x=self.model_x,
                 model_y=self.model_y,
                 model_z=self.model_z,
@@ -297,36 +301,25 @@ class ChromaticAberrationCorector(NapariWidget) :
                 auto_call=False, 
                 call_button= "Save calibration"
                 )
-        def save_fit_model(
+        def save_method(
             reference_wavelength : int,
             corrected_wavelength : int,
         ) :
             
-            if not os.path.isdir(self.calibration_folder) : os.makedirs(self.calibration_folder)
-            filename = self.calibration_folder + f"/{reference_wavelength}_{corrected_wavelength}_{self.timestamp}.joblib" 
-
-            res = joblib.dump({
-                'x_fit' : self.model_x,
-                'y_fit' : self.model_y,
-                'z_fit' : self.model_z,
-                'x_inv_fit' : self.inv_model_x,
-                'y_inv_fit' : self.inv_model_y,
-                'z_inv_fit' : self.inv_model_z,
-                'voxel_size' : self.voxel_size,
-                'degree' : self.degree,
-                'reference_wavelength' : reference_wavelength,
-                'corrected_wavelength' : corrected_wavelength,
-                'timestamp' : self.timestamp,
-            },
-            filename
-            )
-
-            update_calibration_index(
-                reference_wavelength=reference_wavelength,
+            save_fit_model(
+                x_fit=self.model_x,
+                y_fit=self.model_y,
+                z_fit=self.model_z,
+                polynomial_features= self.polynomial_features,
+                polynomial_features_inv= self.polynomial_features_inv,
+                x_inv_fit=self.inv_model_x,
+                y_inv_fit=self.inv_model_y,
+                z_inv_fit=self.inv_model_z,
+                voxel_size=self.voxel_size,
+                degree=self.degree,
+                timestamp= self.timestamp,
                 corrected_wavelength=corrected_wavelength,
-                filename= filename
+                reference_wavelength=reference_wavelength,
             )
-            
-            print(f"Calibration saved at {filename}")
         
-        return save_fit_model
+        return save_method
