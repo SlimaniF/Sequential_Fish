@@ -21,9 +21,8 @@ from ..tools.utils import open_image
 from ..customtypes import NapariWidget
 from .calibration import match_beads
 from .calibration import fit_polynomial_transform_3d
-from .calibration import update_calibration_index
 from .calibration import save_fit_model
-from .correction import apply_polynomial_transform_3d_to_signal
+from .correction import apply_polynomial_transform_to_signal
 
 _calibration_widgets :'list[NapariWidget]' = []
 
@@ -270,7 +269,7 @@ class ChromaticAberrationCorector(NapariWidget) :
                                                 )
             
 
-            image_corrected = apply_polynomial_transform_3d_to_signal(
+            image_corrected = apply_polynomial_transform_to_signal(
                 image_abberation.data,
                 poly=self.polynomial_features,
                 model_x=self.model_x,
