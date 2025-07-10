@@ -22,16 +22,6 @@ def get_ylabels(ax : plt.Axes) :
     return ylabels
     
 
-def _get_min_cluster_radius(voxel_size) :
-    return max(voxel_size)
-    
-    
-def _get_voxel_size(Detection : pd.DataFrame) :
-    voxel_size = tuple(Detection['voxel_size'].iat[0])
-    voxel_size = [int(i) for i in voxel_size]
-    
-    return voxel_size
-
 def merge_data(
     Acquisition : pd.DataFrame,
     Detection : pd.DataFrame,

@@ -9,8 +9,7 @@ import numpy as np
 import bigfish.detection as detection
 import matplotlib.pyplot as plt
 
-from .utils import _get_min_cluster_radius, _get_voxel_size
-from ..tools import safe_merge_no_duplicates
+from ..tools import safe_merge_no_duplicates, get_min_cluster_radius, get_voxel_size_from_metadata
 
 #properties hints
 class multi_rna_cluster_DataFrame(pd.DataFrame):
@@ -380,9 +379,9 @@ def density_analysis(
             Gene_map=Gene_map,
         )
 
-        voxel_size = _get_voxel_size(Detection)
+        voxel_size = get_voxel_size_from_metadata(Detection)
         if cluster_radius is None :
-            cluster_radius = _get_min_cluster_radius(voxel_size)
+            cluster_radius = get_min_cluster_radius(voxel_size)
 
         spots_coordinates_per_fov = group_coordinates_per_fov(Spots)
 

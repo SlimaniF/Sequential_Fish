@@ -242,7 +242,7 @@ def open_cycle(
 
     return image_stack
 
-def get_voxel_size(filepath: str) -> Optional[Tuple[Optional[int], Optional[int], Optional[int]]]:
+def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[int], Optional[int], Optional[int]]]:
     """
     Returns voxel size in nanometers (nm) as a tuple (X, Y, Z).
     Any of the dimensions may be None if not available.
@@ -260,3 +260,13 @@ def get_voxel_size(filepath: str) -> Optional[Tuple[Optional[int], Optional[int]
     except Exception as e:
         raise ValueError(f"Failed to read voxel size from {filepath}: {e}")
         return None
+    
+def get_min_cluster_radius(voxel_size) :
+    return max(voxel_size)
+    
+    
+def get_voxel_size(Detection : pd.DataFrame) :
+    voxel_size = tuple(Detection['voxel_size'].iat[0])
+    voxel_size = [int(i) for i in voxel_size]
+    
+    return voxel_size

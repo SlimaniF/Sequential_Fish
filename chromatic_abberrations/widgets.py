@@ -2,10 +2,10 @@
 Widgets for chromatic abberrations correction calibration.
 """
 
-import os, joblib
+import os
 import numpy as np
 from pathlib import Path
-from typing import Tuple, Union, List
+from typing import Tuple, List
 from napari.layers import Points, Image
 from typing import Tuple
 from magicgui import magicgui
@@ -16,7 +16,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from itertools import cycle
 
 from Sequential_Fish.chromatic_abberrations import CALIBRATION_FOLDER
-from ..tools import get_datetime, reorder_image_stack, get_voxel_size
+from ..tools import get_datetime, reorder_image_stack, get_voxel_size_from_metadata
 from ..tools.utils import open_image 
 from ..customtypes import NapariWidget
 from .calibration import match_beads
@@ -131,7 +131,7 @@ class ImageOpener(NapariWidget) :
             if not image_path or not os.path.isfile(image_path): pass
             else :
                 try :
-                    voxel_size = get_voxel_size(image_path)
+                    voxel_size = get_voxel_size_from_metadata(image_path)
                     voxel_size = [
                         int(v) if isinstance(v, (int,float)) else 1 for v in voxel_size
                     ]
@@ -263,8 +263,8 @@ class ChromaticAberrationCorector(NapariWidget) :
                                                 )
             
             self.polynomial_features_inv, self.inv_model_x, self.inv_model_y, self.inv_model_z = fit_polynomial_transform_3d(
-                                                beads,
                                                 dist, 
+                                                beads,
                                                 degree=degree
                                                 )
             

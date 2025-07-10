@@ -76,6 +76,17 @@ def load_calibration(
 
     return calibration
 
+def calibration_exist(
+        reference_wavelength: int,
+        corrected_wavelength: int,
+) :
+    index = _load_calibration_index()
+    calibration_key = _make_calibration_key(reference_wavelength, corrected_wavelength)
+    if calibration_key not in index.keys() :
+        return False
+    else : 
+        return True
+
 def save_fit_model(
         x_fit,
         y_fit,
