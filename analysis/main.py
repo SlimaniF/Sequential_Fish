@@ -6,7 +6,9 @@ import pandas as pd
 from .post_processing import Spots_filtering
 from .density import density_analysis
 from .distributions import distributions_analysis
+from .analysis_parameters import reference_wavelength
 from ..run_saves import select_path
+from ..chromatic_abberrations import correct_Spots_dataframe
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
 
@@ -28,6 +30,11 @@ def run(*args) :
     Cell = pd.read_feather(run_path + "/result_tables/Cell.feather")
 
     #Post-processing
+    Spots = correct_Spots_dataframe(#Chromatic abberation correction
+        Detection=Detection,
+        Spots=Spots,
+        reference_wavelength= reference_wavelength
+    ) 
     unfiltered_Spots = Spots.copy()
     
     #Rename target
@@ -49,7 +56,7 @@ def run(*args) :
         Cell=Cell,
         Detection=Detection
     )
-    
+
     if "distributions" in args or "all" in args :
         
         from .analysis_parameters import distribution_measures

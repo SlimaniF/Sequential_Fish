@@ -17,6 +17,9 @@ distribution_measures = [
     'index_mean_distance_cell'
     ]
 
+#Chromatic abberration
+reference_wavelength = 555 #nm ; None to ignore chromatic abberrations
+
 # Density analysis
 min_diversity = 3
 min_spots_number = 3

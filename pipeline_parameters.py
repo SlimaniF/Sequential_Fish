@@ -22,8 +22,8 @@ HAS_BEAD_CHANNEL = True
 MAP_FILENAME = "HeLa-R2TP_Run6.xlsx"  #filename of required map file giving cycles names
 # MAP_FILENAME = "HeLa-Puro-POLR2_Run10.xlsx"  #filename of required map file giving cycles names
 CYCLE_KEY = "Cycle n."
-GENES_NAMES_KEY = ["Gene1 (Ch1 - Cy5)", "Gene2 (Ch2 - Cy3)"] # Ordered by channel
-
+GENES_NAMES_KEY = ["Gene1 (Ch1 - Cy5)", "Gene2 (Ch2 - Cy3)"] # Ordered by channel -> in the order they are stored in the images
+WAVELENGTH_LIST = [640, 555] #Ordered by channel
 
 cycle_regex = "img(\d+)_000_000000_0000000000.ome.tif" #regex to catch cycle number from tif filename.
 FOLDER_KEYS = { # folder names where nucleus and fish images can be found (required keys : 'nucleus', 'fish')

@@ -42,6 +42,7 @@ def main(run_path) :
         ARTIFACT_RADIUS = parameters_dict['ARTIFACT_RADIUS']
         DETECTION_SLICE_TO_REMOVE = parameters_dict['DETECTION_SLICE_TO_REMOVE']
         MAX_WORKERS = parameters_dict['detection_MAX_WORKERS']
+        WAVELENGTH_LIST = parameters_dict['WAVELENGTH_LIST']
     
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -218,6 +219,14 @@ def main(run_path) :
 
     #Unique Spots_identifier    
     Spots_save = Spots_save.drop(columns='spot_id').reset_index(drop=False, names="spot_id")
+
+    #Setting wavelength
+    Detection['wavelength'] = 0
+    color_id_list = Detection['color_id'].unique().to_list()
+    color_id_list.sort()
+    for color_id, wv in zip(color_id_list, WAVELENGTH_LIST) :
+        Detection.loc[Detection['color_id'] == color_id, ['wavelength']] = wv
+    Detection['wavelength'] = Detection['wavelength'].astype(int)
 
     #Saving results 
     Detection_save.to_feather(save_path + '/Detection.feather')
