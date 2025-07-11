@@ -220,6 +220,9 @@ def main(run_path) :
     #Unique Spots_identifier    
     Spots_save = Spots_save.drop(columns='spot_id').reset_index(drop=False, names="spot_id")
 
+    #Explicit cast to int
+    Detection["color_id"] = Detection["color_id"].astype(int)
+    
     #Setting wavelength
     Detection['wavelength'] = 0
     color_id_list = Detection['color_id'].unique().to_list()
