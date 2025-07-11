@@ -25,8 +25,7 @@ def apply_polynomial_transform_to_signal(
     if not model_z is None : 
         new_z_nm = model_z.predict(X_poly)
     else :
-        print(coords.shape)
-        new_z_nm = coords[:,0] #TODO test
+        new_z_nm = coords[:,0]
     new_y_nm = model_y.predict(X_poly)
     new_x_nm = model_x.predict(X_poly)
 
@@ -73,29 +72,40 @@ def correct_Spots_dataframe(
 
     wavelength_list =  Detection['wavelength'].unique().tolist()
     for wv in wavelength_list :
-       if not calibration_exist(
-           reference_wavelength=reference_wavelength,
-           corrected_wavelength= wv
-       ) :
-           raise FileNotFoundError("No calibration found for reference wavelength : {0}nm and corrected wavelength: {1}nm. To configure new calibration use command 'python -m Sequential_Fish calibration'.".format(reference_wavelength, wv))
+        if int(wv) == int(reference_wavelength) : continue
+        if not calibration_exist(
+         reference_wavelength=reference_wavelength,
+         corrected_wavelength= wv
+        ) :
+         raise FileNotFoundError("No calibration found for reference wavelength : {0}nm and corrected wavelength: {1}nm. To configure new calibration use command 'python -m Sequential_Fish calibration'.".format(reference_wavelength, wv))
     
+    print(Spots['coordinates'])
     for wv in wavelength_list :
+
+        if int(wv) == int(reference_wavelength) : continue
+
         Detection_loc = Detection.loc[Detection['wavelength'] == wv]
         calibration = load_calibration(reference_wavelength, wv)
         detection_ids_to_correct = Detection_loc['detection_id']
         voxel_size = get_voxel_size(Detection_loc)
 
-        if voxel_size != tuple(calibration['voxel_size']) : raise ValueError("Different voxel size for spot detection and calibration : spots {0} ; calibration {1} for reference wavelength {2}nm and corrected wavelength {3}nm.".format(voxel_size, calibration['voxel_size'], reference_wavelength, wv))
+        if tuple(voxel_size) != tuple(calibration['voxel_size']) : raise ValueError("Different voxel size for spot detection and calibration : spots {0} ; calibration {1} for reference wavelength {2}nm and corrected wavelength {3}nm.".format(voxel_size, calibration['voxel_size'], reference_wavelength, wv))
         
         spots_idx_to_correct = Spots[Spots['detection_id'].isin(detection_ids_to_correct)].index
-        coordinates = Spots.loc[spots_idx_to_correct, "coordinates"].to_numpy()
-        Spots.loc[spots_idx_to_correct, "coordinates"] = apply_polynomial_transform_spots(
-            coords=coordinates,
-            poly=calibration['polynomial_features_inv'],
-            model_x = calibration['model_inv_x'],            
-            model_y = calibration['model_inv_y'],
-            model_z = calibration['model_inv_z'],       
-            voxel_size=voxel_size 
-        )
+        coordinates = np.array(Spots.loc[spots_idx_to_correct, "coordinates"].tolist(), dtype=int)
+        new_coordinates = apply_polynomial_transform_spots(
+                coords=coordinates,
+                poly=calibration['polynomial_features_inv'],
+                model_x = calibration['x_inv_fit'],            
+                model_y = calibration['y_inv_fit'],
+                model_z = calibration['z_inv_fit'],       
+                voxel_size=voxel_size 
+        ).round().astype(int).tolist()
+
+        Spots.loc[spots_idx_to_correct, ["coordinates"]] = pd.Series(new_coordinates, dtype=object, index= spots_idx_to_correct)
+
+    Spots['z'] = Spots['coordinates'].apply(lambda x: round(x[0])).astype(int)
+    Spots['y'] = Spots['coordinates'].apply(lambda x: round(x[1])).astype(int)
+    Spots['x'] = Spots['coordinates'].apply(lambda x: round(x[2])).astype(int)
 
     return Spots
