@@ -150,7 +150,7 @@ def main(run_path) :
             var_name= "color_id",
             value_name= "image",
         )
-        Detection['visual_name'] = Detection['visual_name'] + Detection['acquisition_id'].astype(str) + Detection['color_id'].astype(str)
+        Detection['visual_name'] = [None]*len(Detection)
         Detection = Detection.reset_index(drop=False, names='detection_id')
         Detection['detection_id'] += max_id +1
         max_id = Detection['detection_id'].max()
