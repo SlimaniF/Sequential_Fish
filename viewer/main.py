@@ -9,7 +9,7 @@ from .widgets import initiate_load_widgets
 from .widgets import initiate_location_widgets
 from magicgui.widgets import Container
 
-from ..run_saves.gui import select_path
+from ..status.gui import select_path
 
 from pbwrap.plot.utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
 

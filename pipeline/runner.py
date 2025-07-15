@@ -3,7 +3,7 @@ import logging
 import os, traceback
 from datetime import datetime
 
-from Sequential_Fish.run_saves import validate_script, fail_script
+from Sequential_Fish.status import validate_script, fail_script
 
 """
 Main script to launch pipeline
@@ -15,7 +15,7 @@ All scripts of a round are launched even if an error is returned within the roun
 script_folder = os.path.abspath(__file__)
 script_folder = os.path.dirname(script_folder)
 
-from Sequential_Fish.pipeline_parameters import RUN_PATH
+from default_pipeline_parameters import RUN_PATH
 log_file = RUN_PATH + "/run_log.log"
 logging.basicConfig(
     filename=log_file,

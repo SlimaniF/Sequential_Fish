@@ -12,9 +12,9 @@ def main(run_path) :
     print(f"washout runing for {run_path}")
     
     if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import WASHOUT_KEY_WORD
+        from default_pipeline_parameters import WASHOUT_KEY_WORD
     else :
-        from Sequential_Fish.run_saves import get_parameter_dict
+        from Sequential_Fish.status import get_parameter_dict
         PARAMETERS = ['WASHOUT_KEY_WORD']
         parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)
         WASHOUT_KEY_WORD = parameters_dict['WASHOUT_KEY_WORD']
@@ -103,7 +103,7 @@ def main(run_path) :
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
+        from default_pipeline_parameters import RUN_PATH as run_path
     else :
         run_path = sys.argv[1]
     main(run_path)        

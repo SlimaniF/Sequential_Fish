@@ -14,14 +14,13 @@ def main(run_path) :
     print(f"drift runing for {run_path}")
 
     if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import VOXEL_SIZE, BEAD_SIZE, DO_HIGHPASS_FILTER
+        from default_pipeline_parameters import VOXEL_SIZE, BEAD_SIZE
     else :
-        from Sequential_Fish.run_saves import get_parameter_dict
-        PARAMETERS = ['DRIFT_SLICE_TO_REMOVE', 'VOXEL_SIZE', 'BEAD_SIZE', 'DO_HIGHPASS_FILTER']
+        from Sequential_Fish.status import get_parameter_dict
+        PARAMETERS = ['DRIFT_SLICE_TO_REMOVE', 'VOXEL_SIZE', 'BEAD_SIZE']
         parameters_dict= get_parameter_dict(run_path, PARAMETERS)
         VOXEL_SIZE = parameters_dict['VOXEL_SIZE']
         BEAD_SIZE = parameters_dict['BEAD_SIZE']
-        DO_HIGHPASS_FILTER = parameters_dict['DO_HIGHPASS_FILTER']
         
 
     SAVE_PATH = run_path + '/visuals/'
@@ -105,7 +104,6 @@ def main(run_path) :
     print("All locations computed. Saving results...")
     Drift_save['voxel_size'] = [VOXEL_SIZE] * len(Drift_save)
     Drift_save['bead_size'] = [BEAD_SIZE] * len(Drift_save)
-    Drift_save['highpass_filter'] = [DO_HIGHPASS_FILTER] * len(Drift_save)
     Drift_save = Drift_save.reset_index(drop=True).reset_index(drop=False, names= 'drift_id')
     Drift_save.to_feather(run_path + '/result_tables/Drift.feather')
     Drift_save.to_excel(run_path + '/result_tables/Drift.xlsx')
@@ -115,7 +113,7 @@ def main(run_path) :
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline drift' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
+        from default_pipeline_parameters import RUN_PATH as run_path
     else :
         run_path = sys.argv[1]
     main(run_path)    

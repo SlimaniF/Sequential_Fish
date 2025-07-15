@@ -4,10 +4,9 @@ import pandas as pd
 import warnings
 
 from Sequential_Fish import __run_cache_path__ as run_cache_path
-from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations
-from Sequential_Fish.run_saves import create_run_dataframe, check_run_dataframe, check_run, run_status, get_run_cache
+from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations, status
 from Sequential_Fish._pipeline_scripts import PIPELINE_SCRIPTS
-from Sequential_Fish.pipeline_parameters import RUN_PATH
+from default_pipeline_parameters import RUN_PATH
 
 
 
@@ -15,9 +14,6 @@ def main():
 
     MODULES = ['viewer', 'pipeline', 'analysis', 'status', 'calibration']
 
-    run_dataframe = get_run_cache()
-    run_dataframe = check_run_dataframe(run_dataframe)
-    run_dataframe.reset_index(drop=True).to_feather(run_cache_path)
     
     #CALL TO MODULES
     if len(sys.argv) < 2:
@@ -37,7 +33,7 @@ def main():
         
     elif module == "pipeline":
         
-        check_run(RUN_PATH)
+        # check_run(RUN_PATH) #TODO add gui selection if path not in argv
         
         if len(submodules) == 0 :
             pipeline.run() # This loads RUN_PATH from pipeline parameters and fix it for all scripts
@@ -68,7 +64,7 @@ def main():
         print("Done.")
     
     elif module == "status" :
-        run_status()
+        status.run()
 
     elif module == "calibration" :
         chromatic_abberrations.run()

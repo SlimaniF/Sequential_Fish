@@ -7,7 +7,7 @@ from .post_processing import Spots_filtering
 from .density import density_analysis
 from .distributions import distributions_analysis
 from .analysis_parameters import reference_wavelength
-from ..run_saves import select_path
+from ..status import select_path
 from ..chromatic_abberrations import correct_Spots_dataframe
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']

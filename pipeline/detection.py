@@ -23,11 +23,11 @@ def main(run_path) :
     print(f"detection runing for {run_path}")
     
     if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import detection_MAX_WORKERS as MAX_WORKERS
-        from Sequential_Fish.pipeline_parameters import VOXEL_SIZE, SPOT_SIZE, ALPHA, BETA, GAMMA, CLUSTER_SIZE, MIN_SPOT_PER_CLUSTER, ARTIFACT_RADIUS, DETECTION_SLICE_TO_REMOVE
+        from default_pipeline_parameters import detection_MAX_WORKERS as MAX_WORKERS
+        from default_pipeline_parameters import VOXEL_SIZE, SPOT_SIZE, ALPHA, BETA, GAMMA, CLUSTER_SIZE, MIN_SPOT_PER_CLUSTER, ARTIFACT_RADIUS, DETECTION_SLICE_TO_REMOVE
     
     else :
-        from Sequential_Fish.run_saves import get_parameter_dict
+        from Sequential_Fish.status import get_parameter_dict
         PARAMETERS = ['VOXEL_SIZE', 'SPOT_SIZE', 'ALPHA', 'BETA', 'GAMMA', 'CLUSTER_SIZE', 'MIN_SPOT_PER_CLUSTER', 'ARTIFACT_RADIUS', 'DETECTION_SLICE_TO_REMOVE', 'detection_MAX_WORKERS']
         
         parameters_dict = get_parameter_dict(run_path, PARAMETERS)
@@ -240,7 +240,7 @@ def main(run_path) :
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline detection' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
+        from default_pipeline_parameters import RUN_PATH as run_path
     else :
         run_path = sys.argv[1]
     main(run_path)     

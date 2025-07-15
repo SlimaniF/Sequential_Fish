@@ -18,9 +18,9 @@ def main(run_path) :
     print(f"segmentation runing for {run_path}")
     
     if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import MODEL_DICT, OBJECT_SIZE_DICT, PLOT_VISUALS
+        from default_pipeline_parameters import MODEL_DICT, OBJECT_SIZE_DICT, PLOT_VISUALS
     else :
-        from Sequential_Fish.run_saves import get_parameter_dict
+        from Sequential_Fish.status import get_parameter_dict
         PARAMETERS = ['nucleus_model', 'cytoplasm_model', 'nucleus_size', 'cytoplasm_size', 'PLOT_VISUALS']
         parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)        
         PLOT_VISUALS = parameters_dict['PLOT_VISUALS']
@@ -113,7 +113,7 @@ def main(run_path) :
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
+        from default_pipeline_parameters import RUN_PATH as run_path
     else :
         run_path = sys.argv[1]
     main(run_path)    

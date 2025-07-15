@@ -15,9 +15,9 @@ def main(run_path) :
     print(f"quantification runing for {run_path}")
     
     if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import quantif_MAX_WORKERS as MAX_WORKERS
+        from default_pipeline_parameters import quantif_MAX_WORKERS as MAX_WORKERS
     else :
-        from Sequential_Fish.run_saves import get_parameter_dict
+        from Sequential_Fish.status import get_parameter_dict
         PARAMETERS = ['quantif_MAX_WORKERS']
         parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)
         MAX_WORKERS = parameters_dict['quantif_MAX_WORKERS']
@@ -196,7 +196,7 @@ def main(run_path) :
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline quantification' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
+        from default_pipeline_parameters import RUN_PATH as run_path
     else :
         run_path = sys.argv[1]
     main(run_path)  
