@@ -3,8 +3,6 @@ import logging
 import os, traceback
 from datetime import datetime
 
-from Sequential_Fish.status import validate_script, fail_script
-
 """
 Main script to launch pipeline
 
@@ -15,13 +13,6 @@ All scripts of a round are launched even if an error is returned within the roun
 script_folder = os.path.abspath(__file__)
 script_folder = os.path.dirname(script_folder)
 
-from default_pipeline_parameters import RUN_PATH
-log_file = RUN_PATH + "/run_log.log"
-logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    )
 
 scripts_rounds = {
     'input' : ['input.py'],
@@ -31,11 +22,23 @@ scripts_rounds = {
     'quantification' : ['quantification.py']
 }
 
+def log_was_initiated() :
+    return logging.getLogger().hasHandlers()
+
+def initiate_log_config(run_path : str) :
+    log_file = run_path + "/run_log.log"
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        )
+
+
 ### script launcher function
 def launch_script(script_name, run_path):
     """Launch script from pipeline."""
     
-
+    if not log_was_initiated : initiate_log_config(run_path)
     
     try:
         logging.info(f"Exécution du script : {script_name}")
@@ -54,22 +57,23 @@ def launch_script(script_name, run_path):
         script_end = datetime.now()
         run_duration = (script_end - script_start).total_seconds()
 
-        fail_script(run_path, script=script_name)
         logging.info("script duration : {0}".format(run_duration))
         logging.error(f"script failed {script_name}:\n{traceback.format_exc()}")
 
         return False
     
     else :
-        validate_script(run_path, script=script_name)
         
         logging.info("script duration : {0}".format(run_duration))
         logging.info(f"script succeed {script_name}:\n{result.stdout}")
 
         return True
 
-def main():
+def main(run_path : str):
     start_time = datetime.now()
+
+    if not log_was_initiated : initiate_log_config(run_path)
+
     logging.info("NEW RUN")
     
     for round_key in scripts_rounds.keys() :
@@ -77,7 +81,7 @@ def main():
         sucess = []
         for script in scripts:
             if os.path.exists(script_folder + '/' + script):
-                result = launch_script(script_folder + '/' + script, run_path=RUN_PATH)
+                result = launch_script(script_folder + '/' + script, run_path=run_path)
                 sucess.append(result)
             else:
                 logging.warning(f"File {script} not found.")

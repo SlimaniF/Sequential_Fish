@@ -2,6 +2,6 @@
 Entry point to launch Sequential Fish analysis pipeline.
 """
 
-def run(*args) :
+def run(run_path : str, *args) :
     from .runner import main
-    main()
+    main(run_path)

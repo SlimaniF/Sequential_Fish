@@ -2,7 +2,7 @@ import sys
 
 from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations, status
 from Sequential_Fish._pipeline_scripts import PIPELINE_SCRIPTS
-from Sequential_Fish.default_pipeline_parameters import RUN_PATH
+from Sequential_Fish.status import select_path_for_pipeline
 
 
 
@@ -29,10 +29,16 @@ def main():
         
     elif module == "pipeline":
         
-        # check_run(RUN_PATH) #TODO add gui selection if path not in argv
-        
+        if '-p' in submodules : # for run in command line only : run path is passed after -p flag
+            run_path_index = submodules.index('-p')
+            run_path = submodules[run_path_index+1]
+            submodules.pop(run_path_index)
+            submodules.pop(run_path_index)
+        else :
+            run_path = select_path_for_pipeline()
+
         if len(submodules) == 0 :
-            pipeline.run() # This loads RUN_PATH from pipeline parameters and fix it for all scripts
+            pipeline.run(run_path) # This loads RUN_PATH from pipeline parameters and fix it for all scripts
         else :
             from Sequential_Fish.pipeline.runner import launch_script, script_folder # This loads RUN_PATH from pipeline parameters and fix it for all scripts
             if not all([script in PIPELINE_SCRIPTS for script in submodules]) :
@@ -41,7 +47,7 @@ def main():
                 error_count = 0
                 for script in submodules : 
                     if not script.endswith('.py') : script += ".py"
-                    sucess = launch_script(script_folder + '/' + script, run_path=RUN_PATH)
+                    sucess = launch_script(script_folder + '/' + script, run_path=run_path)
 
                     if not sucess : error_count +=1
                 
@@ -68,6 +74,7 @@ def main():
     else:
         print(f"Unknown module: {module}")
         print("Available modules: {0}".format(MODULES))
+        print("To skip path selection, use '-p' flag followed with fullpath to your directory.")
         sys.exit(1)
 
 if __name__ == "__main__":
