@@ -1,12 +1,8 @@
 import sys
-import os
-import pandas as pd
-import warnings
 
-from Sequential_Fish import __run_cache_path__ as run_cache_path
 from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations, status
 from Sequential_Fish._pipeline_scripts import PIPELINE_SCRIPTS
-from default_pipeline_parameters import RUN_PATH
+from Sequential_Fish.default_pipeline_parameters import RUN_PATH
 
 
 

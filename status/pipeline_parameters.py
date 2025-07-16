@@ -3,7 +3,7 @@ import Sequential_Fish.default_pipeline_parameters as parameters
 
 def get_raw_pipeline_parameters() :
     run_parameters = _get_defined_variable(parameters)
-
+    print("RUN PARAMETERS\n", run_parameters)
     return PipelineParameters(**run_parameters)
 
 
@@ -21,9 +21,5 @@ def load_pipeline_parameters(parameters_path) :
 
 def _get_defined_variable(script) :
     variables = {var: val for var, val in vars(script).items() if not var.startswith("__")}
-    for key, value in variables.copy().items() :
-        if isinstance(value,dict) :
-            variables.update(value)
-            del variables[key]
     
     return variables

@@ -8,14 +8,8 @@ def main():
     Open graphical interface to select a run. Will suggest runs that are saved in cache.
     """
     
-    run_cached = read_cache()
-    
-    path_list = list(run_cached['RUN_PATH'].unique())
-    
-    selection_path = {}
-    for path in path_list :
-        if path.endswith('/') : path = path[:-1]
-        selection_path[os.path.basename(path)] = path
+    selection_path = read_cache()
+    print(selection_path)
     
     app = QApplication([])
     dialog = CacheUpdater(selection_path)

@@ -2,7 +2,7 @@ from numpy import ndarray
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from typing import TypedDict
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Union
 from pydantic import BaseModel #Runtime type check
 
 class Calibration(TypedDict) :
@@ -38,7 +38,7 @@ class PipelineParameters(BaseModel) :
 
     #Segmentation
     MODEL_DICT : Dict[str,str]
-    OBJECT_SIZE_DICT : Dict[str,str]
+    OBJECT_SIZE_DICT : Dict[str,int]
     PLOT_VISUALS : bool
 
     #Detection
@@ -50,12 +50,12 @@ class PipelineParameters(BaseModel) :
     CLUSTER_SIZE : int
     MIN_SPOT_PER_CLUSTER : int
     ARTIFACT_RADIUS : int
-    DETECTION_SLICE_TO_REMOVE : List[int]
+    DETECTION_SLICE_TO_REMOVE : List[Union[int, None]]
 
     #Drift
     SAVE_PATH : str
     BEAD_SIZE : Tuple[int,int,int]
-    DRIFT_SLICE_TO_REMOVE : List[int]
+    DRIFT_SLICE_TO_REMOVE : List[Union[int,None]]
 
     #Quantification
     COLOC_DISTANCE : int

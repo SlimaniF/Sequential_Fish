@@ -8,9 +8,8 @@ from PyQt5.QtWidgets import QApplication, QDialog, QListWidget, QVBoxLayout, QPu
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 
-from .update import get_run_cache, add_path_to_cache
-from .update import get_raw_parameters, write_parameters, load_parameters
-import default_pipeline_parameters as parameters
+from .pipeline_parameters import get_raw_pipeline_parameters, write_pipeline_parameters
+from .cache import read_cache
 
 TABLES = ['Acquisition', 'Detection', 'Spots', 'Clusters', 'Drift', 'Cell', 'Gene_map']
 
@@ -109,7 +108,7 @@ class PathSelector(CacheDialog):
             segmentation_test = False
         
         res = tables_test and segmentation_test
-        if res : add_path_to_cache(folder)
+        # if res : add_path_to_cache(folder)
         
         return res
 
@@ -199,8 +198,8 @@ class CacheUpdater(CacheDialog):
                 if "pipeline_parameters.json" in os.listdir(folder + "/") :
                     pass
                 else :
-                    pipeline_parameters = get_raw_parameters()
-                    write_parameters(pipeline_parameters)
+                    pipeline_parameters = get_raw_pipeline_parameters()
+                    write_pipeline_parameters(pipeline_parameters)
 
                 new_run_item = QListWidgetItem(name)
                 new_run_item.setForeground(QColor(color))
@@ -259,7 +258,7 @@ def check_analysis_completed(folder) :
             segmentation_test = False
         
         res = tables_test and segmentation_test
-        if res : add_path_to_cache(folder)
+        # if res : add_path_to_cache(folder)
         
         return res
 
@@ -268,14 +267,7 @@ def select_path():
     Open graphical interface to select a run. Will suggest runs that are saved in cache.
     """
  
-    run_cached = get_run_cache()
-    
-    path_list = list(run_cached['RUN_PATH'].unique())
-    
-    selection_path = {}
-    for path in path_list :
-        if path.endswith('/') : path = path[:-1]
-        selection_path[os.path.basename(path)] = path
+    selection_path = read_cache()
     
     app = QApplication([])
     dialog = PathSelector(selection_path)
