@@ -6,22 +6,18 @@ import os, sys
 import pandas as pd
 import warnings
 import pbwrap.preprocessing.alignement as prepro
-from Sequential_Fish.tools import open_location
 from tqdm import tqdm
+
+from Sequential_Fish.status import load_pipeline_parameters
+from Sequential_Fish.tools import open_location
 
 def main(run_path) :
 
     print(f"drift runing for {run_path}")
 
-    if len(sys.argv) == 1:
-        from default_pipeline_parameters import VOXEL_SIZE, BEAD_SIZE
-    else :
-        from Sequential_Fish.status import get_parameter_dict
-        PARAMETERS = ['DRIFT_SLICE_TO_REMOVE', 'VOXEL_SIZE', 'BEAD_SIZE']
-        parameters_dict= get_parameter_dict(run_path, PARAMETERS)
-        VOXEL_SIZE = parameters_dict['VOXEL_SIZE']
-        BEAD_SIZE = parameters_dict['BEAD_SIZE']
-        
+    pipeline_parameters= load_pipeline_parameters(run_path)
+    VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
+    BEAD_SIZE = pipeline_parameters.BEAD_SIZE
 
     SAVE_PATH = run_path + '/visuals/'
     Drift_columns = [

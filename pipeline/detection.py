@@ -11,8 +11,10 @@ import numpy as np
 import pandas as pd
 from Sequential_Fish.tools import open_location
 from concurrent.futures import ThreadPoolExecutor
-from pbwrap.detection.multithread import multi_thread_full_detection, build_Spots_and_Cluster_df
+from pbwrap.detection.multithread import multi_thread_full_detection, build_Spots_and_Cluster_df #TODO integrate in package
 from tqdm import tqdm
+
+from Sequential_Fish.status import load_pipeline_parameters
 
 #########
 ## USER PARAMETERS
@@ -22,27 +24,18 @@ def main(run_path) :
 
     print(f"detection runing for {run_path}")
     
-    if len(sys.argv) == 1:
-        from default_pipeline_parameters import detection_MAX_WORKERS as MAX_WORKERS
-        from default_pipeline_parameters import VOXEL_SIZE, SPOT_SIZE, ALPHA, BETA, GAMMA, CLUSTER_SIZE, MIN_SPOT_PER_CLUSTER, ARTIFACT_RADIUS, DETECTION_SLICE_TO_REMOVE
-    
-    else :
-        from Sequential_Fish.status import get_parameter_dict
-        PARAMETERS = ['VOXEL_SIZE', 'SPOT_SIZE', 'ALPHA', 'BETA', 'GAMMA', 'CLUSTER_SIZE', 'MIN_SPOT_PER_CLUSTER', 'ARTIFACT_RADIUS', 'DETECTION_SLICE_TO_REMOVE', 'detection_MAX_WORKERS']
-        
-        parameters_dict = get_parameter_dict(run_path, PARAMETERS)
-        
-        VOXEL_SIZE = parameters_dict['VOXEL_SIZE']
-        SPOT_SIZE = parameters_dict['SPOT_SIZE']
-        ALPHA = parameters_dict['ALPHA']
-        BETA = parameters_dict['BETA']
-        GAMMA = parameters_dict['GAMMA']
-        CLUSTER_SIZE = parameters_dict['CLUSTER_SIZE']
-        MIN_SPOT_PER_CLUSTER = parameters_dict['MIN_SPOT_PER_CLUSTER']
-        ARTIFACT_RADIUS = parameters_dict['ARTIFACT_RADIUS']
-        DETECTION_SLICE_TO_REMOVE = parameters_dict['DETECTION_SLICE_TO_REMOVE']
-        MAX_WORKERS = parameters_dict['detection_MAX_WORKERS']
-        WAVELENGTH_LIST = parameters_dict['WAVELENGTH_LIST']
+    pipeline_parameters = load_pipeline_parameters(run_path + "/pipeline_parameters.json")
+    VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
+    SPOT_SIZE = pipeline_parameters.SPOT_SIZE
+    ALPHA = pipeline_parameters.ALPHA
+    BETA = pipeline_parameters.BETA
+    GAMMA = pipeline_parameters.GAMMA
+    CLUSTER_SIZE = pipeline_parameters.CLUSTER_SIZE
+    MIN_SPOT_PER_CLUSTER = pipeline_parameters.MIN_SPOT_PER_CLUSTER
+    ARTIFACT_RADIUS = pipeline_parameters.ARTIFACT_RADIUS
+    DETECTION_SLICE_TO_REMOVE = pipeline_parameters.DETECTION_SLICE_TO_REMOVE
+    MAX_WORKERS = pipeline_parameters.detection_MAX_WORKERS
+    WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
     
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")

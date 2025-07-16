@@ -8,19 +8,15 @@ from pbwrap.detection.multithread import cell_quantification
 from tqdm import tqdm
 
 from Sequential_Fish.tools import safe_merge_no_duplicates
+from Sequential_Fish.status import load_pipeline_parameters
 
 
 def main(run_path) :
 
     print(f"quantification runing for {run_path}")
     
-    if len(sys.argv) == 1:
-        from default_pipeline_parameters import quantif_MAX_WORKERS as MAX_WORKERS
-    else :
-        from Sequential_Fish.status import get_parameter_dict
-        PARAMETERS = ['quantif_MAX_WORKERS']
-        parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)
-        MAX_WORKERS = parameters_dict['quantif_MAX_WORKERS']
+    parameters_dict = load_pipeline_parameters(run_path)
+    MAX_WORKERS = parameters_dict['quantif_MAX_WORKERS']
     
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
     Drift = pd.read_feather(run_path + '/result_tables/Drift.feather')

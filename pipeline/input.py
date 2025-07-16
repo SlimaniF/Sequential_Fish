@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 from Sequential_Fish.tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack
 from Sequential_Fish.tools import open_location
+from Sequential_Fish.status import load_pipeline_parameters
 
 def infer_channel(Cycle_map : pd.DataFrame, keyword= 'DAPI') :
     index = np.argmax(Cycle_map.eq(keyword).all(0)) - 1 # -1 since first columns is cycle number
@@ -18,29 +19,18 @@ def infer_channel(Cycle_map : pd.DataFrame, keyword= 'DAPI') :
     return index
 
 def main(run_path) :
+    
+    from Sequential_Fish import __version__
 
     print(f"input runing for {run_path}")
 
-    if len(sys.argv) == 1:
-        from default_pipeline_parameters import FOLDER_KEYS, MAP_FILENAME, cycle_regex, CYCLE_KEY, GENES_NAMES_KEY, WASHOUT_KEY_WORD
-    else :
-        from Sequential_Fish.status import get_parameter_dict
-        PARAMETERS = ['nucleus_folder','fish_folder', 'MAP_FILENAME', 'cycle_regex', 'CYCLE_KEY', 'GENES_NAMES_KEY', 'WASHOUT_KEY_WORD', 'HAS_BEAD_CHANNEL']
-        parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)
-        nucleus_folder = parameters_dict['nucleus_folder']
-        fish_folder = parameters_dict['fish_folder']
-        MAP_FILENAME = parameters_dict['MAP_FILENAME']
-        cycle_regex = parameters_dict['cycle_regex']
-        CYCLE_KEY = parameters_dict['CYCLE_KEY']
-        GENES_NAMES_KEY = parameters_dict['GENES_NAMES_KEY']
-        WASHOUT_KEY_WORD = parameters_dict['WASHOUT_KEY_WORD']
-
-        from Sequential_Fish import __version__
-        
-        FOLDER_KEYS = {
-            'nucleus_folder' : nucleus_folder,
-            'fish_folder' : fish_folder,
-        }
+    pipeline_parameters = load_pipeline_parameters(run_path)
+    MAP_FILENAME = pipeline_parameters.MAP_FILENAME
+    cycle_regex = pipeline_parameters.cycle_regex
+    CYCLE_KEY = pipeline_parameters.CYCLE_KEY
+    GENES_NAMES_KEY = pipeline_parameters.GENES_NAMES_KEY
+    WASHOUT_KEY_WORD = pipeline_parameters.WASHOUT_KEY_WORD
+    FOLDER_KEYS = pipeline_parameters.FOLDER_KEYS 
     
     #Reading input folder.
     file_dict = prepro.assert_run_folder_integrity(
@@ -164,10 +154,4 @@ def main(run_path) :
     print("Done")
     
 if __name__ == "__main__":
-    print(sys.argv)
-    if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from default_pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)    
+    warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input'")

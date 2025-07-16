@@ -5,39 +5,21 @@ Drift correction is applied in FishSeq_pipeline_drift.py
 import os, warnings, sys
 import numpy as np
 import pandas as pd
-import pbwrap.segmentation as segm
-import bigfish.plot as plot
-
+import pbwrap.segmentation as segm #TODO integrate in package
 from tqdm import tqdm
+
 from Sequential_Fish.tools import open_location
+from Sequential_Fish.status import load_pipeline_parameters
 
 #### USER PARAMETERS
 
 def main(run_path) :
     
     print(f"segmentation runing for {run_path}")
-    
-    if len(sys.argv) == 1:
-        from default_pipeline_parameters import MODEL_DICT, OBJECT_SIZE_DICT, PLOT_VISUALS
-    else :
-        from Sequential_Fish.status import get_parameter_dict
-        PARAMETERS = ['nucleus_model', 'cytoplasm_model', 'nucleus_size', 'cytoplasm_size', 'PLOT_VISUALS']
-        parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)        
-        PLOT_VISUALS = parameters_dict['PLOT_VISUALS']
-        nucleus_model = parameters_dict['nucleus_model']
-        cytoplasm_model = parameters_dict['cytoplasm_model']
-        nucleus_size = parameters_dict['nucleus_size']
-        cytoplasm_size = parameters_dict['cytoplasm_size']
 
-        MODEL_DICT = {
-            'cytoplasm_model' : cytoplasm_model,
-            'nucleus_model' : nucleus_model,
-        }
-        
-        OBJECT_SIZE_DICT = {
-            'nucleus_size' : nucleus_size,
-            'cytoplasm_size' : cytoplasm_size
-        }
+    pipeline_parameters = load_pipeline_parameters(run_path)        
+    MODEL_DICT = pipeline_parameters.MODEL_DICT
+    OBJECT_SIZE_DICT = pipeline_parameters.OBJECT_SIZE_DICT
         
 
 
@@ -90,25 +72,6 @@ def main(run_path) :
             dapi_signal = nucleus_image_save,
         )
 
-        if PLOT_VISUALS : 
-            plot.plot_segmentation_boundary(
-                image=cytoplasm_image,
-                cell_label=cytoplasm_label,
-                nuc_label=nucleus_label,
-                boundary_size=3,
-                contrast=True,
-                path_output=VISUAL_PATH + "/{0}_segmentation_cyto_view.png".format(location),
-                show=False
-            )
-            plot.plot_segmentation_boundary(
-                image=nucleus_image,
-                cell_label=cytoplasm_label,
-                nuc_label=nucleus_label,
-                boundary_size=3,
-                contrast=True,
-                path_output=VISUAL_PATH + "/{0}_segmentation_nuc_view.png".format(location),
-                show=False
-            )
             
 if __name__ == "__main__":
     if len(sys.argv) == 1:
