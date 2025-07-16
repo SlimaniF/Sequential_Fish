@@ -3,6 +3,8 @@ import logging
 import os, traceback
 from datetime import datetime
 
+from ..status import get_raw_pipeline_parameters, write_pipeline_parameters
+
 """
 Main script to launch pipeline
 
@@ -39,6 +41,11 @@ def launch_script(script_name, run_path):
     """Launch script from pipeline."""
     
     if not log_was_initiated : initiate_log_config(run_path)
+
+    if not os.path.isfile(run_path + "/pipeline_parameters.json") :
+        print("No existing pipeline parameters configuration, creating one from default_pipeline_parameters.py.")
+        pipeline_parameters = get_raw_pipeline_parameters()
+        write_pipeline_parameters(pipeline_parameters)
     
     try:
         logging.info(f"Exécution du script : {script_name}")

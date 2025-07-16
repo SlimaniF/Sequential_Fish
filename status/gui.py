@@ -262,7 +262,8 @@ def check_analysis_completed(folder) :
 
 def select_path_for_pipeline():
     """
-    Open graphical interface and cached runs. User can add a new folder and modify pipeline parameters.
+    Open graphical interface and cached runs. User can add a new folder and modify pipeline parameters.  
+    Adding a new folder will create a default parameters configuration if not modified by user.
     """
     selection_path = read_cache()
 

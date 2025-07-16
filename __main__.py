@@ -35,7 +35,7 @@ def main():
             submodules.pop(run_path_index)
             submodules.pop(run_path_index)
         else :
-            run_path = select_path_for_pipeline()
+            run_path = select_path_for_pipeline() 
 
         if len(submodules) == 0 :
             pipeline.run(run_path) # This loads RUN_PATH from pipeline parameters and fix it for all scripts
