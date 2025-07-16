@@ -21,6 +21,9 @@ class Calibration(TypedDict) :
     timestamp : str
 
 class PipelineParameters(BaseModel) :
+    """
+    Fixed structure of data : type is inforced through pydantic BaseModel
+    """
     
     #Global
     RUN_PATH : str
