@@ -4,9 +4,13 @@ Submodule handling data opening and merging for viewer
 import os
 import pandas as pd
 
-from PyQt5.QtWidgets import QApplication, QDialog, QListWidget, QVBoxLayout, QPushButton, QHBoxLayout, QFileDialog, QListWidgetItem, QLabel
+from PyQt5.QtWidgets import (
+    QApplication, QDialog, QListWidget, QVBoxLayout, QPushButton, QHBoxLayout, QFileDialog, QListWidgetItem, QLabel,
+    QDialog, QFormLayout, QLabel, QLineEdit, QSpinBox, QDoubleSpinBox,QCheckBox, QWidget
+)
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
+from typing import get_origin, get_args, Dict, Any
 
 from .pipeline_parameters import get_raw_pipeline_parameters, write_pipeline_parameters
 from .cache import read_cache
@@ -209,6 +213,82 @@ class CacheUpdater(CacheDialog):
         for item in self.list_widget.selectedItems() :
             self.list_widget.takeItem(self.list_widget.row(item))
             del self.path_map[item.text()]
+
+class ParametersModifier(QDialog):
+    def __init__(self, parent: QWidget = None, **parameters: Any):
+        super().__init__(parent)
+        self.setWindowTitle("Parameter Modification")
+        self._param_types = parameters  # name: type
+        self._widgets: Dict[str, Any] = {}
+
+        form = QFormLayout()
+        # Dynamically create widgets
+        for name, ptype in self._param_types.items():
+            origin = get_origin(ptype)
+            args = get_args(ptype)
+
+            if ptype is int:
+                w = QSpinBox()
+                w.setRange(-1_000_000, 1_000_000)
+            elif ptype is float:
+                w = QDoubleSpinBox()
+                w.setRange(-1e6, 1e6)
+                w.setDecimals(6)
+            elif ptype is str:
+                w = QLineEdit()
+            elif ptype is bool:
+                w = QCheckBox()
+            elif origin is tuple and args and all(arg is int for arg in args):
+                # Fixed-length tuple of ints
+                spinboxes = []
+                sub_layout = QHBoxLayout()
+                for i, _ in enumerate(args):
+                    sb = QSpinBox()
+                    sb.setRange(-1_000_000, 1_000_000)
+                    sub_layout.addWidget(sb)
+                    spinboxes.append(sb)
+                w = sub_layout
+                self._widgets[name + "__tuple__"] = spinboxes
+            else:
+                # Fallback to string
+                w = QLineEdit()
+
+            form.addRow(QLabel(name.replace('_', ' ').capitalize()), w)
+            if name not in self._widgets:
+                self._widgets[name] = w
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        ok_btn = QPushButton("OK")
+        ok_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(ok_btn)
+        btn_layout.addWidget(cancel_btn)
+
+        form.addRow(btn_layout)
+        self.setLayout(form)
+
+    def get_parameters(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for name, ptype in self._param_types.items():
+            origin = get_origin(ptype)
+            args = get_args(ptype)
+
+            if ptype is int:
+                result[name] = self._widgets[name].value()
+            elif ptype is float:
+                result[name] = self._widgets[name].value()
+            elif ptype is str:
+                result[name] = self._widgets[name].text()
+            elif ptype is bool:
+                result[name] = self._widgets[name].isChecked()
+            elif origin is tuple and args and all(arg is int for arg in args):
+                spinboxes = self._widgets[name + "__tuple__"]
+                result[name] = tuple(sb.value() for sb in spinboxes)
+            else:
+                result[name] = self._widgets[name].text()
+        return result
 
 
 
