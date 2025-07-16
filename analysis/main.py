@@ -7,7 +7,7 @@ from .post_processing import Spots_filtering
 from .density import density_analysis
 from .distributions import distributions_analysis
 from .analysis_parameters import reference_wavelength
-from ..status import select_path
+from ..status import select_path_for_analysis
 from ..chromatic_abberrations import correct_Spots_dataframe
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
@@ -18,7 +18,7 @@ def run(*args) :
         print(f"Avalaible modules are {ANALYSIS_MODULES}")
         return True
     
-    run_path = select_path()
+    run_path = select_path_for_analysis()
     if run_path is None : quit()
     else : print(run_path)
     
