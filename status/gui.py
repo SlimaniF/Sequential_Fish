@@ -45,7 +45,7 @@ class CacheDialog(QDialog) :
         layout.addWidget(self.list_widget)
         self.setLayout(layout)
 
-    def get_selected_paths(self):
+    def get_selected_path(self):
         selected_names = [item.text() for item in self.list_widget.selectedItems()]
         
         res = [self.path_map[name] for name in selected_names]
@@ -205,8 +205,6 @@ class CacheUpdater(CacheDialog):
                 new_run_item.setForeground(QColor(color))
                 self.list_widget.addItem(new_run_item)
 
-
-
     def rm_from_cache(self) :
         for item in self.list_widget.selectedItems() :
             self.list_widget.takeItem(self.list_widget.row(item))
@@ -262,7 +260,20 @@ def check_analysis_completed(folder) :
         
         return res
 
-def select_path():
+def select_path_for_pipeline():
+    """
+    Open graphical interface and cached runs. User can add a new folder and modify pipeline parameters.
+    """
+    selection_path = read_cache()
+
+    app = QApplication([])
+    dialog = CacheUpdater(selection_path)
+    if dialog.exec():  # Show dialog and check if OK was pressed
+        return dialog.get_selected_path()
+    return None
+
+
+def select_path_for_analysis():
     """
     Open graphical interface to select a run. Will suggest runs that are saved in cache.
     """
@@ -272,5 +283,5 @@ def select_path():
     app = QApplication([])
     dialog = PathSelector(selection_path)
     if dialog.exec():  # Show dialog and check if OK was pressed
-        return dialog.get_selected_paths()
+        return dialog.get_selected_path()
     return None
