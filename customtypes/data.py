@@ -41,7 +41,6 @@ class PipelineParameters(BaseModel) :
     #Segmentation
     MODEL_DICT : Dict[str,str]
     OBJECT_SIZE_DICT : Dict[str,int]
-    PLOT_VISUALS : bool
 
     #Detection
     detection_MAX_WORKERS : int
@@ -61,4 +60,3 @@ class PipelineParameters(BaseModel) :
     #Quantification
     COLOC_DISTANCE : int
     quantif_MAX_WORKERS : int
-    COLOC_POPULATION : Tuple[str, ...]

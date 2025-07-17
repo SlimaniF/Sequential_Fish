@@ -34,7 +34,6 @@ OBJECT_SIZE_DICT = {#size in px given to cellpose for prediction
     'nucleus_size' : 140,
     'cytoplasm_size' : 200
 }
-PLOT_VISUALS = True
 
 ################
 # 3. Detection
@@ -66,7 +65,6 @@ DRIFT_SLICE_TO_REMOVE = [5,5] # Number of slice to remove to avoid detecting noi
 ##############
 COLOC_DISTANCE = 200 #distance to consider for colocalization events in nanometers
 quantif_MAX_WORKERS = 10 #Number of threads to use while computing cells features (small_process, currently good performance with 10)
-COLOC_POPULATION = ('all', 'free', 'clustered') # population to consider when computing colocalisation
 
 
 #### Integrity check ####
