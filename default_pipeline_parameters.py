@@ -2,7 +2,6 @@
 # 0. Global
 ################
 #fullpath to main folder given by experimentalist
-RUN_PATH = "/media/SSD_floricslimani/Fish_seq/Davide/2024-08-07 - SeqFISH_Run6 - HeLa_R2TP1-2/"
 VOXEL_SIZE = (200,97,97) # size of a pixel in nanometer (z,y,x)
 WASHOUT_KEY_WORD = 'Washout' #key for washout in gene map excel
 HAS_BEAD_CHANNEL = True
@@ -59,7 +58,6 @@ DETECTION_SLICE_TO_REMOVE = [5,None] # number of slice you want to remove bottom
 ################
 # 4. Drift
 ##############
-SAVE_PATH = RUN_PATH + '/visuals/'
 BEAD_SIZE = (200, 200, 200) #size of fluorescent beads in nanometers used for fov aligment
 DRIFT_SLICE_TO_REMOVE = [5,5] # Number of slice to remove to avoid detecting noise
 

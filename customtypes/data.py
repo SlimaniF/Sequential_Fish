@@ -26,7 +26,6 @@ class PipelineParameters(BaseModel) :
     """
     
     #Global
-    RUN_PATH : str
     VOXEL_SIZE : Tuple[int,int,int]
     WASHOUT_KEY_WORD : str
     HAS_BEAD_CHANNEL : bool
@@ -56,7 +55,6 @@ class PipelineParameters(BaseModel) :
     DETECTION_SLICE_TO_REMOVE : List[Union[int, None]]
 
     #Drift
-    SAVE_PATH : str
     BEAD_SIZE : Tuple[int,int,int]
     DRIFT_SLICE_TO_REMOVE : List[Union[int,None]]
 

@@ -1,8 +1,8 @@
 # Fdb version 4
-["pdflatex"] 1751275721.48901 "/home/floric/miniconda3/envs/dev/lib/python3.9/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" "colocalisation_model.pdf" "colocalisation_model" 1751275721.76651 0
-  "/etc/texmf/web2c/texmf.cnf" 1750337464.45558 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/floric/miniconda3/envs/dev/lib/python3.9/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" 1751275721.3172 20750 62fc88b5939774b449fb138e2d2a59c5 ""
-  "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
+["pdflatex"] 1751898608.36607 "/home/flo/miniconda3/envs/dev/lib/python3.8/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" "colocalisation_model.pdf" "colocalisation_model" 1751898608.8107 0
+  "/etc/texmf/web2c/texmf.cnf" 1745397033.70639 475 c0e671620eb5563b2130f56340a5fde8 ""
+  "/home/flo/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk" 1745397441.9297 11524 eed15487165268f755ca6f4972f7e61f ""
+  "/home/flo/miniconda3/envs/dev/lib/python3.8/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex" 1751898607.90659 20750 62fc88b5939774b449fb138e2d2a59c5 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/tcrm1000.tfm" 1136768653 1536 e07581a4bb3136ece9eeb4c3ffab8233 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
@@ -68,13 +68,11 @@
   "/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def" 1704491087 30006 57b07afb710ee2f649c65cfbafda39c1 ""
   "/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg" 1279039959 678 4792914a8f45be57bb98413425e4c7af ""
   "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
-  "/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1636152094 2900 1537cc8184ad1792082cd229ecc269f4 ""
-  "/usr/share/texmf/fonts/type1/public/cm-super/sfrm1000.pfb" 1636152094 138258 6525c253f16cededa14c7fd0da7f67b2 ""
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
-  "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1750337476.29758 5472669 54eaf61a88b6b7896ebd0dac973cb29c ""
-  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1750337528 8214100 11692caa1a0331de85e3e54bd38525b3 ""
-  "colocalisation_model.aux" 1751275721.7382 2884 b677a72aa7c60a29676f9ba1121a4889 "pdflatex"
-  "colocalisation_model.tex" 1751275721.3172 20750 62fc88b5939774b449fb138e2d2a59c5 ""
+  "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1745397037.74635 75955 f78456fd1308dc295dc476a68e28d85b ""
+  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1745397057 6800788 27589d7bc9e1129037c323a9fab4cf4d ""
+  "colocalisation_model.aux" 1751898608.72622 2884 b677a72aa7c60a29676f9ba1121a4889 "pdflatex"
+  "colocalisation_model.tex" 1751898607.90659 20750 62fc88b5939774b449fb138e2d2a59c5 ""
   (generated)
   "colocalisation_model.aux"
   "colocalisation_model.log"

@@ -45,7 +45,7 @@ def launch_script(script_name, run_path):
     if not os.path.isfile(run_path + "/pipeline_parameters.json") :
         print("No existing pipeline parameters configuration, creating one from default_pipeline_parameters.py.")
         pipeline_parameters = get_raw_pipeline_parameters()
-        write_pipeline_parameters(pipeline_parameters)
+        write_pipeline_parameters(run_path, pipeline_parameters)
     
     try:
         logging.info(f"Exécution du script : {script_name}")

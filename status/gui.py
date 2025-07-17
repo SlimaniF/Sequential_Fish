@@ -6,14 +6,15 @@ import pandas as pd
 
 from PyQt5.QtWidgets import (
     QApplication, QDialog, QListWidget, QVBoxLayout, QPushButton, QHBoxLayout, QFileDialog, QListWidgetItem, QLabel,
-    QDialog, QFormLayout, QLabel, QLineEdit, QSpinBox, QDoubleSpinBox,QCheckBox, QWidget
+    QDialog, QFormLayout, QLabel, QLineEdit, QSpinBox, QDoubleSpinBox,QCheckBox, QWidget, QPlainTextEdit
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
-from typing import get_origin, get_args, Dict, Any
+from typing import get_origin, get_args, Dict, Any, Tuple, List
 
 from .pipeline_parameters import get_raw_pipeline_parameters, write_pipeline_parameters
 from .cache import read_cache
+
 
 TABLES = ['Acquisition', 'Detection', 'Spots', 'Clusters', 'Drift', 'Cell', 'Gene_map']
 
@@ -102,13 +103,13 @@ class PathSelector(CacheDialog):
             if not tables_test :
                 print(f"Couln'd find all required dataframes in .feather.\nRequired list : {TABLES}")
         else :
-            print("Couldn't find result_tables folder in selected folder. Please select main folder of a Sequential_Fish acquisition.")
+            print("Couldn't find result_tables folder in selected folder.")
             tables_test = False
             
         if 'segmentation' in dirlist :
             segmentation_test = True
         else :
-            print("Couldn't find segmentation folder in selected folder. Please select main folder of a Sequential_Fish acquisition.")
+            print("Couldn't find segmentation folder in selected folder.")
             segmentation_test = False
         
         res = tables_test and segmentation_test
@@ -135,7 +136,8 @@ class CacheUpdater(CacheDialog):
         self.layout().insertWidget(0,header)
 
         # Buttons init
-        self.check_button = QPushButton("Modify parameters", self)
+        self.modify_parameter_button = QPushButton("Modify parameters", self)
+        self.modify_parameter_button.clicked.connect(self.modify_parameters)
 
         self.add_button = QPushButton("Add",self)
         self.add_button.setToolTip(TOOLTIPS['add'])
@@ -145,7 +147,7 @@ class CacheUpdater(CacheDialog):
         self.rm_button.setToolTip(TOOLTIPS['rm'])
         self.rm_button.clicked.connect(self.rm_from_cache)
 
-        buttons = [self.check_button, self.add_button, self.rm_button]
+        buttons = [self.modify_parameter_button, self.add_button, self.rm_button]
 
             ## Add to layout
         button_Hbox = QHBoxLayout()
@@ -203,7 +205,7 @@ class CacheUpdater(CacheDialog):
                     pass
                 else :
                     pipeline_parameters = get_raw_pipeline_parameters()
-                    write_pipeline_parameters(pipeline_parameters)
+                    write_pipeline_parameters(folder, pipeline_parameters)
 
                 new_run_item = QListWidgetItem(name)
                 new_run_item.setForeground(QColor(color))
@@ -213,6 +215,20 @@ class CacheUpdater(CacheDialog):
         for item in self.list_widget.selectedItems() :
             self.list_widget.takeItem(self.list_widget.row(item))
             del self.path_map[item.text()]
+
+    def modify_parameters(self) :
+        parameters = {
+            'test_int' : int, 
+            'test_float' : float, 
+            'test_str' : str, 
+            'test_tuple_int' : Tuple[int,int,int],
+            'test_dict_int' : Dict[str,int],
+            'test_dict_str' : Dict[str,str],
+            'test_list_str' : List[str],
+            }
+
+        parameters_modifier = ParametersModifier(self, **parameters)
+        parameters_modifier.exec()
 
 class ParametersModifier(QDialog):
     def __init__(self, parent: QWidget = None, **parameters: Any):
@@ -249,6 +265,15 @@ class ParametersModifier(QDialog):
                     spinboxes.append(sb)
                 w = sub_layout
                 self._widgets[name + "__tuple__"] = spinboxes
+            elif origin is list and len(args) == 1 and args[0] in (int, float, str, bool):
+                # List of simple types - comma separated input
+                w = QLineEdit()
+                w.setPlaceholderText(f"Comma-separated {args[0].__name__}s")
+            elif origin is dict and len(args) == 2 and args[0] is str and args[1] is str:
+                # Dict[str, str] - JSON or key:value pairs
+                w = QPlainTextEdit()
+                w.setPlaceholderText("key:value per line or JSON")
+                w.setFixedHeight(80)
             else:
                 # Fallback to string
                 w = QLineEdit()
@@ -304,7 +329,6 @@ def check_Acquisition_run_path(folder) :
     result_tables = os.listdir(folder + "/result_tables/")
     if "Acquisition.feather" not in result_tables :
         print("Couldn't find Acquisition table at {}".format(folder))
-        print(result_tables)
         return False
     
     Acquisition = pd.read_feather("{0}/result_tables/Acquisition.feather".format(folder), columns=["acquisition_id", "full_path"])

@@ -2,7 +2,7 @@
 Aims at finding drift value for each field of view and store it into a dataframe : Drift
 """
 
-import os, sys
+import sys
 import pandas as pd
 import warnings
 import pbwrap.preprocessing.alignement as prepro
@@ -19,7 +19,6 @@ def main(run_path) :
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     BEAD_SIZE = pipeline_parameters.BEAD_SIZE
 
-    SAVE_PATH = run_path + '/visuals/'
     Drift_columns = [
         'acquisition_id',
         'drift_type',
@@ -42,8 +41,6 @@ def main(run_path) :
 
         print('Starting ',location)
         sub_acq = Acquisition.loc[Acquisition['location'] == location]
-        plot_path = SAVE_PATH + '/drift/{0}/'.format(location)
-        os.makedirs(plot_path,exist_ok=True)
         
         print("opening images...")
         image = open_location(Acquisition, location)
@@ -108,7 +105,7 @@ def main(run_path) :
     
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline drift' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
+        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline drift'")
         from default_pipeline_parameters import RUN_PATH as run_path
     else :
         run_path = sys.argv[1]
