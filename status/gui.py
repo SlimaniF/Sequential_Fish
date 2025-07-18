@@ -161,7 +161,6 @@ class CacheDialog(QDialog) :
                 item.setForeground(QColor("green"))
 
     def update_cache(self) :
-        print('writting cache')
         write_cache(self.path_map)
 
 class AnalysisCacheDialog(CacheDialog):
@@ -199,7 +198,7 @@ class AnalysisCacheDialog(CacheDialog):
         parameters_modifier = ParametersModifier(self, **dict(analysis_parameters))
         
         if parameters_modifier.exec() :
-            input_dict = parameters_modifier.get_parameters() 
+            input_dict = parameters_modifier.get_parameters()
             try : 
                 updated_parameters = AnalysisParameters(**input_dict)
             except ValidationError as e :
@@ -212,7 +211,7 @@ class AnalysisCacheDialog(CacheDialog):
                     input_dict[att] = dict(analysis_parameters)[att]
                 updated_parameters = AnalysisParameters(**input_dict)
 
-            write_pipeline_parameters(selected_run_path, updated_parameters)
+            write_analysis_parameters(selected_run_path, updated_parameters)
 
             
 class PipelineCacheDialog(CacheDialog):
@@ -342,7 +341,7 @@ class ParametersModifier(QDialog):
                 widget = le
 
             # Dict[str, simple]
-            elif isinstance(default, dict) and default and all(isinstance(k, str) for k in default.keys()):
+            elif isinstance(default, dict) :
                 pt = QPlainTextEdit()
                 # key:value per line
                 lines = [f"{k}:{v}" for k, v in default.items()]
@@ -398,11 +397,9 @@ class ParametersModifier(QDialog):
             # List
             elif isinstance(default, list) and default and all(isinstance(x, (int, float, str, bool, type(None))) for x in default):
                 text = widget.text(); items = [i.strip() for i in text.split(',')]
-                if not items:
-                    result[name] = None
-                else:
-                    conv = type(default[0])
-                    result_items = []
+                conv = type(default[0])
+                result_items = []
+                if text != "" :
                     for i in items :
                         try :
                             result_items.append(conv(i) if i.strip() != "" else None)
@@ -410,14 +407,12 @@ class ParametersModifier(QDialog):
                             print(f"Incorrect value set for {name} : expected {conv} got {i}.\nParameter restaured to {default}")
                             result_items = default
 
-                    result[name] = result_items
+                result[name] = result_items
             # Dict
-            elif isinstance(default, dict) and default and all(isinstance(k, str) for k in default.keys()):
+            elif isinstance(default, dict) :
                 txt = widget.toPlainText().strip()
-                if not txt:
-                    result[name] = None
-                else:
-                    d: Dict[str, Any] = {}
+                d: Dict[str, Any] = {}
+                if not txt == "" :
                     sample_v = next(iter(default.values()))
                     val_type = type(sample_v)
                     for line in txt.splitlines():
@@ -427,10 +422,10 @@ class ParametersModifier(QDialog):
                                 d[k.strip()] = val_type(v.strip()) if v.strip() != '' else None
                             except Exception:
                                 d[k.strip()] = v.strip()
-                    result[name] = d
+                result[name] = d
             # fallback
             else:
-                result[name] = widget.text()
+                raise NotImplementedError("type {} not implemented for parameters prompt.".format(type(default)))
         return result
 
 

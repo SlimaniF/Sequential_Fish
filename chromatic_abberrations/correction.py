@@ -79,7 +79,6 @@ def correct_Spots_dataframe(
         ) :
          raise FileNotFoundError("No calibration found for reference wavelength : {0}nm and corrected wavelength: {1}nm. To configure new calibration use command 'python -m Sequential_Fish calibration'.".format(reference_wavelength, wv))
     
-    print(Spots['coordinates'])
     for wv in wavelength_list :
 
         if int(wv) == int(reference_wavelength) : continue

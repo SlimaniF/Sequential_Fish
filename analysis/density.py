@@ -9,7 +9,7 @@ import numpy as np
 import bigfish.detection as detection
 import matplotlib.pyplot as plt
 
-from ..tools import safe_merge_no_duplicates, get_min_cluster_radius, get_voxel_size_from_metadata
+from ..tools import safe_merge_no_duplicates, get_min_cluster_radius, get_voxel_size
 
 #properties hints
 class multi_rna_cluster_DataFrame(pd.DataFrame):
@@ -155,14 +155,14 @@ def multi_rna_clusters(Spots) -> multi_rna_cluster_DataFrame:
         'cluster_centroid_x' : 'first',
     })
 
-    multi_rna_clusters.columns = pd.Index(['spot_number', 'rna_number', 'rna_list', 'z', 'y', 'x'])
-    multi_rna_clusters = multi_rna_clusters.rename(columns={"rna_number" : "diversity"})
+    multi_rna_clusters.columns = pd.Index(['spot_number', 'diversity', 'rna_list', 'z', 'y', 'x'])
     return multi_rna_clusters
 
 def update_and_filter_spots(Spots, multirna_clusters: multi_rna_cluster_DataFrame) -> updated_spots_DataFrame :
     """
     Add multi rna clusters information to single spots df
     """
+
     updated_spots = pd.merge(
         Spots,
         multirna_clusters,
@@ -172,8 +172,6 @@ def update_and_filter_spots(Spots, multirna_clusters: multi_rna_cluster_DataFram
     
     assert len(Spots[Spots['general_cluster_id'] != -1]) == len(updated_spots), "Non unique (location,general_cluster_id)"
     
-    updated_spots = updated_spots.rename(columns={"rna_number" : "diversity"})
-
     return updated_spots
 
 def create_cluster_unity_df(
@@ -379,7 +377,7 @@ def density_analysis(
             Gene_map=Gene_map,
         )
 
-        voxel_size = get_voxel_size_from_metadata(Detection)
+        voxel_size = get_voxel_size(Detection)
         if cluster_radius is None :
             cluster_radius = get_min_cluster_radius(voxel_size)
 

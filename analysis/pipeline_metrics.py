@@ -66,7 +66,6 @@ def Spots_washout_filtering(
     x = np.arange(len(data))
     y = data['is_washout']
     ax.plot(x,y, color='red')
-    ax.legend()
 
     cycles = data.index.get_level_values(0)
     targets = data.index.get_level_values(1)
@@ -395,6 +394,8 @@ def pipeline_metrics(
     frameon = True,
 ) :
     
+    print("Starting pipeline_metrics analysis...")
+
     Detection, Cell, Unfiltered_spots = merge_data(
             Acquisition=Acquisition,
             Detection=Detection,

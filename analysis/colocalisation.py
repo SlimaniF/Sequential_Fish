@@ -50,6 +50,8 @@ from ..tools import safe_merge_no_duplicates
 from sklearn.neighbors import NearestNeighbors
 from scipy.ndimage import distance_transform_edt
 
+pd.set_option('future.no_silent_downcasting', True)
+
 """
 1. Data co-localization pariwise rates : Compute actual co-colocalization pairwise rates.
 """
@@ -485,7 +487,7 @@ def compute_wilcoxon_signed_rank(zscore_distribution)->pd.Series :
 def compute_pvalue_frame(
         zscore_frame : pd.DataFrame,
 ) : 
-    pvalue_frame = zscore_frame.groupby(axis=0,level=0).apply(lambda x: compute_wilcoxon_signed_rank(x)).droplevel(axis=0, level=1)
+    pvalue_frame = zscore_frame.groupby(level=0).apply(lambda x: compute_wilcoxon_signed_rank(x)).droplevel(axis=0, level=1)
 
     return pvalue_frame    
 
@@ -610,8 +612,8 @@ def create_pair_colocalisation_figure(
     score_norm = TwoSlopeNorm(vmin=-1, vcenter=0, vmax=20,)
 
     #Unsgnificative pvalue set to NaN
-    zscore_frame *= pvalue_mask.replace({True : 1, False : np.NaN})
-    colocalization_rates *= pvalue_mask.replace({True : 1, False : np.NaN})
+    zscore_frame *= pvalue_mask.replace({True : 1, False : np.NaN}).infer_objects(copy=False)
+    colocalization_rates *= pvalue_mask.replace({True : 1, False : np.NaN}).infer_objects(copy=False)
 
     fig = plt.figure(figsize=(24,10), frameon=frameon)
     left,right = fig.subplots(1,2)
@@ -678,6 +680,7 @@ def main(
     error_count = 0
 
     try :
+        print("Starting pairwise co-localization analysis...")
         logging.info(f"Pairwise co-localization analysis start")
         sucess = pairwise_colocalization_analysis(
             filtered_Spots=filtered_Spots,
@@ -790,9 +793,9 @@ def pairwise_colocalization_analysis(
 
     #Save datasheet
     os.makedirs(output_path + "/datasheet/",exist_ok=True)
-    mean_coloc_rates = coloc_rates.groupby('target',axis=0,level=0).mean()
+    mean_coloc_rates = coloc_rates.groupby('target',level=0).mean()
     mean_coloc_rates.to_excel(output_path + "/datasheet/coloc_rates_mean.xlsx")
-    median_zscore = zscore_frame.groupby('target',axis=0,level=0).median()
+    median_zscore = zscore_frame.groupby('target',level=0).median()
     median_zscore.to_excel(output_path + "/datasheet/zscore.xlsx")
     
     #p-values computation

@@ -143,6 +143,9 @@ def main(run_path) :
     #Set index
     Gene_map = Gene_map.set_index('cycle', verify_integrity=True, drop=False)
     Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True, drop=False)
+
+    #Explicit dtype cast
+    Gene_map['color_id'] = Gene_map['color_id'].astype(int)
     
     #Output
     save_path = run_path + '/result_tables/'
