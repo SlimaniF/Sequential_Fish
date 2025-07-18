@@ -1,7 +1,7 @@
 """
 Submodule handling data opening and merging for viewer
 """
-import os, json
+import os
 import pandas as pd
 from pydantic import ValidationError
 
@@ -11,10 +11,19 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
-from typing import get_origin, get_args, Dict, Any, Tuple, List
+from typing import Dict, Any
 
-from ..customtypes import PipelineParameters
-from .pipeline_parameters import get_raw_pipeline_parameters, write_pipeline_parameters, load_pipeline_parameters
+from ..customtypes import PipelineParameters, AnalysisParameters
+from .parameters import (
+    get_raw_pipeline_parameters, 
+    write_pipeline_parameters, 
+    load_pipeline_parameters,
+    exists_pipeline_parameters,
+    get_raw_analysis_parameters,
+    write_analysis_parameters,
+    load_analysis_parameters,
+    exists_analysis_parameters,
+)
 from .cache import read_cache, write_cache
 
 
@@ -44,13 +53,57 @@ class CacheDialog(QDialog) :
         self.path_map = path_map  # Dictionary {custom_name: real_path}
 
         # List Widget
-        self.list_widget = QListWidget(self)
+        self.list_widget = QListWidget()
         self.list_widget.addItems(path_map.keys())  # Display custom names
         
-        # Layout
-        layout = QVBoxLayout()
-        layout.addWidget(self.list_widget)
-        self.setLayout(layout)
+        # Layout init
+        self.dialog_layout = QVBoxLayout()
+        self.dialog_layout.addWidget(self.list_widget)
+        self.setLayout(self.dialog_layout)
+
+        header = QLabel("Sequential Fish", self)
+        header.setAlignment(Qt.AlignCenter)
+        header.setStyleSheet("""
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        """)
+        self.dialog_layout.insertWidget(0,header)
+
+        # Add/rm button
+        self.rm_button = QPushButton("Remove",self)
+        self.rm_button.setToolTip(TOOLTIPS['rm'])
+        self.rm_button.clicked.connect(self.rm_from_menu)
+
+        #Add to menu
+        self.add_button = QPushButton("Add",self)
+        self.add_button.setToolTip(TOOLTIPS['add'])
+        self.add_button.clicked.connect(self.add_to_menu)
+        buttons = [self.add_button, self.rm_button]
+
+        ## Add to layout
+        self.button_Hbox = QHBoxLayout()
+        for button in buttons : self.button_Hbox.addWidget(button)
+        self.dialog_layout.addLayout(self.button_Hbox)
+
+        #Ok / Cancel
+        self.ok_button = QPushButton("Ok", self)
+        self.ok_button.clicked.connect(self.accept)
+        self.cancel_button = QPushButton("Cancel",self)
+        self.cancel_button.clicked.connect(self.reject)
+        #Add to layout
+        self.OkCancel_Hbox = QHBoxLayout()
+        self.OkCancel_Hbox.addWidget(self.ok_button)
+        self.OkCancel_Hbox.addWidget(self.cancel_button)
+        self.dialog_layout.addLayout(self.OkCancel_Hbox)
+
+        self.check_cache()
+        self.accepted.connect(self.update_cache)
+    
+    def rm_from_menu(self) :
+        for item in self.list_widget.selectedItems() :
+            self.list_widget.takeItem(self.list_widget.row(item))
+            del self.path_map[item.text()]
 
     def get_selected_path(self):
         selected_names = [item.text() for item in self.list_widget.selectedItems()]
@@ -63,115 +116,32 @@ class CacheDialog(QDialog) :
         else : 
             return None
         
-
-class PathSelector(CacheDialog):
-    """
-    Window for path selection
-    """
-    def __init__(self, path_map : dict):
-        super().__init__(path_map)
-
-        # OK Button
-        self.ok_button = QPushButton("OK", self)
-        self.ok_button.clicked.connect(self.accept)
-        # Load button
-        self.load_button = QPushButton("Load", self)
-        self.load_button.clicked.connect(self.load_folder)
-        
-        #Buttons horizontal layout
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.load_button)
-        button_layout.addWidget(self.ok_button)
-        
-        # Layout
-        self.layout().addLayout(button_layout)
-
-    def load_folder(self) :
-        folder = QFileDialog.getExistingDirectory(self, "Select Folder")
-        if folder:
-            if self.check_folder(folder) :
-                name = os.path.basename(folder)
+    def add_to_menu(self) :
+        folder = QFileDialog.getExistingDirectory(self, "Select main folder of run to add")
+        if folder :
+            color = "red"
+            if check_Acquisition_run_path(folder) :
+                color = "orange"
+            if check_analysis_completed(folder) :
+                color = "green"
+            name = os.path.basename(folder)
+            if name in self.path_map.keys() :
+                print("Already a run with folder name {}, delete or rename folder first.".format(name))
+                return None
+            else : 
                 self.path_map[name] = folder
-                self.list_widget.addItem(name)
-            else :
-                print("Could not load folder.")
 
-    def check_folder(self,folder) :
-        dirlist = os.listdir(folder)
-        
-        if 'result_tables' in dirlist :
-            data_tables_dirlist = os.listdir(folder + '/result_tables/')
-            TABLES = ['Acquisition', 'Spots', 'Clusters', 'Drift', 'Detection', 'Gene_map']
-            tables_test = all([(table + '.feather') in data_tables_dirlist] for table in TABLES)
-            if not tables_test :
-                print(f"Couln'd find all required dataframes in .feather.\nRequired list : {TABLES}")
-        else :
-            print("Couldn't find result_tables folder in selected folder.")
-            tables_test = False
-            
-        if 'segmentation' in dirlist :
-            segmentation_test = True
-        else :
-            print("Couldn't find segmentation folder in selected folder.")
-            segmentation_test = False
-        
-        res = tables_test and segmentation_test
-        # if res : add_path_to_cache(folder)
-        
-        return res
+                if not exists_pipeline_parameters(folder) :
+                    pipeline_parameters = get_raw_pipeline_parameters()
+                    write_pipeline_parameters(folder, pipeline_parameters)
 
-class CacheUpdater(CacheDialog):
-    """
-    Class for update run in cache (adding, removing or checking that on drive and in Acquisition match.
-    """
+                if not exists_analysis_parameters(folder) :
+                    pipeline_parameters = get_raw_pipeline_parameters()
+                    write_pipeline_parameters(folder, pipeline_parameters)
 
-    def __init__(self, path_map : dict):
-        super().__init__(path_map)
-        self.check_cache()
-
-        header = QLabel("Sequential Fish runs", self)
-        header.setAlignment(Qt.AlignCenter)
-        header.setStyleSheet("""
-            font-size: 16pt;
-            font-weight: bold;
-            margin-bottom: 10px;
-        """)
-        self.layout().insertWidget(0,header)
-
-        # Buttons init
-        self.modify_parameter_button = QPushButton("Modify parameters", self)
-        self.modify_parameter_button.clicked.connect(self.modify_parameters)
-
-        self.add_button = QPushButton("Add",self)
-        self.add_button.setToolTip(TOOLTIPS['add'])
-        self.add_button.clicked.connect(self.add_to_menu)
-        
-        self.rm_button = QPushButton("Remove",self)
-        self.rm_button.setToolTip(TOOLTIPS['rm'])
-        self.rm_button.clicked.connect(self.rm_from_menu)
-
-        buttons = [self.modify_parameter_button, self.add_button, self.rm_button]
-
-            ## Add to layout
-        button_Hbox = QHBoxLayout()
-        for button in buttons :
-            button_Hbox.addWidget(button)
-        self.layout().addLayout(button_Hbox)
-
-        #Ok / Cancel
-        self.ok_button = QPushButton("Ok", self)
-        self.ok_button.clicked.connect(self.accept)
-        self.cancel_button = QPushButton("Cancel",self)
-        self.cancel_button.clicked.connect(self.reject)
-
-            ## Add to layout
-        OkCancel_Hbox = QHBoxLayout()
-        OkCancel_Hbox.addWidget(self.ok_button)
-        OkCancel_Hbox.addWidget(self.cancel_button)
-        self.layout().addLayout(OkCancel_Hbox)
-
-        #Update cache
-        self.accepted.connect(self.update_cache)
+                new_run_item = QListWidgetItem(name)
+                new_run_item.setForeground(QColor(color))
+                self.list_widget.addItem(new_run_item)
 
     def check_cache(self) :
         run_number = len(self.list_widget)
@@ -190,35 +160,29 @@ class CacheUpdater(CacheDialog):
             else :
                 item.setForeground(QColor("green"))
 
-    def add_to_menu(self) :
-        folder = QFileDialog.getExistingDirectory(self, "Select main folder of run to add")
-        if folder :
-            color = "red"
-            if check_Acquisition_run_path(folder) :
-                color = "orange"
-            if check_analysis_completed(folder) :
-                color = "green"
-            name = os.path.basename(folder)
-            if name in self.path_map.keys() :
-                print("Already a run with folder name {}, delete or rename folder first.".format(name))
-                return None
-            else : 
-                self.path_map[name] = folder
+    def update_cache(self) :
+        print('writting cache')
+        write_cache(self.path_map)
 
-                if os.path.isfile(folder + "/pipeline_parameters.json") :
-                    pass
-                else :
-                    pipeline_parameters = get_raw_pipeline_parameters()
-                    write_pipeline_parameters(folder, pipeline_parameters)
+class AnalysisCacheDialog(CacheDialog):
+    """
+    Window for path selection
+    """
+    def __init__(self, path_map : dict):
+        super().__init__(path_map)
 
-                new_run_item = QListWidgetItem(name)
-                new_run_item.setForeground(QColor(color))
-                self.list_widget.addItem(new_run_item)
+        header = QLabel("Analysis", self)
+        header.setAlignment(Qt.AlignCenter)
+        header.setStyleSheet("""
+            font-size: 14pt;
+            font-style: italic;
+            margin-bottom: 10px;
+        """)
+        self.dialog_layout.insertWidget(1,header)
 
-    def rm_from_menu(self) :
-        for item in self.list_widget.selectedItems() :
-            self.list_widget.takeItem(self.list_widget.row(item))
-            del self.path_map[item.text()]
+        self.modify_parameters_button = QPushButton(text="Modify parameters", parent=self)
+        self.modify_parameters_button.clicked.connect(self.modify_parameters)
+        self.button_Hbox.insertWidget(0, self.modify_parameters_button)
 
     def modify_parameters(self) :
 
@@ -226,8 +190,61 @@ class CacheUpdater(CacheDialog):
 
         if selected_run_path is  None : return None
 
-        if os.path.isfile(selected_run_path + "/pipeline_parameters.json") :
-            pipeline_parameters = load_pipeline_parameters(selected_run_path + "/pipeline_parameters.json")
+        if exists_analysis_parameters(selected_run_path) :
+            analysis_parameters = load_analysis_parameters(selected_run_path)
+        else :
+            analysis_parameters = get_raw_analysis_parameters()
+            write_analysis_parameters(selected_run_path, analysis_parameters)
+
+        parameters_modifier = ParametersModifier(self, **dict(analysis_parameters))
+        
+        if parameters_modifier.exec() :
+            input_dict = parameters_modifier.get_parameters() 
+            try : 
+                updated_parameters = AnalysisParameters(**input_dict)
+            except ValidationError as e :
+                print("Uncorrect parameter set.")
+                print(e)
+
+                wrong_attributes = [error_dict["loc"][0] for error_dict in e.errors()]
+                print(f"Parameters {wrong_attributes} were wrongly set, reverting to previous values.")
+                for att in wrong_attributes :
+                    input_dict[att] = dict(analysis_parameters)[att]
+                updated_parameters = AnalysisParameters(**input_dict)
+
+            write_pipeline_parameters(selected_run_path, updated_parameters)
+
+            
+class PipelineCacheDialog(CacheDialog):
+    """
+    Class for update run in cache (adding, removing or checking that on drive and in Acquisition match.
+    """
+
+    def __init__(self, path_map : dict):
+        super().__init__(path_map)
+
+        header = QLabel("Pipeline", self)
+        header.setAlignment(Qt.AlignCenter)
+        header.setStyleSheet("""
+            font-size: 14pt;
+            font-style: italic;
+            margin-bottom: 10px;
+        """)
+        self.dialog_layout.insertWidget(1,header)
+
+        self.modify_parameter_button = QPushButton("Modify parameters", self)
+        self.modify_parameter_button.clicked.connect(self.modify_parameters)
+        self.button_Hbox.insertWidget(0,self.modify_parameter_button)
+        
+
+    def modify_parameters(self) :
+
+        selected_run_path = self.get_selected_path()
+
+        if selected_run_path is  None : return None
+
+        if exists_pipeline_parameters(selected_run_path) :
+            pipeline_parameters = load_pipeline_parameters(selected_run_path)
         else :
             pipeline_parameters = get_raw_pipeline_parameters()
             write_pipeline_parameters(selected_run_path, pipeline_parameters)
@@ -250,9 +267,7 @@ class CacheUpdater(CacheDialog):
 
             write_pipeline_parameters(selected_run_path, updated_parameters)
 
-    def update_cache(self) :
-        print('writting cache')
-        write_cache(self.path_map)
+
 
 class ParametersModifier(QDialog):
     def __init__(self, parent: QWidget = None, **parameters: Any):
@@ -419,7 +434,6 @@ class ParametersModifier(QDialog):
         return result
 
 
-
 def check_Acquisition_run_path(folder) :
     """
     Checks that Acquisition.feather is found in result_tables and that path written inside is found on hardrive
@@ -440,7 +454,6 @@ def check_Acquisition_run_path(folder) :
         if not os.path.isfile(path_to_check) :
             print("Path written in cached Acquisition not found on hardrive : {}".format(path_to_check))
     return True
-
 
 
 def check_analysis_completed(folder) :
@@ -475,7 +488,7 @@ def select_path_for_pipeline():
     selection_path = read_cache()
 
     app = QApplication([])
-    dialog = CacheUpdater(selection_path)
+    dialog = PipelineCacheDialog(selection_path)
     if dialog.exec():  # Show dialog and check if OK was pressed
         return dialog.get_selected_path()
     return None
@@ -489,7 +502,7 @@ def select_path_for_analysis():
     selection_path = read_cache()
     
     app = QApplication([])
-    dialog = PathSelector(selection_path)
+    dialog = AnalysisCacheDialog(selection_path)
     if dialog.exec():  # Show dialog and check if OK was pressed
         return dialog.get_selected_path()
     return None

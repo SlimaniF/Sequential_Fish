@@ -60,3 +60,30 @@ class PipelineParameters(BaseModel) :
     #Quantification
     COLOC_DISTANCE : int
     quantif_MAX_WORKERS : int
+
+class AnalysisParameters(BaseModel) :
+    """
+    Fixed structure of data : type is inforced through pydantic BaseModel class.
+    """
+
+    #Plots
+    frameon : bool
+    
+    #Preprocessing
+    FILTER_RNA : List[str]
+    RENAME_RULE : Dict[str,str]
+
+    #Distributions
+    distribution_measures : List[str]
+
+    #Chromatic abberration
+    reference_wavelength : int
+
+    #Density analysis
+    min_diversity : int
+    min_spots_number : int
+    cluster_radius : int
+
+    #Co-localization analysis
+    coloc_distance : int
+    coloc_significance : float

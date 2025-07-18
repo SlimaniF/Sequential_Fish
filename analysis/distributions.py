@@ -17,6 +17,7 @@ def distributions_analysis(
     disibutions_measures : 'list[str]',
     run_path :str,
 ) :
+    
     output_path = run_path + "/analysis/distribution_analysis/"
     os.makedirs(output_path, exist_ok=True)
     
@@ -48,7 +49,6 @@ def distributions_analysis(
             keys='cycle'
         )
         Cell = Cell.loc[~Cell['target'].str.contains('Washout')]
-        Cell = RNA_filtering(Cell)
 
         for measure in disibutions_measures :
         

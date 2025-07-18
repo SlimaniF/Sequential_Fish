@@ -2,7 +2,7 @@ import sys
 
 from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations, status
 from Sequential_Fish._pipeline_scripts import PIPELINE_SCRIPTS
-from Sequential_Fish.status import select_path_for_pipeline
+from Sequential_Fish.status import select_path_for_pipeline, select_path_for_analysis
 
 
 
@@ -54,6 +54,14 @@ def main():
                 print(f"all scripts ended with {error_count} errors. If any, error can be checked in run_log file.")
     
     elif module == "analysis" :
+
+        if '-p' in submodules : # for run in command line only : run path is passed after -p flag
+            run_path_index = submodules.index('-p')
+            run_path = submodules[run_path_index+1]
+            submodules.pop(run_path_index)
+            submodules.pop(run_path_index)
+        else :
+            run_path = select_path_for_analysis() 
         
         if len(submodules) == 0 : 
             submodules = ['all']
@@ -61,7 +69,7 @@ def main():
         else :
             print("Starting selected analysis modules")
             
-        analysis.run(*submodules)
+        analysis.run(run_path, *submodules)
         
         print("Done.")
     

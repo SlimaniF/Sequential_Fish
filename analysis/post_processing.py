@@ -3,7 +3,6 @@ Submodule for data post processing, eg Filtering...
 """
 
 import pandas as pd
-from .analysis_parameters import FILTER_RNA
 from ..tools import safe_merge_no_duplicates
 
 def Spots_filtering(
@@ -42,7 +41,7 @@ def Spots_filtering(
         
     return Spots
 
-def RNA_filtering(df_with_target : pd.DataFrame, rna_to_filter : 'list[str]' = FILTER_RNA) :
+def RNA_filtering(df_with_target : pd.DataFrame, rna_to_filter : 'list[str]') :
     
     if 'target' not in df_with_target : raise KeyError('"target" column was not found in dataframe columns.')
     

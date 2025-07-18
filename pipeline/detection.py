@@ -24,7 +24,7 @@ def main(run_path) :
 
     print(f"detection runing for {run_path}")
     
-    pipeline_parameters = load_pipeline_parameters(run_path + "/pipeline_parameters.json")
+    pipeline_parameters = load_pipeline_parameters(run_path)
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     SPOT_SIZE = pipeline_parameters.SPOT_SIZE
     ALPHA = pipeline_parameters.ALPHA

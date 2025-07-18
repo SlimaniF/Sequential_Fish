@@ -1,6 +1,6 @@
 from .cache import read_cache
 from PyQt5.QtWidgets import QApplication
-from .gui import CacheUpdater
+from .gui import PipelineCacheDialog
 
 def main():
     """
@@ -10,7 +10,7 @@ def main():
     selection_path = read_cache()
     
     app = QApplication([])
-    dialog = CacheUpdater(selection_path)
+    dialog = PipelineCacheDialog(selection_path)
     if dialog.exec():  # Show dialog and check if OK was pressed
         print(dialog.get_selected_path())
         return dialog.get_selected_path()
