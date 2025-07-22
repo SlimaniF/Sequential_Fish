@@ -5,6 +5,14 @@ from datetime import datetime
 
 from ..status import get_raw_pipeline_parameters, write_pipeline_parameters
 
+from .input import main as input
+from .detection import main as detection
+from .segmentation import main as segmentation
+from .drift import main as drift
+from .alignement import main as alignement
+from .washout import main as washout
+from .quantification import main as quantification
+
 """
 Main script to launch pipeline
 
@@ -16,13 +24,13 @@ script_folder = os.path.abspath(__file__)
 script_folder = os.path.dirname(script_folder)
 
 
-scripts_rounds = {
-    'input' : ['input.py'],
-    'analysis' : ['detection.py', 'segmentation.py', 'drift.py'],
-    'alignement' : ['alignement.py'],
-    'filtering' : ['washout.py'],
-    'quantification' : ['quantification.py']
-}
+scripts_rounds = [
+    {'input' : input},
+    {'detection' : detection, 'segmentation' : segmentation, 'drift' : drift},
+    {'alignement' : alignement},
+    {'washout' : washout},
+    {'quantification' : quantification}
+    ]
 
 def log_was_initiated() :
     return logging.getLogger().hasHandlers()
@@ -37,10 +45,14 @@ def initiate_log_config(run_path : str) :
 
 
 ### script launcher function
-def launch_script(script_name, run_path):
+def launch_script(script, script_name, run_path):
     """Launch script from pipeline."""
     
-    if not log_was_initiated : initiate_log_config(run_path)
+    print("launching : ", script_name)
+
+    if not log_was_initiated() : 
+        print("run log initiated at : {}".format(run_path))
+        initiate_log_config(run_path)
 
     if not os.path.isfile(run_path + "/pipeline_parameters.json") :
         print("No existing pipeline parameters configuration, creating one from default_pipeline_parameters.py.")
@@ -50,17 +62,13 @@ def launch_script(script_name, run_path):
     try:
         logging.info(f"Exécution du script : {script_name}")
         script_start = datetime.now()
-        result = subprocess.run(
-            ["python", script_name, run_path],
-            check=True,
-            text=True,
-            capture_output=True
-        )
+        script(run_path)
         script_end = datetime.now()
         run_duration = (script_end - script_start).total_seconds()
+        result = True
         
 
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         script_end = datetime.now()
         run_duration = (script_end - script_start).total_seconds()
 
@@ -79,25 +87,24 @@ def launch_script(script_name, run_path):
 def main(run_path : str):
     start_time = datetime.now()
 
-    if not log_was_initiated : initiate_log_config(run_path)
+    if not log_was_initiated() : 
+        print("run log initiated at : {}".format(run_path))
+        initiate_log_config(run_path)
+
 
     logging.info("NEW RUN")
     
-    for round_key in scripts_rounds.keys() :
-        scripts = scripts_rounds[round_key]
+    for round in scripts_rounds :
         sucess = []
-        for script in scripts:
-            if os.path.exists(script_folder + '/' + script):
-                result = launch_script(script_folder + '/' + script, run_path=run_path)
-                sucess.append(result)
-            else:
-                logging.warning(f"File {script} not found.")
-                sucess.append(False)
+        
+        for script_name, script in round.items() :
+            result = launch_script(script, script_name, run_path=run_path)
+            sucess.append(result)
 
         if all(sucess) :
-            logging.info("Step {0} succeed.".format(round_key))
+            logging.info("Step {0} succeed.".format(round.keys()))
         else :
-            logging.error("Step {0} failed, ending run.".format(round_key))
+            logging.error("Step {0} failed, ending run.".format(round.keys()))
             quit()
 
     end_time = datetime.now()

@@ -39,7 +39,7 @@ def Spots_filtering(
         
         Spots = pd.merge(
             Spots,
-            Cell,
+            Cell.loc[:,['location','label','detection_id']],
             how='inner',
             left_on= ['location','cell_label','detection_id'],
             right_on= ['location','label','detection_id']

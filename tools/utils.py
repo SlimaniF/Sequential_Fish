@@ -37,7 +37,7 @@ def auto_map_channels(image: np.ndarray, color_number: int, cycle_number: int, h
             error = "{0} colors channels are expected from experimental file but no matching axis was found in shape {1}.".format(color_number, shape)
         raise MappingError(error)
     else :
-        map_['c'] = c_idx
+        map_['c'] = int(c_idx)
         reducing_list[c_idx] = max(reducing_list) + 1
 
     if dim > 4 : #Else dapi is being mapped and has only one cycle.
@@ -46,19 +46,19 @@ def auto_map_channels(image: np.ndarray, color_number: int, cycle_number: int, h
         except ValueError :
             raise MappingError("{0} cycles are expected from experimental file but no matching axis was found in shape {1}.".format(cycle_number, shape))
         else :
-            map_['cycles'] = cycles_idx
+            map_['cycles'] = int(cycles_idx)
             reducing_list[cycles_idx] = max(reducing_list) + 1
 
     #Set the smallest dimension to z
     z_val = min(reducing_list)
     z_idx = shape.index(z_val)
-    map_['z'] = z_idx
+    map_['z'] = int(z_idx)
 
     for index, value in enumerate(reducing_list) :
         if index in map_.values() : continue
         else : 
-            if not 'y' in map_.keys() : map_['y'] = index
-            else : map_['x'] = index
+            if not 'y' in map_.keys() : map_['y'] = int(index)
+            else : map_['x'] = int(index)
 
     return map_
 
@@ -77,7 +77,7 @@ def reorder_image_stack(image, channel_map, is_3D = True) :
             new_order = (channel_map['z'], channel_map['y'], channel_map['x'], channel_map['c'])
             ref_order = [0,1,2,3]
         else :
-            raise AssertionError()
+            raise AssertionError(f"Uncorrect dimension : {dim} ; expected 5 or 4")
     else :
         if dim == 4 :
             new_order = (channel_map['cycles'], channel_map['y'], channel_map['x'], channel_map['c'])
@@ -86,7 +86,7 @@ def reorder_image_stack(image, channel_map, is_3D = True) :
             new_order = (channel_map['y'], channel_map['x'], channel_map['c'])
             ref_order = [0,1,2]
         else :
-            raise AssertionError()
+            raise AssertionError(f"Uncorrect dimension : {dim} ; expected 4 or 3")
 
 
 
@@ -200,13 +200,11 @@ def open_location(
     """
     Open all cycles of a location and reorder stacks in order (cycle,z,y,x,channel)
     """
-    loc_Acquisition = Acquisition.loc[Acquisition['location'] == location].index
-    assert len(loc_Acquisition) == 1, "Duplicates locations or no location found"
+    loc_Acquisition : pd.Index = Acquisition.loc[Acquisition['location'] == location].sort_values('cycle').index
+    assert len(loc_Acquisition) == len(Acquisition['cycle'].unique()), "Duplicates locations or missing locations found"
 
     fish_path = Acquisition.at[loc_Acquisition[0], 'full_path']
-    fish_path_list = os.listdir(fish_path)
-    fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST ie : filename cycle matches map cycles and rest of filename doesn't change list order.
-    fish_im = open_image(fish_path + fish_path_list[0]) #Opening first tiff file will open all tiff files of this location (multitif_file) with correct reshaping. Ignoring first dim which will be the cycles gives us image dimension
+    fish_im = open_image(fish_path)
 
     stack_map = Acquisition.loc[Acquisition['location'] == location]['fish_map'].iat[0]   
     fish_im = reorder_image_stack(fish_im, channel_map=stack_map)

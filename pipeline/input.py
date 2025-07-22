@@ -22,8 +22,6 @@ def main(run_path) :
     
     from Sequential_Fish import __version__
 
-    print(f"input runing for {run_path}")
-
     pipeline_parameters = load_pipeline_parameters(run_path)
     MAP_FILENAME = pipeline_parameters.MAP_FILENAME
     cycle_regex = pipeline_parameters.cycle_regex
@@ -36,7 +34,6 @@ def main(run_path) :
     file_dict = prepro.assert_run_folder_integrity(
         run_path=run_path,
         fish_folder=FOLDER_KEYS.get('fish_folder'),
-        nucleus_folder=FOLDER_KEYS.get('nucleus_folder')
         )
     location_list = list(file_dict.keys())
     location_list.sort()
@@ -77,6 +74,7 @@ def main(run_path) :
         #Setting fish full path
         fish_path = run_path + "/{0}/{1}/".format(FOLDER_KEYS.get('fish_folder'), location)
         fish_path_list = os.listdir(fish_path)
+        fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST
         full_path_list = [fish_path + file for file in fish_path_list]
         Acquisition.loc[index, "full_path"] = full_path_list
         

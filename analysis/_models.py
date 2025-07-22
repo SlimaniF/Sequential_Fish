@@ -19,13 +19,13 @@ Submodule containing implementation of statistical/probabilistic models
 import numpy as np
 from typing import List, Union
 from pandas import Series
-from math import comb
 
 def p(abundancy : int, volume: int) :
     """
     The probability that a voxel m is occupied with at least one molecule.
     """
-    if volume == 0 : return np.NaN #No positions available.
+    if isinstance(volume, int) :
+        if volume == 0 : return np.NaN #No positions available.
 
     return 1 - np.power(1-1/volume,abundancy)
 
@@ -33,9 +33,10 @@ def q(abundancy : int, volume : int) :
     """
     The probability that voxel m and l != m are both occupied with at least one molecule i
     """
-    if volume == 0 : return np.NaN #No positions available.
+    if isinstance(volume, int) :
+        if volume == 0 : return np.NaN #No positions available.
 
-    return np.power(1-2*(1-1/volume),abundancy) + np.power(1-2/volume),abundancy
+    return 1-2*np.power((1-1/volume),abundancy) + np.power((1-2/volume),abundancy)
 
 def c(abundancy : int, volume : int) :
     """
@@ -120,14 +121,14 @@ def Ncolocalization_expectancy(abundancies:List[Union[int,Series]], volume:Union
     
     elif isinstance(volume, Series) and isinstance(abundancies,list) :
         if all([isinstance(a,Series) for a in abundancies]) :
-            p_combination = np.prod([p(abundancy, volume) for abundancy in abundancies], axis=1)
+            p_combination = np.prod([p(abundancy, volume) for abundancy in abundancies], axis=0)
         else :
             raise TypeError("Volume is pandas Series but abundancies is not a list of Series.")
 
     else :
        raise TypeError("Either pass abundancies as List[int] and volume as int or abudancies as List[Series] and volume as Series") 
 
-    return volume*p_combination
+    return (volume*p_combination).rename("expectancy")
 
 def Ncolocalization_std(abundancies:List[Union[int,Series]], volume:Union[int,Series]):
     """
@@ -141,13 +142,13 @@ def Ncolocalization_std(abundancies:List[Union[int,Series]], volume:Union[int,Se
             raise TypeError("Volume is int but non int values passed in abundancies")
     elif isinstance(volume, Series) and isinstance(abundancies,list) :
         if all([isinstance(a,Series) for a in abundancies]) :
-            p_combination = np.prod([p(abundancy, volume) for abundancy in abundancies], axis=1)
-            q_combination = np.prod([q(abundancy, volume) for abundancy in abundancies], axis=1)
+            p_combination = np.prod([p(abundancy, volume) for abundancy in abundancies], axis=0)
+            q_combination = np.prod([q(abundancy, volume) for abundancy in abundancies], axis=0)
         else :
             raise TypeError("Volume is pandas Series but abundancies is not a list of Series.")
 
 
 
-    variance = volume*p_combination*(1-p_combination) + volume(volume-1)*(q_combination - np.power(p_combination,2))
+    variance = volume*p_combination*(1-p_combination) + volume*(volume-1)*(q_combination - np.power(p_combination,2))
     
-    return np.sqrt(variance)
+    return np.sqrt(variance).rename("std")
