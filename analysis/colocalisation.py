@@ -41,10 +41,6 @@ import numpy as np
 
 from typing import Literal
 
-from ._models import compute_colocalization_count_expectancy, compute_colocalization_count_std, compute_colocalization_probability
-from ._models import compute_unique_position_expectancy
-from ._models import compute_unique_pair_expectancy, compute_unique_pair_std
-
 from ..tools import safe_merge_no_duplicates
 
 from sklearn.neighbors import NearestNeighbors

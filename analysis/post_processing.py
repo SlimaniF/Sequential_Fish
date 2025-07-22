@@ -12,6 +12,12 @@ def Spots_filtering(
     filter_washout= True,
     segmentation_filter= True,
     ) :
+    """
+    Filters :
+        -> Washout
+        -> Spots out of segmentation
+        -> Spots in discarded cells
+    """
     
     if filter_washout : 
         Spots = Spots.loc[~Spots['is_washout']]
