@@ -5,11 +5,12 @@ Aims at finding drift value for each field of view and store it into a dataframe
 import sys
 import pandas as pd
 import warnings
-import pbwrap.preprocessing.alignement as prepro
+
 from tqdm import tqdm
 
 from Sequential_Fish.status import load_pipeline_parameters
 from Sequential_Fish.tools import open_location
+from Sequential_Fish.tools import fft_phase_correlation_drift
 
 def main(run_path) :
 
@@ -67,14 +68,14 @@ def main(run_path) :
             drifted_fish = image[stack_index]
 
             max_proj = False
-            fish_result = prepro.fft_phase_correlation_drift(
+            fish_result = fft_phase_correlation_drift(
                 reference_image= reference_image,
                 drifted_image= drifted_fish,
             )
 
             if (fish_result['drift_z'], fish_result['drift_y'], fish_result['drift_x'],) == (0,0,0) :
                 max_proj = True
-                fish_result = prepro.fft_phase_correlation_drift(
+                fish_result = fft_phase_correlation_drift(
                     reference_image= reference_image,
                     drifted_image= drifted_fish,
                 )

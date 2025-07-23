@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-import datetime as dt
 import re, os, warnings
 from skimage import io
 from czifile import imread as _imread
 from bigfish.stack import read_image as _read_image
 from datetime import datetime
+from scipy.ndimage import distance_transform_edt
 
 import warnings
 from aicsimageio import AICSImage
@@ -268,3 +268,60 @@ def get_voxel_size(Detection : pd.DataFrame) :
     voxel_size = [int(i) for i in voxel_size]
     
     return voxel_size
+
+
+def get_centroids_list(clusters_df) :
+
+    """
+    clusters_list should be a pd.DataFrame with ['z', 'y', 'x'] or ['y', 'x'] keys.
+    """
+
+    if 'y' in clusters_df.columns and 'x' in clusters_df.columns :
+        if 'z' in clusters_df.columns : keys = [clusters_df['z'], clusters_df['y'], clusters_df['x']]
+        else : keys = [clusters_df['y'], clusters_df['x']]
+    else : raise ValueError("Expected keys : ['z', 'y', 'x'] or ['y', 'x']")
+
+    return list(zip(*keys))
+
+
+def get_centroids_array(cluster_df) :
+
+    if len(cluster_df) == 0 :
+        return np.empty(shape=(0,0), dtype=int)
+
+    else : return np.array(get_centroids_list(cluster_df), dtype= int)
+
+def _compute_critical_spot_number(radius_nm, voxel_size, density) :
+    
+    max_pixel_distance = int(max(nanometer_to_pixel(radius_nm, voxel_size)))
+    kernel = np.ones(shape=(2*max_pixel_distance+1 ,2*max_pixel_distance+1, 2*max_pixel_distance+1)) #always odd number so middle is always at [pixel_radius-1, pixel_radius-1, pixel_radius-1]
+    kernel[max_pixel_distance, max_pixel_distance, max_pixel_distance] = 0
+    kernel = distance_transform_edt(kernel, sampling= voxel_size) <= radius_nm
+
+    return int(round(kernel.sum() * density/100))
+
+
+def nanometer_to_pixel(value, scale) :
+    if isinstance(scale, (float,int)) : scale = [scale]
+    if isinstance(value, (float,int)) : value = [value]*len(scale)
+    if len(value) != len(scale) : raise ValueError("value and scale must have the same dimensionality")
+
+    return list(np.array(value) / np.array(scale))
+
+def compute_anisotropy_coef(voxel_size) :
+    """
+    voxel_size : tuple (z,y,x).
+    """
+
+    if not isinstance(voxel_size, (tuple, list)) : raise TypeError("Expected voxel_size tuple or list")
+    if len(voxel_size) == 2 : is_3D = False
+    elif len(voxel_size) == 3 : is_3D = True
+    else : raise ValueError("Expected 2D or 3D voxel, {0} element(s) found".format(len(voxel_size)))
+
+    if is_3D :
+        z_anisotropy = voxel_size[0] / voxel_size [2]
+        xy_anisotropy = voxel_size[1] / voxel_size [2]
+        return (z_anisotropy, xy_anisotropy, 1)
+
+    else :
+        return (voxel_size[0] / voxel_size[1], 1)

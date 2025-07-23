@@ -6,6 +6,3 @@ DOI : https://zenodo.org/account/settings/github/repository/2Echoes/Sequential_F
 * **analysis** : Implement RNA (target) filtering in analysis.main
 * **pipeline** : dapi alignement
 * **pipeline** : background removal
-* **tools** : Integrated function from pbwrap into SequentialFish --> pipeline
-
-

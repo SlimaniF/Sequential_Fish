@@ -7,13 +7,14 @@ This script use results from FishSeq_pipeline_segmentation.py that must be run b
 
 import os, sys
 import warnings
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from Sequential_Fish.tools import open_location
 from concurrent.futures import ThreadPoolExecutor
-from pbwrap.detection.multithread import multi_thread_full_detection, build_Spots_and_Cluster_df #TODO integrate in package
-from tqdm import tqdm
 
+
+from Sequential_Fish.tools import open_location
+from Sequential_Fish.tools._detection import multi_thread_full_detection, build_Spots_and_Cluster_df
 from Sequential_Fish.status import load_pipeline_parameters
 
 #########
