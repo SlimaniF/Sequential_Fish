@@ -1,9 +1,9 @@
 import sys
 
 from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations, status
-from Sequential_Fish._pipeline_scripts import PIPELINE_SCRIPTS
 from Sequential_Fish.status import select_path_for_pipeline, select_path_for_analysis
 
+from .pipeline import PIPELINE_SCRIPTS
 
 
 def main():
@@ -36,18 +36,18 @@ def main():
             submodules.pop(run_path_index)
         else :
             run_path = select_path_for_pipeline() 
+            if run_path is None : quit()
 
         if len(submodules) == 0 :
             pipeline.run(run_path) # This loads RUN_PATH from pipeline parameters and fix it for all scripts
         else :
             from Sequential_Fish.pipeline.runner import launch_script, script_folder # This loads RUN_PATH from pipeline parameters and fix it for all scripts
-            if not all([script in PIPELINE_SCRIPTS for script in submodules]) :
-                print(f"Unknown pipeline scripts. \nChoose from : {PIPELINE_SCRIPTS}")
+            if not all([script in PIPELINE_SCRIPTS.keys() for script in submodules]) :
+                print(f"Unknown pipeline scripts. \nChoose from : {PIPELINE_SCRIPTS.keys()}")
             else :
                 error_count = 0
                 for script in submodules : 
-                    if not script.endswith('.py') : script += ".py"
-                    sucess = launch_script(script_folder + '/' + script, run_path=run_path)
+                    sucess = launch_script(script_name=script, script=PIPELINE_SCRIPTS[script], run_path=run_path)
 
                     if not sucess : error_count +=1
                 

@@ -32,7 +32,6 @@ def main(run_path) :
     ]
     Drift_save = pd.DataFrame(columns=Drift_columns)
     Drift_save['max_projection'] = Drift_save['max_projection'].astype(bool)
-    Drift_save['highpass_filter'] = Drift_save['highpass_filter'].astype(bool)
 
     ### MAIN ###
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -44,7 +43,7 @@ def main(run_path) :
         
         print("opening images...")
         image = open_location(Acquisition, location)
-        dapi_channel = sub_acq['bead_channel'].iat[0]
+        dapi_channel = sub_acq['dapi_channel'].iat[0]
 
         #Selecting images
         image = image[...,dapi_channel]

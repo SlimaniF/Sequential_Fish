@@ -80,7 +80,7 @@ def launch_script(script, script_name, run_path):
     else :
         
         logging.info("script duration : {0}".format(run_duration))
-        logging.info(f"script succeed {script_name}:\n{result.stdout}")
+        logging.info(f"script succeed {script_name}:\n")
 
         return True
 

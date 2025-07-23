@@ -1,15 +1,15 @@
 """
 This script aims at reading the input folder and preparing data folders and locations for next scripts.
 """
-import sys
 import Sequential_Fish.tools._folder_integrity as prepro
 import pandas as pd
 import os
 import warnings
 import numpy as np
-from Sequential_Fish.tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack
+from Sequential_Fish.tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack, open_image
 from Sequential_Fish.tools import open_location
 from Sequential_Fish.status import load_pipeline_parameters
+from tqdm import tqdm
 
 def infer_channel(Cycle_map : pd.DataFrame, keyword= 'DAPI') :
     index = np.argmax(Cycle_map.eq(keyword).all(0)) - 1 # -1 since first columns is cycle number
@@ -68,7 +68,7 @@ def main(run_path) :
     cycles_list = list(cycle_map[CYCLE_KEY])*location_number
     cycles_list.sort()
     Acquisition['cycle'] = cycles_list
-    for location_index, location in enumerate(location_list) :
+    for location in tqdm(location_list, desc= "Location", total= len(location_list)) :
         index = Acquisition[Acquisition['location'] == location].index
 
         #Setting fish full path
@@ -76,14 +76,13 @@ def main(run_path) :
         fish_path_list = os.listdir(fish_path)
         fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST
         full_path_list = [fish_path + file for file in fish_path_list]
-        Acquisition.loc[index, "full_path"] = full_path_list
         
         while len(full_path_list) < len(index) :
             full_path_list.append(np.NaN)
+        Acquisition.loc[index, "full_path"] = full_path_list
 
-        fish_im = open_location(
-            Acquisition=Acquisition,
-            location=location
+        fish_im = open_image(
+            full_path_list[0]
             )
         
         fish_map = auto_map_channels(fish_im, color_number=color_number, cycle_number=cycle_number, has_bead_channel= has_bead)
@@ -99,9 +98,7 @@ def main(run_path) :
 
     #Integrity checks
     assert all(Acquisition['cycle'].isin(cycle_map[CYCLE_KEY])), "Some cycle are not found in map"
-    assert len(cycle_map[CYCLE_KEY] == len(Acquisition['cycle'])), "{0} column length doesn't match cycle number ({1})".format(CYCLE_KEY, len(Acquisition['cycle']))
-    for key in GENES_NAMES_KEY : 
-        assert len(cycle_map[key] == len(Acquisition['cycle'])), "{0} column length doesn't match cycle number ({1})".format(key, len(Acquisition['cycle']))
+    assert len(cycle_map) == len(Acquisition), "{0} column length doesn't match cycle number ({1})".format(len(cycle_map), len(Acquisition['cycle']))
 
     cycle_regex_result = Acquisition.loc[:, 'full_path'].apply(_find_one_or_NaN, regex=cycle_regex)
     cycles_match = all(Acquisition.loc[~Acquisition['full_path'].isna(),"cycle"] == cycle_regex_result[~cycle_regex_result.isna()])
@@ -138,12 +135,12 @@ def main(run_path) :
     Acquisition['dapi_channel'] = dapi_channel
     Acquisition['pipeline_version'] = __version__
 
-    #Set index
-    Gene_map = Gene_map.set_index('cycle', verify_integrity=True, drop=False)
-    Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True, drop=False)
-
     #Explicit dtype cast
     Gene_map['color_id'] = Gene_map['color_id'].astype(int)
+    
+    #Set index
+    Gene_map = Gene_map.reset_index(drop=True)
+    Acquisition = Acquisition.reset_index(drop=True)
     
     #Output
     save_path = run_path + '/result_tables/'
@@ -152,7 +149,6 @@ def main(run_path) :
     Acquisition.to_feather(save_path + '/Acquisition.feather')
     Gene_map.to_excel(save_path + 'Gene_map.xlsx')
     Gene_map.to_feather(save_path + 'Gene_map.feather')
-    print("Done")
     
 if __name__ == "__main__":
     warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input'")

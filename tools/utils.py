@@ -67,7 +67,7 @@ def reorder_image_stack(image, channel_map, is_3D = True) :
     """
     will order image to cycles-zyxc
     """
-    
+
     dim = image.ndim
     if is_3D :
         if dim == 5 :

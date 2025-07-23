@@ -17,28 +17,23 @@ def main(run_path) :
     
     print(f"segmentation runing for {run_path}")
 
-    pipeline_parameters = load_pipeline_parameters(run_path)        
+    pipeline_parameters = load_pipeline_parameters(run_path)
     MODEL_DICT = pipeline_parameters.MODEL_DICT
     OBJECT_SIZE_DICT = pipeline_parameters.OBJECT_SIZE_DICT
-        
-
 
     #Reading input folder.
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
-    nuc_number = len(Acquisition['dapi_full_path'].unique())
     SAVE_PATH = run_path + "/segmentation/"
-    VISUAL_PATH = run_path + "/visuals/segmentation/"
     os.makedirs(SAVE_PATH, exist_ok=True)
-    os.makedirs(VISUAL_PATH, exist_ok=True)
 
-    print("Starting segmentation pipeline, {0} nucleus images and {0} cytoplasm images to segment".format(nuc_number))
+    print(f"Starting segmentation pipeline, {len(Acquisition)} field of view.")
 
     for location in tqdm(Acquisition['location'].unique()) :
         sub_data = Acquisition.loc[Acquisition['location'] == location]
 
         #Setting output folder.
         image = open_location(Acquisition,location)
-        nucleus_channel = sub_data['nucleus_channel'].iat[0]
+        nucleus_channel = sub_data['dapi_channel'].iat[0]
         nucleus_image = image[..., nucleus_channel]
 
         #Nucleus_segmentation
