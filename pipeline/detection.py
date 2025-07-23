@@ -21,6 +21,8 @@ from Sequential_Fish.status import load_pipeline_parameters
 ## USER PARAMETERS
 #########
 
+#TODO : Cannot use signal in threads (which I'm using to add a timeout)
+
 def main(run_path) :
 
     print(f"detection runing for {run_path}")
