@@ -10,7 +10,7 @@ import warnings
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 
 from Sequential_Fish.tools import open_location
@@ -158,9 +158,11 @@ def main(run_path) :
                 Detection.loc[loc_index,['threshold']] = Detection[target]
 
         #Launching threads
-        with ThreadPoolExecutor(max_workers= MAX_WORKERS) as executor :
-            detection_result = tqdm(executor.map(
-                multi_thread_full_detection,
+        futures = []
+        args_list = []
+        keys = ['spots','spots_post_decomp','clustered_spots_dataframe','clusters_dataframe','clusters','clustered_spots','free_spots','threshold','voxel_size','spot_radius','alpha','beta','gamma','artifact_size','cluster_radius','min_spot_per_cluster',]
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            for args in zip(
                 Detection['image'],
                 Detection['voxel_size'],
                 Detection['threshold'],
@@ -173,7 +175,23 @@ def main(run_path) :
                 Detection['min_spot_per_cluster'],
                 Detection['visual_name'],
                 Detection['detection_id'],
-            ))
+            ):
+                future = executor.submit(multi_thread_full_detection, *args)
+                futures.append(future)
+                args_list.append(args)
+
+            detection_result = []
+            for future, args in tqdm(zip(futures, args_list), total=len(futures)):
+                try:
+                    result = future.result(timeout=180)  # Set your timeout in seconds
+                    detection_result.append(result)
+                except TimeoutError as e:
+                    print(f"Detection timed out: {e}")
+                    detection_id = args[-1]
+                    res = dict.fromkeys(keys, np.NaN)
+                    res['detection_id'] = detection_id
+                    print("Thread {0} : Returning NaN values".format(detection_id))
+
         Spots, Clusters = build_Spots_and_Cluster_df(detection_result)
 
         #Correct coordinates for removed slices

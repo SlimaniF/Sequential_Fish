@@ -97,7 +97,6 @@ def full_detection (
         alpha=alpha,
         beta= beta,
         sigma=gamma,
-        timer= 180 #s
     )
 
     if type(artifact_size) != type(None) :
