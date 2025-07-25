@@ -27,3 +27,7 @@ class NapariWidget(ABC) :
 
     def get_widgets(self) -> 'list[FunctionGui]' :
         return self.widgets
+    
+    def disable_widget(self) :
+        for w in self.widgets :
+            w.enabled = False

@@ -325,3 +325,35 @@ def compute_anisotropy_coef(voxel_size) :
 
     else :
         return (voxel_size[0] / voxel_size[1], 1)
+    
+
+def shift_array(arr : np.ndarray,*args) :
+    indexer_new_array = []
+    indexer_old_array = []
+    for delta in args :
+        if delta == 0 : 
+            indexer_new_array.append(slice(None))
+            indexer_old_array.append(slice(None))
+        elif delta > 0 :
+            indexer_new_array.append(slice(delta,None))
+            indexer_old_array.append(slice(None,-delta))
+
+        else :
+            indexer_new_array.append(slice(None,delta))
+            indexer_old_array.append(slice(-delta,None))
+
+    if len(args) < arr.ndim :
+        indexer_old_array.append(...)
+        indexer_new_array.append(...)
+
+    indexer_new_array = tuple(indexer_new_array)
+    indexer_old_array = tuple(indexer_old_array)
+    new_arr = np.zeros_like(arr)
+
+    if len(args) > arr.ndim :
+        raise ValueError("too many axis to shift; dim : {0}, shift : {1}".format(arr.ndim, args))
+    else :
+        new_arr[indexer_new_array] = arr[indexer_old_array]
+        new_arr[indexer_new_array] = arr[indexer_old_array]
+
+    return new_arr

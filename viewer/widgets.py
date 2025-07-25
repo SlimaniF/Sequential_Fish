@@ -5,7 +5,7 @@ Submodule containing custom class for napari widgets
 import numpy as np
 import pandas as pd
 import napari
-from typing import TypedDict, Literal
+from typing import TypedDict
 from tqdm import tqdm
 
 from napari.types import LayerDataTuple
@@ -344,7 +344,7 @@ class FishSignalLoader(NapariWidget) :
         #Table
         self.Gene_map = table_dict['Gene_map']
 
-        Drift = table_dict['Drift'].loc[table_dict['Drift']['drift_type'] == 'fish']
+        Drift = table_dict['Drift']
         self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
         
         self.Acquisition = table_dict['Acquisition']
@@ -447,17 +447,20 @@ class DapiSignalLoader(NapariWidget) :
 
         self.Gene_map = table_dict['Gene_map']
 
-        Drift = table_dict['Drift'].loc[table_dict['Drift']['drift_type'] == 'dapi']
+        Drift = table_dict['Drift']
         self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
         
-        self.Acquisition = table_dict['Acquisition']
-        
+        self.Acquisition : pd.DataFrame = table_dict['Acquisition']
         self.update(list(self.Acquisition['location'].unique()))
+        self.channel_indexer : int = self.Acquisition['dapi_channel'].iat[0]
 
         self.voxel_size = voxel_size
         super().__init__()
 
     def update(self, locations) :
+        """
+        Updates acquisition to loc on selected locations.
+        """
         self.data = pd.merge(
             self.Acquisition[self.Acquisition['location'].isin(locations)],
             self.Drift,
@@ -469,13 +472,6 @@ class DapiSignalLoader(NapariWidget) :
     def _create_widget(self) :
         @magicgui(
                 call_button="Load dapi signal",
-                radio_button = {
-                    "widget_type" : "RadioButtons",
-                    "orientation" : "horizontal",
-                    "choices" : ["signal","beads"],
-                    "value" : "signal",
-                    "label" : ' '
-                    },
                 drift_correction={
                     "widget_type" : "CheckBox",
                     "text" : "drift correction",
@@ -485,12 +481,7 @@ class DapiSignalLoader(NapariWidget) :
                 )
         def load_dapi(radio_button, drift_correction) -> LayerDataTuple:
 
-            if radio_button == "signal" :
-                channel_indexer = 0
-                name = "dapi_signal"
-            else :
-                channel_indexer = -1
-                name = "dapi_beads"
+            name = "dapi_signal"
 
             if drift_correction :
                 name += "_corrected"
@@ -499,21 +490,21 @@ class DapiSignalLoader(NapariWidget) :
 
             image_list = []
             if len(self.data) > 1 :
-                max_shape = np.array(list(self.data["dapi_shape"]), dtype=int).max(axis=0)
+                max_shape = np.array(list(self.data["fish_shape"]), dtype=int).max(axis=0)
             else :
-                max_shape = self.data['dapi_shape'].iat[0]
+                max_shape = self.data['fish_shape'].iat[0]
             max_shape = (max_shape[0],max_shape[2], max_shape[3])
 
             for index in tqdm(self.data.index, desc= "opening {0}".format(radio_button)) :
-                full_path = self.data.at[index, "dapi_full_path"]
-                shape = self.data.at[index, 'dapi_shape']
-                image_map = self.data.at[index, 'dapi_map']
+                full_path = self.data.at[index, "full_path"]
+                shape = self.data.at[index, 'fish_shape']
+                image_map = self.data.at[index, 'fish_map']
                 image_number = shape[0] * shape[1]
                 
                 image = open_image(full_path, image_number=image_number)
                 image = image.reshape(*shape)
                 image = reorder_image_stack(image, image_map)
-                image = image[:,:,:,channel_indexer]
+                image = image[:,:,:,self.channel_indexer]
 
                 if drift_correction :
                     drift = list(self.data.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
@@ -554,10 +545,15 @@ class BeadsSignalLoader(NapariWidget) :
         self.Drift = self.Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
 
         self.update(list(self.Acquisition['location'].unique()))
+        self.channel_indexer = self.Acquisition['bead_channel'].iat[0]
+
+
         
         self.voxel_size = voxel_size
         super().__init__()
 
+        if self.Acquisition['bead_channel'].isna().all() :
+            self.disable_widget()
 
     def update(self, locations) :
         self.data = pd.merge(
@@ -636,12 +632,11 @@ class BeadsSignalLoader(NapariWidget) :
 
                 image = open_image(full_path, image_number=image_number)
                 image = reshape_stack(image, image_map=image_map, im_shape= shape)
-                image = image[...,-1]
+                image = image[...,self.channel_indexer]
                 
                 
                 if drift_correction :
                     drift = list(sub_Acqu.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
-                    print(drift)
                     image = shift_array(image, *drift)
                 
                 if (image.shape != max_shape) :

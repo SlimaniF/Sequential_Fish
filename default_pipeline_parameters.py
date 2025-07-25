@@ -21,6 +21,8 @@ FOLDER_KEYS = { # folder names where nucleus and fish images can be found (requi
     'nucleus_folder' : "DAPI_Z-stacks",
     'fish_folder' : "FISH_Z-stacks",
 }
+BEAD_KEYWORD = "beads"
+DAPI_KEYWORD = "DAPI"
 
 
 ################

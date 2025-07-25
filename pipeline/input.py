@@ -1,15 +1,15 @@
 """
 This script aims at reading the input folder and preparing data folders and locations for next scripts.
 """
-import Sequential_Fish.tools._folder_integrity as prepro
 import pandas as pd
 import os
 import warnings
 import numpy as np
-from Sequential_Fish.tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack, open_image
-from Sequential_Fish.tools import open_location
-from Sequential_Fish.status import load_pipeline_parameters
 from tqdm import tqdm
+
+import Sequential_Fish.tools._folder_integrity as prepro
+from Sequential_Fish.tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack, open_image
+from Sequential_Fish.status import load_pipeline_parameters
 
 def infer_channel(Cycle_map : pd.DataFrame, keyword= 'DAPI') :
     index = np.argmax(Cycle_map.eq(keyword).all(0)) - 1 # -1 since first columns is cycle number
@@ -28,7 +28,9 @@ def main(run_path) :
     CYCLE_KEY = pipeline_parameters.CYCLE_KEY
     GENES_NAMES_KEY = pipeline_parameters.GENES_NAMES_KEY
     WASHOUT_KEY_WORD = pipeline_parameters.WASHOUT_KEY_WORD
-    FOLDER_KEYS = pipeline_parameters.FOLDER_KEYS 
+    FOLDER_KEYS = pipeline_parameters.FOLDER_KEYS
+    BEAD_KEYWORD = pipeline_parameters.BEAD_KEYWORD
+    DAPI_KEYWORD = pipeline_parameters.DAPI_KEYWORD
     
     #Reading input folder.
     file_dict = prepro.assert_run_folder_integrity(
@@ -48,8 +50,8 @@ def main(run_path) :
         "full_path",
         "fish_shape",
         "fish_map",
-        "bead_channel", #TODO Add a way to infer bead channel or None if not found in cycle map
-        "dapi_channel", #TODO Add a way to infer dapi channel or raise Error if not found
+        "bead_channel",
+        "dapi_channel",
         "pipeline_version"
         ]
     Acquisition = pd.DataFrame(columns=COLUMNS)
@@ -59,9 +61,14 @@ def main(run_path) :
     print("Expected {0} colors.".format(color_number))
     print("Expected {0} cycles.".format(cycle_number))
 
-    bead_channel = infer_channel(cycle_map, keyword= 'beads')
+    if BEAD_KEYWORD == "" :
+        has_bead = False
+        bead_channel = None
+    else :
+        has_bead = True
+        bead_channel = infer_channel(cycle_map, keyword= 'beads')
+
     dapi_channel = infer_channel(cycle_map, keyword= 'DAPI')
-    has_bead = not bead_channel is None
 
     Acquisition['acquisition_id'] = np.arange(len(location_list)*cycle_number)
     Acquisition['location'] = location_list * cycle_number

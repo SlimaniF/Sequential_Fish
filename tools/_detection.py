@@ -3,6 +3,7 @@ Integrate custom functions to Sequential Fish for multi threaded spot detection 
 """
 
 import signal
+import warnings
 import numpy as np
 import pandas as pd
 import bigfish.detection as detection
@@ -28,18 +29,21 @@ def multi_thread_full_detection(
         detection_id,
 ) :
 
+    warning_msgs = []
     try :
-        res = full_detection(image,voxel_size,threshold,spot_radius,alpha,beta,gamma,artifact_size,cluster_radius,min_spot_per_cluster,filename,detection_id,)
-    
+        with warnings.catch_warnings(record=True) as wlist :
+            res = full_detection(image,voxel_size,threshold,spot_radius,alpha,beta,gamma,artifact_size,cluster_radius,min_spot_per_cluster,filename,detection_id,)
+            warning_msgs = [str(warning.message) for warning in wlist]
+
     except Exception as error :
-        print("Thread {0} : Error occured\n{1}".format(detection_id, str(error)))
+        warning_msgs.append("Thread {0} : Error occured\n{1}".format(detection_id, str(error)))
         keys = ['spots','spots_post_decomp','clustered_spots_dataframe','clusters_dataframe','clusters','clustered_spots','free_spots','threshold','voxel_size','spot_radius','alpha','beta','gamma','artifact_size','cluster_radius','min_spot_per_cluster',]
         res = dict.fromkeys(keys, NaN)
         res['detection_id'] = detection_id
-        print("Thread {0} : Returning NaN values".format(detection_id))
+        warning_msgs.append("Thread {0} : Returning NaN values".format(detection_id))
 
     finally :
-        return res
+        return res, warning_msgs
 
 
 def full_detection (
@@ -155,19 +159,19 @@ def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, si
         if timer > 0 : signal.alarm(timer)
         spots_postdecomp = spot_decomposition_nobckgrndrmv(im, spots, spot_radius, voxel_size_nm=voxel_size, alpha= alpha, beta= beta)
     except DetectionTimeOutError :
-        print(" \033[91mCluster deconvolution timeout...\033[0m")
+        warnings.warn(" \033[91mCluster deconvolution timeout...\033[0m")
         spots_postdecomp = np.empty((0,0), dtype=int)
     except NoSpotError :
-        print(" No dense regions to deconvolute.")
+        warnings.warn(" No dense regions to deconvolute.")
         spots_postdecomp = spots
     except ValueError as e :
         if 'x0' in str(e) :
-            print('x0 is infeasible error raised during cluster deconvolution. (Gaussian fit error)')
+            warnings.warn('x0 is infeasible error raised during cluster deconvolution. (Gaussian fit error)')
             spots_postdecomp = spots
         else :
             raise(e)
     except RuntimeError as e:
-        print("Run time error {0}".format(e))
+        warnings.warn("Run time error {0}".format(e))
         spots_postdecomp = spots
     except Exception as error :
         raise error
@@ -472,15 +476,17 @@ def build_Spots_and_Cluster_df(detection_result : dict) :
         spots['detection_id'] = detection_id
         clusters['detection_id'] = detection_id
 
-        Spots = pd.concat([
-            Spots,
-            spots,
-        ],axis=0)
+        if not spots.empty :
+            Spots = pd.concat([
+                Spots,
+                spots,
+            ],axis=0)
 
-        Clusters = pd.concat([
-            Clusters,
-            clusters,
-        ],axis=0)
+        if not clusters.empty :
+            Clusters = pd.concat([
+                Clusters,
+                clusters,
+            ],axis=0)
 
     Spots = Spots.reset_index(drop=True)
     Clusters = Clusters.reset_index(drop=True)

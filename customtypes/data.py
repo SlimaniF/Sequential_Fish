@@ -37,6 +37,8 @@ class PipelineParameters(BaseModel) :
     WAVELENGTH_LIST : List[int]
     cycle_regex : str
     FOLDER_KEYS : Dict[str,str]
+    BEAD_KEYWORD : str
+    DAPI_KEYWORD : str
 
     #Segmentation
     MODEL_DICT : Dict[str,str]

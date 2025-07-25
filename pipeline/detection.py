@@ -5,12 +5,14 @@ Spot quantification for Sequential Fish data
 This script use results from FishSeq_pipeline_segmentation.py that must be run before
 """
 
+import logging
 import os, sys
 import warnings
 from tqdm import tqdm
+from pebble import ProcessPool
 import numpy as np
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from concurrent.futures import TimeoutError
 
 
 from Sequential_Fish.tools import open_location
@@ -20,8 +22,6 @@ from Sequential_Fish.status import load_pipeline_parameters
 #########
 ## USER PARAMETERS
 #########
-
-#TODO : Cannot use signal in threads (which I'm using to add a timeout)
 
 def main(run_path) :
 
@@ -161,7 +161,7 @@ def main(run_path) :
         futures = []
         args_list = []
         keys = ['spots','spots_post_decomp','clustered_spots_dataframe','clusters_dataframe','clusters','clustered_spots','free_spots','threshold','voxel_size','spot_radius','alpha','beta','gamma','artifact_size','cluster_radius','min_spot_per_cluster',]
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        with ProcessPool(max_workers=MAX_WORKERS) as executor:
             for args in zip(
                 Detection['image'],
                 Detection['voxel_size'],
@@ -176,21 +176,27 @@ def main(run_path) :
                 Detection['visual_name'],
                 Detection['detection_id'],
             ):
-                future = executor.submit(multi_thread_full_detection, *args)
+                future = executor.schedule(multi_thread_full_detection, args = args, timeout=180)
                 futures.append(future)
                 args_list.append(args)
 
             detection_result = []
             for future, args in tqdm(zip(futures, args_list), total=len(futures)):
                 try:
-                    result = future.result(timeout=180)  # Set your timeout in seconds
-                    detection_result.append(result)
+                    result, warning_msg = future.result()  # Set your timeout in seconds
+                    for msg in warning_msg: logging.warning(f"Worker warning: {msg}")
+
+
                 except TimeoutError as e:
-                    print(f"Detection timed out: {e}")
+                    logging.warning(f"Detection timed out: {e}")
                     detection_id = args[-1]
-                    res = dict.fromkeys(keys, np.NaN)
-                    res['detection_id'] = detection_id
-                    print("Thread {0} : Returning NaN values".format(detection_id))
+                    result = dict.fromkeys(keys, np.NaN)
+                    result['detection_id'] = detection_id
+                    logging.warning("Thread {0} : Returning NaN values".format(detection_id))
+                finally :
+                    detection_result.append(result)
+
+
 
         Spots, Clusters = build_Spots_and_Cluster_df(detection_result)
 
@@ -219,7 +225,7 @@ def main(run_path) :
             Detection_save,
             Detection
             ], axis=0).reset_index(drop=True)
-
+        
         Spots_save = pd.concat([
             Spots_save,
             Spots
@@ -229,21 +235,21 @@ def main(run_path) :
             Clusters_save,  
             Clusters    
             ], axis=0).reset_index(drop=True)   
-        ###### End For loop #####   
+        ###### End For loop #####
 
     #Unique Spots_identifier    
     Spots_save = Spots_save.drop(columns='spot_id').reset_index(drop=False, names="spot_id")
 
     #Explicit cast to int
-    Detection["color_id"] = Detection["color_id"].astype(int)
+    Detection_save["color_id"] = Detection["color_id"].astype(int)
     
     #Setting wavelength
-    Detection['wavelength'] = 0
-    color_id_list = Detection['color_id'].unique().to_list()
+    Detection_save['wavelength'] = 0
+    color_id_list = list(Detection_save['color_id'].unique())
     color_id_list.sort()
     for color_id, wv in zip(color_id_list, WAVELENGTH_LIST) :
-        Detection.loc[Detection['color_id'] == color_id, ['wavelength']] = wv
-    Detection['wavelength'] = Detection['wavelength'].astype(int)
+        Detection_save.loc[Detection_save['color_id'] == color_id, ['wavelength']] = wv
+    Detection_save['wavelength'] = Detection_save['wavelength'].astype(int)
 
     #Saving results 
     Detection_save.to_feather(save_path + '/Detection.feather')
@@ -257,4 +263,4 @@ if __name__ == "__main__":
         from default_pipeline_parameters import RUN_PATH as run_path
     else :
         run_path = sys.argv[1]
-    main(run_path)     
+    main(run_path)

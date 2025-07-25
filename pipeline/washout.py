@@ -2,7 +2,7 @@
 This script aims at removing spots found in washout. 
 If a spot is detected during a washout cycle, all spots detected in succeeding cycles at same location are deleted.
 """
-import warnings, sys
+import warnings, sys, logging
 import pandas as pd
 
 from Sequential_Fish.tools import safe_merge_no_duplicates
@@ -73,7 +73,7 @@ def main(run_path) :
         #Updating banned coordinates
         ban_len = len(banned_coordinates)
         banned_coordinates += new_banned_coordinates
-        banned_coordinates = list(pd.unique(banned_coordinates))
+        banned_coordinates = list(pd.Series(banned_coordinates).unique())
         print(f"{len(banned_coordinates) - ban_len} coordinates were added to ban list.")
 
     #Merging with clusters and propagating washout
@@ -87,7 +87,6 @@ def main(run_path) :
     )
 
     Spots.loc[Spots['cluster_id'].isin(Clusters[Clusters['is_washout'] == True])]['is_washout'] = True
-    print(Spots)
 
 
     print("\nSaving results...")
@@ -99,7 +98,4 @@ def main(run_path) :
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from default_pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)        
+             

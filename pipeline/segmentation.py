@@ -37,7 +37,6 @@ def main(run_path) :
         nucleus_image = image[..., nucleus_channel]
 
         #Nucleus_segmentation
-        nucleus_image_save = nucleus_image.copy()
         nucleus_image = np.mean(nucleus_image, axis=0)
         nucleus_label = segm.Nucleus_segmentation(
             dapi=nucleus_image,
@@ -64,14 +63,9 @@ def main(run_path) :
             file= SAVE_PATH + "{0}_segmentation".format(location),
             nucleus= nucleus_label,
             cytoplasm= cytoplasm_label,
-            dapi_signal = nucleus_image_save,
         )
 
             
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from default_pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)    
+        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py") 
