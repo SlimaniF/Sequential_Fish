@@ -11,9 +11,6 @@ from tqdm import tqdm
 from Sequential_Fish.tools import open_location, safe_merge_no_duplicates, shift_array
 from Sequential_Fish.status import load_pipeline_parameters
 
-#TODO : problem in mask dimension probably from nucleus segmentation. I think a 3D segmentation was performed not using Z as 3rd dim but cycles.
-#Note : Segmentation was actually performed in 3D which is a behavior we can keep but we also need to make it go through cycles.
-
 #### USER PARAMETERS
 
 def main(run_path) :
@@ -51,13 +48,19 @@ def main(run_path) :
         nucleus_channel = sub_data['dapi_channel'].iat[0]
         nucleus_image = image[..., nucleus_channel]
 
-        #Nucleus_segmentation
-        #Correct drift for nucleus
+        #Correct drift
         drift_array = Drift.loc[Drift['location'] == location, ['drift_z','drift_y', 'drift_x']].to_numpy(dtype=int)
         for cycle, signal in enumerate(nucleus_image) :
             assert signal.ndim == 3, "Uncorrect indexing, signal dimension should be 3"
             nucleus_image[cycle] = shift_array(signal, *drift_array[cycle])
 
+        cytoplasm_image = np.mean(image[...,:nucleus_channel], axis=4)
+        print("before drift : ", cytoplasm_image.shape,"\n")
+        for cycle, signal in enumerate(cytoplasm_image) :
+            assert signal.ndim == 3, "Uncorrect indexing, signal dimension should be 3"
+            cytoplasm_image[cycle] = shift_array(signal, *drift_array[cycle])
+        
+        # #Nucleus_segmentation
         nucleus_image = np.mean(nucleus_image, axis=0)
         nucleus_label = segm.Nucleus_segmentation(
             dapi=nucleus_image,
@@ -68,8 +71,11 @@ def main(run_path) :
 
 
         #Cytoplasm segmentation
-        cytoplasm_image = np.mean(image[...,:nucleus_channel], axis=4)
-        cytoplasm_image = np.mean(cytoplasm_image, axis=0)
+        print("cytoplasm_image before mean shape : ", cytoplasm_image.shape)
+        cytoplasm_image = np.mean(cytoplasm_image, axis=0) #average on cycles
+        print("cytoplasm_image shape : ", cytoplasm_image.shape)
+        print("nucleus_image shape : ", nucleus_image.shape)
+        # cytoplasm_image = np.mean(cytoplasm_image, axis=0) test segmentation 3D
 
         #Segmentation
         cytoplasm_label = segm.Cytoplasm_segmentation(
