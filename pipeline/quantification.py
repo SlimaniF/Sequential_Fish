@@ -9,7 +9,7 @@ from Sequential_Fish.tools import safe_merge_no_duplicates, shift_array
 from Sequential_Fish.status import load_pipeline_parameters
 from Sequential_Fish.tools import cell_quantification, open_location
 
-#TODO : problem in mask dimension probably from nucleus segmentation. I think a 3D segmentation was performed not using Z as 3rd dim but cycles.
+
 
 def main(run_path) :
 

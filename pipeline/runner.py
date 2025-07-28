@@ -1,4 +1,4 @@
-import subprocess
+import warnings
 import logging
 import os, traceback
 from datetime import datetime
@@ -26,7 +26,8 @@ script_folder = os.path.dirname(script_folder)
 
 scripts_rounds = [
     {'input' : input},
-    {'detection' : detection, 'segmentation' : segmentation, 'drift' : drift},
+    {'detection' : detection, 'drift' : drift},
+    {'segmentation' : segmentation},
     {'alignement' : alignement},
     {'washout' : washout},
     {'quantification' : quantification}
