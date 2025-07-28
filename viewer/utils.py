@@ -17,8 +17,9 @@ def open_segmentation(
     #Opening masks
     for location in tqdm(locations, desc = "opening {0} masks".format(object)) :
         new_mask = np.load(segmentation_folder_fullpath + '/{0}_segmentation.npz'.format(location))[object]
+        print("new mask : ", new_mask.shape)
 
-        if type(z_repeat) != type(None) :
+        if type(z_repeat) != type(None) and new_mask.ndim == 2:
             new_mask = np.repeat(
                 new_mask[np.newaxis],
                 repeats= z_repeat,

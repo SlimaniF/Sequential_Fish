@@ -9,14 +9,14 @@ from .widgets import initiate_load_widgets
 from .widgets import initiate_location_widgets
 from magicgui.widgets import Container
 
-from ..status.gui import select_path
+from ..status.gui import select_path_for_analysis
 
 from pbwrap.plot.utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
 
 
 def main() :
     
-    run_path = select_path()
+    run_path = select_path_for_analysis()
     if run_path is None : quit()
     
     TABLES = ['Acquisition', 'Detection', 'Spots', 'Clusters', 'Drift', 'Cell', 'Gene_map']

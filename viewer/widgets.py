@@ -13,7 +13,7 @@ from magicgui import magicgui
 from magicgui.widgets import Widget
 
 from ..customtypes import NapariWidget
-from ..tools.utils import open_image
+from ..tools.utils import open_image, safe_merge_no_duplicates
 from .utils import open_segmentation
 from .utils import pad_to_shape
 from .utils import reorder_image_stack
@@ -108,8 +108,14 @@ class SpotsLoader(NapariWidget) :
     ) :
 
         self.Spots = table_dict['Spots']
-        self.Detection = table_dict['Detection'].loc[:,['detection_id']]
-        self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','location']]
+        self.Detection = table_dict['Detection']
+        self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','location','cycle']]
+        self.Detection = safe_merge_no_duplicates(
+            self.Detection,
+            self.Acquisition,
+            on= "acquisition_id",
+            keys= ["location", "cycle"]
+        )
         self.Gene_map = table_dict['Gene_map'].loc[:,['cycle','color_id','target']]
         
         self.update(list(self.Acquisition['location'].unique()))
@@ -121,23 +127,23 @@ class SpotsLoader(NapariWidget) :
     def update(self, locations) :
 
 
-        data = pd.merge(
+        data = safe_merge_no_duplicates(
             self.Spots,
             self.Detection,
             on= 'detection_id',
-            validate='m:1',
+            keys= ["location", "cycle", "color_id","acquisition_id"]
         )
 
         data = pd.merge(
             data,
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
+            self.Acquisition.loc[self.Acquisition['location'].isin(locations), ['acquisition_id']],
             on= 'acquisition_id',
             validate='m:1',
         )
 
         data = pd.merge(
             data,
-            self.Gene_map,
+            self.Gene_map.loc[:,['cycle','color_id','target']],
             on= ['cycle','color_id'],
             how='left'
         )
@@ -204,11 +210,11 @@ class SpotsLoader(NapariWidget) :
             layerdata = (spots_array, 
                          {
                              "scale" : self.voxel_size,
-                             "size" : 0.1, 
+                             "size" : 10, 
                              "name" : name, 
                              'ndim' : 4, 
                              'face_color' : '#0000' ,
-                             'edge_color' : color, 
+                             'border_color' : color, 
                              'blending' : 'additive',
                              'symbol' : symbol
                              },
@@ -231,10 +237,15 @@ class ClustersLoader(NapariWidget) :
             ):
         
         self.Clusters = table_dict['Clusters']
-        self.Detection = table_dict['Detection'].loc[:,['detection_id','color_id']]
+        self.Detection = table_dict['Detection']
         self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','cycle','location']]
         self.Gene_map = table_dict['Gene_map'].loc[:,['cycle','color_id','target']]
-
+        self.Detection = safe_merge_no_duplicates(
+            self.Detection,
+            self.Acquisition,
+            on= "acquisition_id",
+            keys= ["location", "cycle"]
+        )
         self.update(list(self.Acquisition['location'].unique()))
 
         self.voxel_size = voxel_size
@@ -243,23 +254,23 @@ class ClustersLoader(NapariWidget) :
 
     def update(self, locations) :
 
-        data = pd.merge(
+        data = safe_merge_no_duplicates(
             self.Clusters,
             self.Detection,
             on= 'detection_id',
-            validate='m:1',
+            keys= ["location", "cycle", "color_id","acquisition_id"]
         )
 
         data = pd.merge(
             data,
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
+            self.Acquisition.loc[self.Acquisition['location'].isin(locations),['acquisition_id']],
             on= 'acquisition_id',
             validate='m:1',
         )
 
         data = pd.merge(
             data,
-            self.Gene_map,
+            self.Gene_map.loc[:,['cycle','color_id','target']],
             on= ['cycle','color_id'],
             how='left'
         )
@@ -321,7 +332,7 @@ class ClustersLoader(NapariWidget) :
                 spots_array = np.concatenate([spots_array, spots])
             layerdata = (spots_array, 
                          {"scale" : self.voxel_size,
-                          "size" : 0.2, 
+                          "size" : 12, 
                           "name" : name, 
                           'ndim' : 4, 
                           'face_color' : color,
@@ -332,7 +343,7 @@ class ClustersLoader(NapariWidget) :
         return load
 
 @register_load_widget
-class FishSignalLoader(NapariWidget) :
+class SignalLoader(NapariWidget) :
     def __init__(
             self, 
             table_dict : table_dict_type,
@@ -353,6 +364,7 @@ class FishSignalLoader(NapariWidget) :
 
         self.color_table = color_table
         self.voxel_size = voxel_size
+        self.has_beads = not self.Acquisition['bead_channel'].isna().all()
         super().__init__()
 
     def update(self, locations) :
@@ -372,18 +384,36 @@ class FishSignalLoader(NapariWidget) :
                     "text" : "drift correction",
                     "value" : True,
                     },
-                call_button="Load fish signal",
+                call_button="Load signal",
+                signal_type = {
+                    "widget_type" : "RadioButton",
+                    "choices" : ['fish','dapi','beads'] if self.has_beads else ['fish', 'dapi'],
+                    "value" : "fish"
+                },
                 auto_call=False
                 )
-        def load(target, drift_correction) -> LayerDataTuple:
+        def load(target, drift_correction, signal_type) -> LayerDataTuple:
             data = self.Gene_map.loc[self.Gene_map['target'] == target].iloc[0]
             color = self.color_table[self.color_table['target'] == target]['colormaps'].iat[0]
             cycle, color_id = data['cycle'], int(data['color_id'])
-            
-            if drift_correction :
-                name = "{0}_fish_signal_corrected".format(target)
+
+            if signal_type == "fish" :
+                channel_index = color_id
+                name = f"{target}_fish"
+            elif signal_type == "dapi" :
+                channel_index = self.Acquisition['dapi_channel'].iat[0]
+                name = f"dapi_signal_cycle{cycle}"
+            elif signal_type == "beads" :
+                channel_index = self.Acquisition['bead_channel'].iat[0]
+                name = f"beads_signal_cycle{cycle}"
             else :
-                name = "{0}_fish_signal_drifted".format(target)
+                raise NotImplementedError("Unimplemented choice")
+            
+
+            if drift_correction :
+                name += "_corrected"
+            else :
+                name += "_signal_drifted"
 
 
             sub_Acqu = self.data.loc[self.data['cycle'] == cycle]
@@ -406,7 +436,7 @@ class FishSignalLoader(NapariWidget) :
                 
                 image = open_image(fullpath, image_number= image_number)
                 image = reshape_stack(image, image_map=image_map, im_shape=shape)
-                image = image[...,color_id]
+                image = image[...,channel_index]
                 
                 if drift_correction :
                     drift = list(sub_Acqu.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
@@ -419,15 +449,13 @@ class FishSignalLoader(NapariWidget) :
                 image_list.append(image)
             array = np.stack(image_list)
 
-            print(f"SCALE FOR FISH : {self.voxel_size}")
-
             layerdata = (
                 array,
                 {
                     "scale" : self.voxel_size, 
                     "name" : name, 
                     'blending' : 'additive', 
-                    'colormap' : color},
+                    'colormap' : color if signal_type != "dapi" else "blue"},
                 'Image'
             )
 
@@ -435,226 +463,6 @@ class FishSignalLoader(NapariWidget) :
 
         return load
 
-@register_load_widget   
-class DapiSignalLoader(NapariWidget) :
-    def __init__(
-            self, 
-            table_dict : table_dict_type,
-            voxel_size :tuple,
-            **kwargs
-            ):
-    
-
-        self.Gene_map = table_dict['Gene_map']
-
-        Drift = table_dict['Drift']
-        self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
-        
-        self.Acquisition : pd.DataFrame = table_dict['Acquisition']
-        self.update(list(self.Acquisition['location'].unique()))
-        self.channel_indexer : int = self.Acquisition['dapi_channel'].iat[0]
-
-        self.voxel_size = voxel_size
-        super().__init__()
-
-    def update(self, locations) :
-        """
-        Updates acquisition to loc on selected locations.
-        """
-        self.data = pd.merge(
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
-            self.Drift,
-            on='acquisition_id'
-        )
-        self.data = self.data.sort_values(['location', 'full_path'])
-        self.target = sorted(list(self.Gene_map['target'].unique()))
-
-    def _create_widget(self) :
-        @magicgui(
-                call_button="Load dapi signal",
-                drift_correction={
-                    "widget_type" : "CheckBox",
-                    "text" : "drift correction",
-                    "value" : True,
-                    },
-                auto_call=False
-                )
-        def load_dapi(radio_button, drift_correction) -> LayerDataTuple:
-
-            name = "dapi_signal"
-
-            if drift_correction :
-                name += "_corrected"
-            else :
-                name += "_drifted"
-
-            image_list = []
-            if len(self.data) > 1 :
-                max_shape = np.array(list(self.data["fish_shape"]), dtype=int).max(axis=0)
-            else :
-                max_shape = self.data['fish_shape'].iat[0]
-            max_shape = (max_shape[0],max_shape[2], max_shape[3])
-
-            for index in tqdm(self.data.index, desc= "opening {0}".format(radio_button)) :
-                full_path = self.data.at[index, "full_path"]
-                shape = self.data.at[index, 'fish_shape']
-                image_map = self.data.at[index, 'fish_map']
-                image_number = shape[0] * shape[1]
-                
-                image = open_image(full_path, image_number=image_number)
-                image = image.reshape(*shape)
-                image = reorder_image_stack(image, image_map)
-                image = image[:,:,:,self.channel_indexer]
-
-                if drift_correction :
-                    drift = list(self.data.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
-                    image = shift_array(image, *drift)
-
-                if image.shape != max_shape :
-                    image = pad_to_shape(image, new_shape=max_shape)
-
-                image_list.append(image)
-
-            array = np.stack(image_list)
-
-
-            layerdata = (
-                array,
-                {"scale" : self.voxel_size, "name" : name, 'blending' : 'additive', 'colormap' : 'blue'},
-                'Image'
-            )
-
-            return layerdata
-
-        return load_dapi
-
-@register_load_widget   
-class BeadsSignalLoader(NapariWidget) :
-    def __init__(
-            self, 
-            table_dict : table_dict_type,
-            voxel_size :tuple,
-            **kwargs,
-            ):
-
-        self.Gene_map = table_dict['Gene_map']
-        self.Acquisition = table_dict['Acquisition']
-        
-        
-        self.Drift = table_dict['Drift'].loc[table_dict['Drift']['drift_type'] == 'fish']
-        self.Drift = self.Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
-
-        self.update(list(self.Acquisition['location'].unique()))
-        self.channel_indexer = self.Acquisition['bead_channel'].iat[0]
-
-
-        
-        self.voxel_size = voxel_size
-        super().__init__()
-
-        if self.Acquisition['bead_channel'].isna().all() :
-            self.disable_widget()
-
-    def update(self, locations) :
-        self.data = pd.merge(
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
-            self.Drift,
-            on='acquisition_id'
-        )
-        
-        Gene_map = pd.merge(
-            self.Gene_map,
-            self.data.loc[:,['cycle']],
-            on = 'cycle'
-        )
-        
-        self.data = self.data.sort_values(['location', 'full_path'])
-        self.Gene_map_filtered = Gene_map
-        self.target = sorted(list(Gene_map['target'].unique()))
-
-        joined_names = self.Gene_map.groupby('cycle')['target'].apply('-'.join)
-        targets_names = ["{0}({1})".format(cycle_num,target) for target,cycle_num in zip(joined_names, joined_names.index)]
-        self.target = list(joined_names.index)
-        self.target_names = targets_names
-
-    def _create_widget(self) :
-        @magicgui(
-                target = {
-                    "widget_type" : "ComboBox",
-                    'choices' : self.target_names,
-                    "label" : 'cycle',
-                    },
-                drift_correction={
-                    "widget_type" : "CheckBox",
-                    "text" : "drift correction",
-                    "value" : True,
-                    },
-                call_button="Load beads",
-                auto_call=False
-                )
-        def load(target, drift_correction) -> LayerDataTuple:
-            target_index = self.target_names.index(target)
-            target = self.target[target_index]
-            gene_data = self.Gene_map_filtered.loc[self.Gene_map_filtered['cycle'] == target].iloc[0]
-            shape = self.data[self.data['cycle'] == target].iloc[0]['fish_shape']
-            image_map = self.data[self.data['cycle'] == target].iloc[0]['fish_map'].copy()
-            image_map = correct_map(image_map)
-            cycle = gene_data['cycle']
-
-            if target == 0 :
-                color = 'green'
-            elif drift_correction :
-                color = 'red'
-            else :
-                color = 'blue'
-
-            if drift_correction :
-                name = "{0}_beads_signal_corrected".format(target)
-            else :
-                name = "{0}_beads_signal_drifted".format(target)
-
-            sub_Acqu = self.data.loc[self.data['cycle'] == cycle]
-
-            z = image_map['z']
-            c = image_map['c']
-            image_number = shape[z] * shape[c]
-            image_list = []
-
-            if len(sub_Acqu) > 1 :
-                max_shape = np.array(list(sub_Acqu["fish_shape"]), dtype=int).max(axis=0)
-            else :
-                max_shape = sub_Acqu['fish_shape'].iat[0]
-
-            max_shape = tuple(max_shape[:c]) + tuple(max_shape[(c+1):])
-
-            for index in tqdm(sub_Acqu.index, desc="Opening beads ({0})".format(target)) :
-                full_path = sub_Acqu.at[index, "full_path"]
-
-                image = open_image(full_path, image_number=image_number)
-                image = reshape_stack(image, image_map=image_map, im_shape= shape)
-                image = image[...,self.channel_indexer]
-                
-                
-                if drift_correction :
-                    drift = list(sub_Acqu.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
-                    image = shift_array(image, *drift)
-                
-                if (image.shape != max_shape) :
-                    image = pad_to_shape(image, new_shape=max_shape)
-
-
-                image_list.append(image)
-            array = np.stack(image_list)
-
-            layerdata = (
-                array,
-                {"scale" : self.voxel_size, "name" : name, 'blending' : 'additive', 'colormap' : color},
-                'Image'
-            )
-
-            return layerdata
-
-        return load
 
 @register_load_widget    
 class SegmentationLoader(NapariWidget) :
@@ -669,7 +477,7 @@ class SegmentationLoader(NapariWidget) :
             ):
         
         Drift = table_dict['Drift']
-        self.Drift = Drift.loc[Drift['drift_type'] == 'dapi']
+        self.Drift = Drift
         self.Acquisition = table_dict['Acquisition']
 
         self.update(list(self.Acquisition['location'].unique()))
@@ -698,43 +506,16 @@ class SegmentationLoader(NapariWidget) :
                     "value" : "nucleus",
                     "label" : " ",
                 },
-                drift_correction={
-                    "widget_type" : "CheckBox",
-                    "text" : "drift correction (nucleus)",
-                    "value" : True,
-                    },
                 auto_call=False
         )
-        def load_segmentation(object, drift_correction) -> LayerDataTuple:
+        def load_segmentation(object) -> LayerDataTuple:
 
-            shape_fish = np.array(list(self.Acquisition['fish_shape']),dtype=int)
-            shape_fish = np.max(shape_fish, axis=0)
-            shape_dapi = np.array(list(self.Acquisition['dapi_shape']),dtype=int)
-            shape_dapi = np.max(shape_dapi, axis=0)
-            shape = np.max([shape_fish,shape_dapi],axis=0)
+            shape = np.array(list(self.Acquisition['fish_shape']),dtype=int)
+            shape = np.max(shape, axis=0)
             z_size = shape[0]
             name = "{0}_mask".format(object)
             locations = list(self.data.sort_values('location')['location'].unique())
             masks = open_segmentation(self.segmentation_fullpath, locations , object=object, z_repeat= z_size) #masks list sorted on Acquisition['location']
-
-            if drift_correction and object == "nucleus" :
-
-                name += '_corrected'
-
-                data = self.data.sort_values("location")
-                sub_acq = data[~data['drift_id'].isna()]
-                drift_z = list(sub_acq['drift_z'].astype(int))
-                drift_y = list(sub_acq['drift_y'].astype(int))
-                drift_x = list(sub_acq['drift_x'].astype(int))
-                drift_list = list(zip(drift_z,drift_y,drift_x))
-                assert len(drift_list) == len(masks), "Didn't find drift correction for all masks."
-
-                for location_index, drift in tqdm(enumerate(drift_list), desc= "correcting drift", total= len(drift_list)) :
-                    masks[location_index] = shift_array(masks[location_index], *drift)
-
-            elif object == "nucleus" :
-                name += '_drifted'
-
 
             layerdata = (
                 masks,
