@@ -105,7 +105,7 @@ def main(run_path) :
 
     #Integrity checks
     assert all(Acquisition['cycle'].isin(cycle_map[CYCLE_KEY])), "Some cycle are not found in map"
-    assert len(cycle_map) == len(Acquisition), "{0} column length doesn't match cycle number ({1})".format(len(cycle_map), len(Acquisition['cycle']))
+    assert len(cycle_map) == len(Acquisition['cycle'].unique()), "{0} column length doesn't match cycle number ({1})".format(len(cycle_map), len(Acquisition['cycle']))
 
     cycle_regex_result = Acquisition.loc[:, 'full_path'].apply(_find_one_or_NaN, regex=cycle_regex)
     cycles_match = all(Acquisition.loc[~Acquisition['full_path'].isna(),"cycle"] == cycle_regex_result[~cycle_regex_result.isna()])
