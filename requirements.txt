@@ -1,0 +1,16 @@
+big_fish==0.6.2
+big_fish_reloaded==0.6.2
+czifile==2019.7.2.1
+magicgui==0.10.1
+matplotlib==3.10.8
+napari==0.6.6
+numpy==2.4.2
+pandas==3.0.0
+smfishtools==0.1.0
+smfishtools.egg==info
+PyQt5==5.15.11
+pyqt5_sip==12.18.0
+scikit_learn==1.8.0
+scipy==1.17.0
+skimage==0.0
+tqdm==4.67.1

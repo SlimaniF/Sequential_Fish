@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "Sequential_Fish"
+version = "0.1"
+authors = [
+	{ name="Slimani Floric", email="floric.slimani@live.fr" },
+]
+description = "Open source package deploying a complete quantification pipeline for analysis of sequential smFish images. Raw data can then be analysed by custom means or with out of the bow analysis pipelined provided."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: BSD License",
+	"Operating System :: OS Independent",
+]
+dependencies = [
+"big_fish_reloaded==0.6.2",
+"AF-eraser >= 0.1.0",
+"czifile",
+"magicgui",
+"matplotlib",
+"napari[all]",
+"numpy",
+"pandas",
+"smfishtools>=0.1.0",
+"scikit-image",
+"scikit-learn",
+"scipy",
+"tqdm",
+"smfishtools",
+]
+
+[project.urls]
+Homepage = "https://github.com/SlimaniF/Sequential_Fish"
+Wiki = "https://github.com/SlimaniF/Sequential_Fish/wiki"
+Issues = "https://github.com/SlimaniF/Sequential_Fish/issues"
