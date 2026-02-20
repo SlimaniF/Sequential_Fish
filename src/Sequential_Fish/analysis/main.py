@@ -6,7 +6,6 @@ import pandas as pd
 from .post_processing import Spots_filtering
 from .density import density_analysis
 from .distributions import distributions_analysis
-from ..run_saves import select_path
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
 

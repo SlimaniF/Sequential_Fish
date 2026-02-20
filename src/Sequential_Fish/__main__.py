@@ -1,46 +1,59 @@
 import sys
 import os
-import pandas as pd
-import warnings
+import logging
 
-from Sequential_Fish import __run_cache_path__ as run_cache_path
 from Sequential_Fish import viewer, pipeline, analysis
-from Sequential_Fish.run_saves import create_run_dataframe, check_run_dataframe, check_run, run_status, get_run_cache
-from Sequential_Fish._pipeline_scripts import PIPELINE_SCRIPTS
-from Sequential_Fish.pipeline_parameters import RUN_PATH
+from ._pipeline_scripts import PIPELINE_SCRIPTS
+from .settings import write_settings
+from .pipeline_parameters import get_default_settings
 
 
 
 def main():
 
-    MODULES = ['viewer', 'pipeline', 'analysis', 'status']
+    MODULES = ['viewer', 'pipeline', 'analysis']
 
-    run_dataframe = get_run_cache()
-    run_dataframe = check_run_dataframe(run_dataframe)
-    run_dataframe.reset_index(drop=True).to_feather(run_cache_path)
-    
     #CALL TO MODULES
-    if len(sys.argv) < 2:
-        print("Usage: python -m my_package <module> [args...]")
+    if len(sys.argv) < 3:
+        print("Usage: python -m my_package <module> [args...] <run path>")
         print("Available modules: {0}".format(MODULES))
         sys.exit(1)
 
     module = sys.argv[1]
-    submodules = sys.argv[2:]
-
+    print("module : ", module)
+    submodules = sys.argv[2:-1]
+    print("submodules : ", submodules)
+    RUN_PATH = sys.argv[-1]
+    print("RUN_PATH : ", RUN_PATH)
+    if not os.path.isdir(os.path.join(os.getcwd(), RUN_PATH)) :
+        raise FileNotFoundError(f"Couldn't find a directory at {RUN_PATH}")
+    else : RUN_PATH = str(os.path.join(os.getcwd(), RUN_PATH))
+     
     if module == "viewer":
-
         if len(submodules) > 0 :
             print(f"No argument for viewer. Ignoring passed arguments : {submodules}")
-
         viewer.run()
         
     elif module == "pipeline":
-        
-        check_run(RUN_PATH)
+
+        log_file = RUN_PATH + "/run_log.log"
+        logging.basicConfig(
+            filename=log_file,
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+        )
+
+        if not os.path.isfile(RUN_PATH + "/settings.json") :
+            logging.info("No settings found, initializing settings.json")
+            settings = get_default_settings()
+            settings.RUN_PATH = RUN_PATH
+            settings.SAVE_PATH = RUN_PATH + "/visuals/"
+            write_settings(settings, RUN_PATH)
+        else :
+            logging.info("Loading parameters")
         
         if len(submodules) == 0 :
-            pipeline.run() # This loads RUN_PATH from pipeline parameters and fix it for all scripts
+            pipeline.run(RUN_PATH) # This loads RUN_PATH from pipeline parameters and fix it for all scripts
         else :
             from Sequential_Fish.pipeline.runner import launch_script, script_folder # This loads RUN_PATH from pipeline parameters and fix it for all scripts
             if not all([script in PIPELINE_SCRIPTS for script in submodules]) :
@@ -66,9 +79,6 @@ def main():
         analysis.run(*submodules)
         
         print("Done.")
-    
-    elif module == "status" :
-        run_status()
     
     else:
         print(f"Unknown module: {module}")

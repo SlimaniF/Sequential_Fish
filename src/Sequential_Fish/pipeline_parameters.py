@@ -6,7 +6,6 @@ from .types import parameters_dict
 
 ################
 #fullpath to main folder given by experimentalist
-RUN_PATH = "/media/SSD_floricslimani/Fish_seq/Davide/FakeRun/"
 VOXEL_SIZE = (200,97,97) # size of a pixel in nanometer (z,y,x)
 WASHOUT_KEY_WORD = 'Washout' #key for washout in gene map excel
 HAS_BEAD_CHANNEL = False
@@ -75,7 +74,6 @@ DETECTION_SLICE_TO_REMOVE = [5,None] # number of slice you want to remove bottom
 # 4. Drift
 
 ##############
-SAVE_PATH = RUN_PATH + '/visuals/'
 BEAD_SIZE = (200, 200, 200) #size of fluorescent beads in nanometers used for fov aligment
 DRIFT_SLICE_TO_REMOVE = [5,5] # Number of slice to remove to avoid detecting noise
 DO_HIGHPASS_FILTER = False
@@ -103,7 +101,8 @@ if 0 in DRIFT_SLICE_TO_REMOVE : raise ValueError("Error with 'DRIFT_SLICE_TO_REM
 
 def get_default_settings() :
     default_settings = {
-        "RUN_PATH" : RUN_PATH,
+        "RUN_PATH" : "",
+        "SAVE_PATH" : "/visuals/",
         "VOXEL_SIZE" : VOXEL_SIZE,
         "WASHOUT_KEY_WORD" : WASHOUT_KEY_WORD,
         "HAS_BEAD_CHANNEL" : HAS_BEAD_CHANNEL,
@@ -124,7 +123,6 @@ def get_default_settings() :
         "MIN_SPOT_PER_CLUSTER" : MIN_SPOT_PER_CLUSTER, 
         "ARTIFACT_RADIUS" : ARTIFACT_RADIUS, 
         "DETECTION_SLICE_TO_REMOVE" : DETECTION_SLICE_TO_REMOVE,
-        "SAVE_PATH" : SAVE_PATH, 
         "BEAD_SIZE" : BEAD_SIZE,
         "DRIFT_SLICE_TO_REMOVE" : DRIFT_SLICE_TO_REMOVE,
         "DO_HIGHPASS_FILTER" : DO_HIGHPASS_FILTER, 

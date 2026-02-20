@@ -1,37 +1,34 @@
 """
 This script aims at reading the input folder and preparing data folders and locations for next scripts.
 """
-import sys
 import Sequential_Fish.tools._folder_integrity as prepro
 import pandas as pd
 import os
 import warnings
 import numpy as np
 from Sequential_Fish.tools.utils import open_image, auto_map_channels, _find_one_or_NaN, reorder_image_stack
+from typing import cast
 
-def main(run_path) :
+def main(run_path : str) :
 
     print(f"input runing for {run_path}")
 
-    if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import FOLDER_KEYS, MAP_FILENAME, cycle_regex, CYCLE_KEY, GENES_NAMES_KEY, WASHOUT_KEY_WORD, HAS_BEAD_CHANNEL
-    else :
-        from Sequential_Fish.settings import get_settings
-        parameters_dict = get_settings()
-        folder_keys = parameters_dict.FOLDER_KEYS
-        nucleus_folder = folder_keys.get("nucleus_folder")
-        fish_folder = folder_keys.get("fish_folder")
-        MAP_FILENAME = parameters_dict.MAP_FILENAME
-        cycle_regex = parameters_dict.cycle_regex
-        CYCLE_KEY = parameters_dict.CYCLE_KEY
-        GENES_NAMES_KEY = parameters_dict.GENES_NAMES_KEY
-        WASHOUT_KEY_WORD = parameters_dict.WASHOUT_KEY_WORD
-        HAS_BEAD_CHANNEL = parameters_dict.HAS_BEAD_CHANNEL
-        
-        FOLDER_KEYS = {
-            'nucleus_folder' : nucleus_folder,
-            'fish_folder' : fish_folder,
-        }
+    from ..settings import get_settings
+    parameters_dict = get_settings(run_path)
+    folder_keys = parameters_dict.FOLDER_KEYS
+    nucleus_folder = folder_keys.get("nucleus_folder")
+    fish_folder = folder_keys.get("fish_folder")
+    MAP_FILENAME = parameters_dict.MAP_FILENAME
+    cycle_regex = parameters_dict.cycle_regex
+    CYCLE_KEY = parameters_dict.CYCLE_KEY
+    GENES_NAMES_KEY = parameters_dict.GENES_NAMES_KEY
+    WASHOUT_KEY_WORD = parameters_dict.WASHOUT_KEY_WORD
+    HAS_BEAD_CHANNEL = parameters_dict.HAS_BEAD_CHANNEL
+    
+    FOLDER_KEYS = {
+        'nucleus_folder' : nucleus_folder,
+        'fish_folder' : fish_folder,
+    }
     
     #Reading input folder.
     file_dict = prepro.assert_run_folder_integrity(
@@ -63,13 +60,12 @@ def main(run_path) :
     print("Expected {0} colors.".format(color_number))
     print("Expected {0} cycles.".format(cycle_number))
 
-    file_index = 0
     Acquisition['acquisition_id'] = np.arange(len(location_list)*cycle_number)
     Acquisition['location'] = location_list * cycle_number
     cycles_list = list(cycle_map[CYCLE_KEY])*location_number
     cycles_list.sort()
     Acquisition['cycle'] = cycles_list
-    for location_index, location in enumerate(location_list) :
+    for location in enumerate(location_list) :
 
         #Get dapi_path
         dapi_full_path = run_path + "/{0}/{1}/".format(FOLDER_KEYS.get('nucleus_folder'), location)
@@ -79,7 +75,6 @@ def main(run_path) :
         dapi_im = open_image(dapi_full_path)
         dapi_shape = dapi_im.shape
         dapi_map = auto_map_channels(dapi_im, color_number=1, cycle_number=cycle_number, bead_channel=HAS_BEAD_CHANNEL)
-        dapi_reodered_shape = reorder_image_stack(dapi_im, dapi_map).shape
 
         #Setting dapi informations
         index = Acquisition[Acquisition['location'] == location].index
@@ -99,7 +94,7 @@ def main(run_path) :
 
         full_path_list = [fish_path + file for file in fish_path_list]
         while len(full_path_list) < len(index) :
-            full_path_list.append(np.nan)
+            full_path_list.append(cast(str,np.nan))
 
         Acquisition.loc[index, "fish_shape"] = pd.Series((fish_shape,)*cycle_number, index=index)
         Acquisition.loc[index, "fish_map"] = pd.Series((fish_map,)*cycle_number, index=index)
@@ -154,13 +149,3 @@ def main(run_path) :
     Gene_map.to_excel(save_path + 'Gene_map.xlsx')
     Gene_map.to_feather(save_path + 'Gene_map.feather')
     print("Done")
-    
-    
-if __name__ == "__main__":
-    print(sys.argv)
-    if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)    

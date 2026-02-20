@@ -1,11 +1,7 @@
 import pandas as pd
 from typing import TypedDict
 
-from FishSeq_small_fish_prep import RUN_PATH
-from pydantic import BaseModel, ValidationError
-
-from Sequential_Fish.pipeline_parameters import CYCLE_KEY, FOLDER_KEYS, GENES_NAMES_KEY, HAS_BEAD_CHANNEL, MAP_FILENAME, OBJECT_SIZE_DICT, PLOT_VISUALS, WASHOUT_KEY_WORD
-from Sequential_Fish.viewer.main import VOXEL_SIZE
+from pydantic import BaseModel
 
 
 class table_dict_type(TypedDict) :
@@ -25,7 +21,7 @@ class parameters_dict(BaseModel) :
     HAS_BEAD_CHANNEL : bool
     MAP_FILENAME : str
     CYCLE_KEY : str
-    GENES_NAMES_KEY : str
+    GENES_NAMES_KEY : list[str]
     cycle_regex : str
     FOLDER_KEYS : dict[str,str]
     MODEL_DICT : dict[str,str]
