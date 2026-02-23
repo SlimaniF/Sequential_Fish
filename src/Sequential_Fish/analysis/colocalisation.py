@@ -611,7 +611,7 @@ def create_pair_colocalisation_figure(
 
     score_norm = TwoSlopeNorm(vmin=-1, vcenter=0, vmax=20,)
 
-    #Unsgnificative pvalue set to NaN
+    #Unsgnificative pvalue set to nan
     zscore_frame *= pvalue_mask.replace({True : 1, False : np.nan})
     colocalization_rates *= pvalue_mask.replace({True : 1, False : np.nan})
 

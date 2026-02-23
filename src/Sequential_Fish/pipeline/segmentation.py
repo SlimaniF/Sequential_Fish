@@ -22,12 +22,12 @@ def main(run_path) :
     else :
         from Sequential_Fish.run_saves import get_parameter_dict
         PARAMETERS = ['nucleus_model', 'cytoplasm_model', 'nucleus_size', 'cytoplasm_size', 'PLOT_VISUALS']
-        parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)        
-        PLOT_VISUALS = parameters_dict['PLOT_VISUALS']
-        nucleus_model = parameters_dict['nucleus_model']
-        cytoplasm_model = parameters_dict['cytoplasm_model']
-        nucleus_size = parameters_dict['nucleus_size']
-        cytoplasm_size = parameters_dict['cytoplasm_size']
+        pipeline_parameters = get_parameter_dict(run_path, parameters=PARAMETERS)        
+        PLOT_VISUALS = pipeline_parameters['PLOT_VISUALS']
+        nucleus_model = pipeline_parameters['nucleus_model']
+        cytoplasm_model = pipeline_parameters['cytoplasm_model']
+        nucleus_size = pipeline_parameters['nucleus_size']
+        cytoplasm_size = pipeline_parameters['cytoplasm_size']
 
         MODEL_DICT = {
             'cytoplasm_model' : cytoplasm_model,

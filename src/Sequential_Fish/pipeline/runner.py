@@ -43,6 +43,7 @@ def launch_script(script_name, run_path):
             case "alignement" : run_alignement(run_path)
             case "washout" : run_washout(run_path)
             case "quantification" : run_quantification(run_path)
+            case _ : raise ValueError(f"Unsupported script name : {script_name}")
 
         script_end = datetime.now()
         run_duration = (script_end - script_start).total_seconds()

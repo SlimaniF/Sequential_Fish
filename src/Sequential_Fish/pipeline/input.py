@@ -1,12 +1,12 @@
 """
 This script aims at reading the input folder and preparing data folders and locations for next scripts.
 """
-import Sequential_Fish.tools._folder_integrity as prepro
 import pandas as pd
 import os
 import warnings
 import numpy as np
-from Sequential_Fish.tools.utils import open_image, auto_map_channels, _find_one_or_NaN, reorder_image_stack
+from ..tools.utils import open_image, auto_map_channels, _find_one_or_NaN, reorder_image_stack
+from ..tools._folder_integrity import assert_run_folder_integrity
 from typing import cast
 
 def main(run_path : str) :
@@ -14,27 +14,23 @@ def main(run_path : str) :
     print(f"input runing for {run_path}")
 
     from ..settings import get_settings
-    parameters_dict = get_settings(run_path)
-    folder_keys = parameters_dict.FOLDER_KEYS
-    nucleus_folder = folder_keys.get("nucleus_folder")
-    fish_folder = folder_keys.get("fish_folder")
-    MAP_FILENAME = parameters_dict.MAP_FILENAME
-    cycle_regex = parameters_dict.cycle_regex
-    CYCLE_KEY = parameters_dict.CYCLE_KEY
-    GENES_NAMES_KEY = parameters_dict.GENES_NAMES_KEY
-    WASHOUT_KEY_WORD = parameters_dict.WASHOUT_KEY_WORD
-    HAS_BEAD_CHANNEL = parameters_dict.HAS_BEAD_CHANNEL
+    pipeline_parameters = get_settings(run_path)
+    FISH_FOLDER = pipeline_parameters.FISH_FOLDER
+    MAP_FILENAME = pipeline_parameters.MAP_FILENAME
+    cycle_regex = pipeline_parameters.cycle_regex
+    CYCLE_KEY = pipeline_parameters.CYCLE_KEY
+    GENES_NAMES_KEY = pipeline_parameters.GENES_NAMES_KEY
+    WASHOUT_KEY_WORD = pipeline_parameters.WASHOUT_KEY_WORD
+    DAPI_CHANNEL = pipeline_parameters.DAPI_CHANNEl
+    BEAD_CHANNEL = pipeline_parameters.BEAD_CHANNEl
+    has_bead_channel = not BEAD_CHANNEL is None
     
-    FOLDER_KEYS = {
-        'nucleus_folder' : nucleus_folder,
-        'fish_folder' : fish_folder,
-    }
     
     #Reading input folder.
-    file_dict = prepro.assert_run_folder_integrity(
+    file_dict = assert_run_folder_integrity(
         run_path=run_path,
-        fish_folder=FOLDER_KEYS.get('fish_folder'),
-        nucleus_folder=FOLDER_KEYS.get('nucleus_folder')
+        fish_folder=FISH_FOLDER,
+        nucleus_folder=FISH_FOLDER
         )
     location_list = list(file_dict.keys())
     location_list.sort()
@@ -49,9 +45,8 @@ def main(run_path : str) :
         "full_path",
         "fish_shape",
         "fish_map",
-        "dapi_full_path",
-        "dapi_shape",
-        "dapi_map"
+        "dapi_channel",
+        "bead_channel",
         ])
     Acquisition = pd.DataFrame(columns=COLUMNS)
     cycle_map = pd.read_excel(run_path + '/' + MAP_FILENAME)
@@ -65,29 +60,17 @@ def main(run_path : str) :
     cycles_list = list(cycle_map[CYCLE_KEY])*location_number
     cycles_list.sort()
     Acquisition['cycle'] = cycles_list
-    for location in enumerate(location_list) :
-
-        #Get dapi_path
-        dapi_full_path = run_path + "/{0}/{1}/".format(FOLDER_KEYS.get('nucleus_folder'), location)
-        assert len(os.listdir(dapi_full_path)) == 1
-        dapi_full_path += os.listdir(dapi_full_path)[0]
-        assert os.path.isfile(dapi_full_path)
-        dapi_im = open_image(dapi_full_path)
-        dapi_shape = dapi_im.shape
-        dapi_map = auto_map_channels(dapi_im, color_number=1, cycle_number=cycle_number, bead_channel=HAS_BEAD_CHANNEL)
+    for location in location_list :
 
         #Setting dapi informations
         index = Acquisition[Acquisition['location'] == location].index
-        Acquisition.loc[index, ['dapi_full_path']] = dapi_full_path
-        Acquisition.loc[index, ['dapi_shape']] = pd.Series((tuple(dapi_shape),)*cycle_number, index=index)
-        Acquisition.loc[index, ['dapi_map']] = pd.Series((dapi_map,)* cycle_number, index=index)
 
         #Setting general fish informations
-        fish_path = run_path + "/{0}/{1}/".format(FOLDER_KEYS.get('fish_folder'), location)
+        fish_path = run_path + "/{0}/{1}/".format(FISH_FOLDER, location)
         fish_path_list = os.listdir(fish_path)
         fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST ie : filename cycle matches map cycles and rest of filename doesn't change list order.
         fish_im = open_image(fish_path + fish_path_list[0]) #Opening first tiff file will open all tiff files of this location (multitif_file) with correct reshaping. Ignoring first dim which will be the cycles gives us image dimension
-        fish_map = auto_map_channels(fish_im, color_number=color_number, cycle_number=cycle_number, bead_channel=HAS_BEAD_CHANNEL)
+        fish_map = auto_map_channels(fish_im, color_number=color_number, cycle_number=cycle_number, has_bead_channel=has_bead_channel)
         fish_shape = fish_im.shape[:fish_map['cycles']] + fish_im.shape[(fish_map['cycles'] + 1):] #1cycle per acquisition
         reoderdered_shape = reorder_image_stack(fish_im, fish_map).shape
         fish_reodered_shape = reoderdered_shape[1:]
@@ -120,7 +103,8 @@ def main(run_path : str) :
         left_on='cycle',
         right_on=CYCLE_KEY
     ).sort_values('acquisition_id').reset_index(drop=True)
-
+    Acquisition['dapi_channel'] = DAPI_CHANNEL
+    Acquisition['bead_channel'] = BEAD_CHANNEL
 
     map_dict ={"cycle" : list(cycle_map[CYCLE_KEY])}
     map_dict.update({

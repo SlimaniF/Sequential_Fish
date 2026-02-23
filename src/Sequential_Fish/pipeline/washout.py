@@ -16,8 +16,8 @@ def main(run_path) :
     else :
         from Sequential_Fish.run_saves import get_parameter_dict
         PARAMETERS = ['WASHOUT_KEY_WORD']
-        parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)
-        WASHOUT_KEY_WORD = parameters_dict['WASHOUT_KEY_WORD']
+        pipeline_parameters = get_parameter_dict(run_path, parameters=PARAMETERS)
+        WASHOUT_KEY_WORD = pipeline_parameters['WASHOUT_KEY_WORD']
 
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
     Detection = pd.read_feather(run_path + '/result_tables/Detection.feather')

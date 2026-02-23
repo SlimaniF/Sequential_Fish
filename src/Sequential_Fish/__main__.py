@@ -2,10 +2,11 @@ import sys
 import os
 import logging
 
-from Sequential_Fish import viewer, pipeline, analysis
+from . import viewer, pipeline, analysis
 from ._pipeline_scripts import PIPELINE_SCRIPTS
 from .settings import write_settings
-from .pipeline_parameters import get_default_settings
+from .types import pipeline_parameters
+from .pipeline.runner import launch_script 
 
 
 
@@ -43,9 +44,9 @@ def main():
             format='%(asctime)s - %(levelname)s - %(message)s',
         )
 
-        if not os.path.isfile(RUN_PATH + "/settings.json") :
+        if not os.path.isfile(RUN_PATH + "/pipeline_settings.json") :
             logging.info("No settings found, initializing settings.json")
-            settings = get_default_settings()
+            settings = pipeline_parameters.from_default_parameters()
             settings.RUN_PATH = RUN_PATH
             settings.SAVE_PATH = RUN_PATH + "/visuals/"
             write_settings(settings, RUN_PATH)
@@ -53,16 +54,14 @@ def main():
             logging.info("Loading parameters")
         
         if len(submodules) == 0 :
-            pipeline.run(RUN_PATH) # This loads RUN_PATH from pipeline parameters and fix it for all scripts
+            pipeline.run(RUN_PATH)
         else :
-            from Sequential_Fish.pipeline.runner import launch_script, script_folder # This loads RUN_PATH from pipeline parameters and fix it for all scripts
             if not all([script in PIPELINE_SCRIPTS for script in submodules]) :
                 print(f"Unknown pipeline scripts. \nChoose from : {PIPELINE_SCRIPTS}")
             else :
                 error_count = 0
                 for script in submodules : 
-                    if not script.endswith('.py') : script += ".py"
-                    sucess = launch_script(script_folder + '/' + script, run_path=RUN_PATH)
+                    sucess = launch_script(script, run_path=RUN_PATH)
 
                     if not sucess : error_count +=1
                 

@@ -44,7 +44,6 @@ def _lvl3(RUN_PATH, locations, fish_folder, nucleus_folder) :
     for location in locations :
         dirlist = os.listdir(RUN_PATH + '/{0}/'.format(nucleus_folder) + location)
         if len(dirlist) == 0 : raise FileNotFoundError("Dapi acquisition not found for location : {0}".format(location))
-        elif len(dirlist) > 1 : raise FileNotFoundError("More than 1 dapi stack for location : {0}".format(location))
     
     #Cy3
     file_number = []

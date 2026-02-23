@@ -5,7 +5,6 @@ Aims at finding drift value for each field of view and store it into a dataframe
 import os, sys
 import pandas as pd
 import numpy as np
-import warnings
 import smfishtools.preprocessing.alignement as prepro
 from Sequential_Fish.tools import open_image, reorder_image_stack
 from tqdm import tqdm
@@ -19,11 +18,11 @@ def main(run_path) :
     else :
         from Sequential_Fish.run_saves import get_parameter_dict
         PARAMETERS = ['DRIFT_SLICE_TO_REMOVE', 'VOXEL_SIZE', 'BEAD_SIZE', 'DO_HIGHPASS_FILTER']
-        parameters_dict= get_parameter_dict(run_path, PARAMETERS)
-        DRIFT_SLICE_TO_REMOVE = parameters_dict['DRIFT_SLICE_TO_REMOVE']
-        VOXEL_SIZE = parameters_dict['VOXEL_SIZE']
-        BEAD_SIZE = parameters_dict['BEAD_SIZE']
-        DO_HIGHPASS_FILTER = parameters_dict['DO_HIGHPASS_FILTER']
+        pipeline_parameters= get_parameter_dict(run_path, PARAMETERS)
+        DRIFT_SLICE_TO_REMOVE = pipeline_parameters['DRIFT_SLICE_TO_REMOVE']
+        VOXEL_SIZE = pipeline_parameters['VOXEL_SIZE']
+        BEAD_SIZE = pipeline_parameters['BEAD_SIZE']
+        DO_HIGHPASS_FILTER = pipeline_parameters['DO_HIGHPASS_FILTER']
         
 
     SAVE_PATH = run_path + '/visuals/'
@@ -167,11 +166,3 @@ def main(run_path) :
     Drift_save.to_excel(run_path + '/result_tables/Drift.xlsx')
 
     print("Done")
-    
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline drift' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)    

@@ -19,8 +19,8 @@ def main(run_path) :
     else :
         from Sequential_Fish.run_saves import get_parameter_dict
         PARAMETERS = ['quantif_MAX_WORKERS']
-        parameters_dict = get_parameter_dict(run_path, parameters=PARAMETERS)
-        MAX_WORKERS = parameters_dict['quantif_MAX_WORKERS']
+        pipeline_parameters = get_parameter_dict(run_path, parameters=PARAMETERS)
+        MAX_WORKERS = pipeline_parameters['quantif_MAX_WORKERS']
     
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
     Drift = pd.read_feather(run_path + '/result_tables/Drift.feather')

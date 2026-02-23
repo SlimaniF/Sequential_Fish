@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 from Sequential_Fish.tools import open_image, reorder_image_stack
 from concurrent.futures import ThreadPoolExecutor
-from smfishtools.detection.multithread import multi_thread_full_detection, build_Spots_and_Cluster_df
 from tqdm import tqdm
 
 #########
@@ -30,18 +29,18 @@ def main(run_path) :
         from Sequential_Fish.run_saves import get_parameter_dict
         PARAMETERS = ['VOXEL_SIZE', 'SPOT_SIZE', 'ALPHA', 'BETA', 'GAMMA', 'CLUSTER_SIZE', 'MIN_SPOT_PER_CLUSTER', 'ARTIFACT_RADIUS', 'DETECTION_SLICE_TO_REMOVE', 'detection_MAX_WORKERS']
         
-        parameters_dict = get_parameter_dict(run_path, PARAMETERS)
+        pipeline_parameters = get_parameter_dict(run_path, PARAMETERS)
         
-        VOXEL_SIZE = parameters_dict['VOXEL_SIZE']
-        SPOT_SIZE = parameters_dict['SPOT_SIZE']
-        ALPHA = parameters_dict['ALPHA']
-        BETA = parameters_dict['BETA']
-        GAMMA = parameters_dict['GAMMA']
-        CLUSTER_SIZE = parameters_dict['CLUSTER_SIZE']
-        MIN_SPOT_PER_CLUSTER = parameters_dict['MIN_SPOT_PER_CLUSTER']
-        ARTIFACT_RADIUS = parameters_dict['ARTIFACT_RADIUS']
-        DETECTION_SLICE_TO_REMOVE = parameters_dict['DETECTION_SLICE_TO_REMOVE']
-        MAX_WORKERS = parameters_dict['detection_MAX_WORKERS']
+        VOXEL_SIZE = pipeline_parameters['VOXEL_SIZE']
+        SPOT_SIZE = pipeline_parameters['SPOT_SIZE']
+        ALPHA = pipeline_parameters['ALPHA']
+        BETA = pipeline_parameters['BETA']
+        GAMMA = pipeline_parameters['GAMMA']
+        CLUSTER_SIZE = pipeline_parameters['CLUSTER_SIZE']
+        MIN_SPOT_PER_CLUSTER = pipeline_parameters['MIN_SPOT_PER_CLUSTER']
+        ARTIFACT_RADIUS = pipeline_parameters['ARTIFACT_RADIUS']
+        DETECTION_SLICE_TO_REMOVE = pipeline_parameters['DETECTION_SLICE_TO_REMOVE']
+        MAX_WORKERS = pipeline_parameters['detection_MAX_WORKERS']
     
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -225,12 +224,3 @@ def main(run_path) :
     Detection_save.to_feather(save_path + '/Detection.feather')
     Spots_save.to_feather(save_path + '/Spots.feather') 
     Clusters_save.to_feather(save_path + '/Clusters.feather')
-    
-    
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline detection' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)     
