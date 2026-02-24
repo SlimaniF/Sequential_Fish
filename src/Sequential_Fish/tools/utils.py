@@ -131,8 +131,8 @@ def _find_one_or_NaN(path, regex) :
 def safe_merge_no_duplicates(
         left : pd.DataFrame,
         right : pd.DataFrame,
-        keys : list[str],
-        on : str | None = None,
+        keys : list[str] | str,
+        on : str |list[str] | None = None,
         left_on : str | None = None,
         right_on : str | None = None,
         warn = False,

@@ -2,22 +2,16 @@
 This script aims at removing spots found in washout. 
 If a spot is detected during a washout cycle, all spots detected in succeeding cycles at same location are deleted.
 """
-import warnings, sys
 import pandas as pd
-
-from Sequential_Fish.tools import safe_merge_no_duplicates
+from ..settings import get_settings
+from ..tools import safe_merge_no_duplicates
 
 def main(run_path) :
     
     print(f"washout runing for {run_path}")
     
-    if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import WASHOUT_KEY_WORD
-    else :
-        from Sequential_Fish.run_saves import get_parameter_dict
-        PARAMETERS = ['WASHOUT_KEY_WORD']
-        pipeline_parameters = get_parameter_dict(run_path, parameters=PARAMETERS)
-        WASHOUT_KEY_WORD = pipeline_parameters['WASHOUT_KEY_WORD']
+    pipeline_parameters = get_settings(run_path)
+    WASHOUT_KEY_WORD = pipeline_parameters.WASHOUT_KEY_WORD
 
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
     Detection = pd.read_feather(run_path + '/result_tables/Detection.feather')
@@ -71,7 +65,7 @@ def main(run_path) :
         new_banned_coordinates = list(
             Spots[
                 (Spots['is_washout']) & (Spots['cycle'] == cycle)
-                ]['coordinates'].unique()
+                ]['coordinates'].unique() #pylint : ignore=reportAttributeAccessIssue
         )
 
         #Updating banned coordinates
@@ -91,19 +85,9 @@ def main(run_path) :
     )
 
     Spots.loc[Spots['cluster_id'].isin(Clusters[Clusters['is_washout'] == True])]['is_washout'] = True
-    print(Spots)
-
 
     print("\nSaving results...")
 
     Spots.reset_index(drop=True).to_feather(run_path + "/result_tables/Spots.feather")
     Clusters.reset_index(drop=True).to_feather(run_path + "/result_tables/Clusters.feather")
     print("Done")
-
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline input' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)        

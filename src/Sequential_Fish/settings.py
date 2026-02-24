@@ -7,9 +7,11 @@ from .types import pipeline_parameters
 
 def get_settings(run_path : str) -> pipeline_parameters :
 
-    if os.path.isfile(run_path + "/pipeline_settings") :
-        return _load_settings(run_path + "/pipeline_settings")
+    if os.path.isfile(run_path + "/pipeline_settings.json") :
+        print("open settings")
+        return _load_settings(run_path + "/pipeline_settings.json")
     else :
+        print("default settings")
         settings = pipeline_parameters.from_default_parameters()
         write_settings(settings, run_path)
         return settings

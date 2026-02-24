@@ -42,6 +42,7 @@ class pipeline_parameters(BaseModel) :
     BEAD_SIZE : tuple[int,int,int] = Field(default= (200,200,200))
     DRIFT_SLICE_TO_REMOVE : list[int | None] = Field(default_factory=lambda:[5,5])
     DO_HIGHPASS_FILTER : bool = Field(default= False)
+    REFERENCE_CYCLE : int = Field(default=0)
     COLOC_DISTANCE : int = Field(default=200)
     quantif_MAX_WORKERS : int = Field(default=10)
 

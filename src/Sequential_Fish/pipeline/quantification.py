@@ -1,5 +1,4 @@
 import numpy as np
-import warnings, sys
 import pandas as pd
 from bigfish.multistack import match_nuc_cell
 from smfishtools.preprocessing import shift_array
@@ -7,24 +6,19 @@ from concurrent.futures import ThreadPoolExecutor
 from smfishtools.detection.multithread import cell_quantification
 from tqdm import tqdm
 
-from Sequential_Fish.tools import safe_merge_no_duplicates
+from ..settings import get_settings
+from ..tools import safe_merge_no_duplicates
 
 
 def main(run_path) :
 
     print(f"quantification runing for {run_path}")
     
-    if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import quantif_MAX_WORKERS as MAX_WORKERS
-    else :
-        from Sequential_Fish.run_saves import get_parameter_dict
-        PARAMETERS = ['quantif_MAX_WORKERS']
-        pipeline_parameters = get_parameter_dict(run_path, parameters=PARAMETERS)
-        MAX_WORKERS = pipeline_parameters['quantif_MAX_WORKERS']
+    pipeline_parameters = get_settings(run_path)
+    MAX_WORKERS = pipeline_parameters.quantif_MAX_WORKERS
     
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
     Drift = pd.read_feather(run_path + '/result_tables/Drift.feather')
-    # Abberation = pd.read_feather(run_path + '/result_tables/Aberration.feather') #TODO
     Spots = pd.read_feather(run_path + '/result_tables/Spots.feather')
     Clusters = pd.read_feather(run_path + '/result_tables/Clusters.feather')
     Detection = pd.read_feather(run_path + '/result_tables/Detection.feather')
@@ -36,6 +30,7 @@ def main(run_path) :
     if not "cell_label" in Clusters.columns : Clusters['cell_label'] = np.nan
 
     # Matching location with Drift
+    print(Drift['acquisition_id'])
     Drift = safe_merge_no_duplicates(
         Drift,
         Acquisition,
@@ -52,6 +47,7 @@ def main(run_path) :
     )
 
     Cell_save = pd.DataFrame()
+    Cell = pd.DataFrame()
     for location in Acquisition['location'].unique() :
         print("Starting {0}".format(location))
 
@@ -65,8 +61,6 @@ def main(run_path) :
         drift = Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']].to_numpy(dtype=int).squeeze()
         nucleus_label = shift_array(nucleus_label, *drift)
 
-        #Correct abberation for nucleus
-        #TODO
         nucleus_label, cytoplasm_label = match_nuc_cell(nucleus_label, cytoplasm_label, single_nuc=True, cell_alone=False)
 
         #Getting Detection ids for this fov
@@ -140,7 +134,7 @@ def main(run_path) :
 
         #Launching threads on cell features
         detection_fov = np.load(run_path + '/detection_fov/{0}.npz'.format(location))
-        fov_list = [detection_fov[fov_idx] for fov_idx in sub_Detection['image_key']] #TODO remove max projection once arrays will be saved directly in 2D
+        fov_list = [detection_fov[fov_idx] for fov_idx in sub_Detection['image_key']]
 
         print("Starting individual cell metrics for {0} detections".format(len(sub_Detection)))
         with ThreadPoolExecutor(max_workers= MAX_WORKERS) as executor :
@@ -176,7 +170,7 @@ def main(run_path) :
     )
     if len(Cell_merged) != cell_len : 
         print("\033[33mWARNING : Cell line conservation failed during merge. Saving a copy of the table before merge.\033[00m")
-        Cell_save.reset_index(drop=True).to_feather(run_path = "/result_tables/Cell_before_merge.feather")
+        Cell_save.reset_index(drop=True).to_feather(run_path + "/result_tables/Cell_before_merge.feather")
     else :
         del Cell_save
     Cell['detection_id'] = Cell['detection_id'].astype(int)
@@ -191,12 +185,3 @@ def main(run_path) :
     Drift.reset_index(drop=True).to_feather(run_path + "/result_tables/Drift.feather")
     Detection.reset_index(drop=True).to_feather(run_path + "/result_tables/Detection.feather")
     print("Quantification finished.")
-    
-    
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline quantification' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from Sequential_Fish.pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path)  

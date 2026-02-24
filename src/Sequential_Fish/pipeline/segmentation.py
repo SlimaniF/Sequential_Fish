@@ -9,7 +9,8 @@ import cellpose.models as models
 import bigfish.plot as plot
 
 from tqdm import tqdm
-from Sequential_Fish.tools.utils import open_image, reorder_image_stack
+from ..tools.utils import open_image, reorder_image_stack
+from ..settings import get_settings
 
 #### USER PARAMETERS
 
@@ -17,7 +18,6 @@ def main(run_path) :
     
     print(f"segmentation runing for {run_path}")
     
-    from ..settings import get_settings
     pipeline_parameters = get_settings(run_path)
 
     PLOT_VISUALS = pipeline_parameters.PLOT_VISUALS
