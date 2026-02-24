@@ -3,7 +3,6 @@ Submodule for data post processing, eg Filtering...
 """
 
 import pandas as pd
-from .analysis_parameters import FILTER_RNA
 from ..tools import safe_merge_no_duplicates
 
 def Spots_filtering(
@@ -13,6 +12,12 @@ def Spots_filtering(
     filter_washout= True,
     segmentation_filter= True,
     ) :
+    """
+    Filters :
+        -> Washout
+        -> Spots out of segmentation
+        -> Spots in discarded cells
+    """
     
     if filter_washout : 
         Spots = Spots.loc[~Spots['is_washout']]
@@ -34,7 +39,7 @@ def Spots_filtering(
         
         Spots = pd.merge(
             Spots,
-            Cell,
+            Cell.loc[:,['location','label','detection_id']],
             how='inner',
             left_on= ['location','cell_label','detection_id'],
             right_on= ['location','label','detection_id']
@@ -42,7 +47,7 @@ def Spots_filtering(
         
     return Spots
 
-def RNA_filtering(df_with_target : pd.DataFrame, rna_to_filter : 'list[str]' = FILTER_RNA) :
+def RNA_filtering(df_with_target : pd.DataFrame, rna_to_filter : 'list[str]') :
     
     if 'target' not in df_with_target : raise KeyError('"target" column was not found in dataframe columns.')
     

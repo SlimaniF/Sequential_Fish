@@ -22,11 +22,11 @@ script_folder = os.path.abspath(__file__)
 script_folder = os.path.dirname(script_folder)
 
 scripts_rounds = {
-    'input' : ['input.py'],
-    'analysis' : ['detection.py', 'segmentation.py', 'drift.py'],
-    'alignement' : ['alignement.py'],
-    'filtering' : ['washout.py'],
-    'quantification' : ['quantification.py']
+    'input' : ['input'],
+    'analysis' : ['detection', 'segmentation', 'drift'],
+    'alignement' : ['alignement'],
+    'filtering' : ['washout'],
+    'quantification' : ['quantification']
 }
 
 ### script launcher function

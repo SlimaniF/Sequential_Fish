@@ -1,4 +1,8 @@
+
+#Plots
 frameon = True
+
+#Preprocessing
 FILTER_RNA = ['POLR2B_20']
 
 RENAME_RULE = {
@@ -16,6 +20,9 @@ distribution_measures = [
     'index_mean_distance_nuc', 
     'index_mean_distance_cell'
     ]
+
+#Chromatic abberration
+reference_wavelength = 555 #nm ; None to ignore chromatic abberrations
 
 # Density analysis
 min_diversity = 3

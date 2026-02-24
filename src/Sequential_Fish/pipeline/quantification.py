@@ -43,7 +43,7 @@ def main(run_path) :
         Detection,
         Acquisition,
         on= 'acquisition_id',
-        keys= 'location'
+        keys= ['location','cycle']
     )
 
     Cell_save = pd.DataFrame()
@@ -55,16 +55,30 @@ def main(run_path) :
         segmentation_results = np.load(run_path + '/segmentation/{0}_segmentation.npz'.format(location))
         cytoplasm_label = segmentation_results['cytoplasm']
         nucleus_label = segmentation_results['nucleus']
-        dapi_signal = segmentation_results['dapi_signal']
+
+        image_stack = open_location(
+            Acquisition=Acquisition,
+            location=location
+        )
+        dapi_channel = Acquisition['dapi_channel'].iat[0]
+        dapi_list = [image_stack[i,:,:,:,dapi_channel] for i in range(len(image_stack))]
+        if dapi_list[0].ndim == 3 :
+            dapi_list = [np.max(image,axis=0) for image in dapi_list]
+
 
         #Correct drift for nucleus
         drift = Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']].to_numpy(dtype=int).squeeze()
         nucleus_label = shift_array(nucleus_label, *drift)
 
+        #Correct abberation for nucleus
+        #TODO
+        if nucleus_label.ndim == 3 : nucleus_label = np.max(nucleus_label, axis=0)
+        if cytoplasm_label.ndim == 3 : cytoplasm_label = np.max(cytoplasm_label, axis=0)
+
         nucleus_label, cytoplasm_label = match_nuc_cell(nucleus_label, cytoplasm_label, single_nuc=True, cell_alone=False)
 
         #Getting Detection ids for this fov
-        sub_Detection = Detection.loc[Detection['location'] == location]
+        sub_Detection = Detection.loc[Detection['location'] == location].sort_values("cycle")
         selected_detection_id = sub_Detection['detection_id']
 
         # Adding cell label and if spots are in nuc seg
@@ -133,8 +147,7 @@ def main(run_path) :
         detection_number = len(selected_detection_id)
 
         #Launching threads on cell features
-        detection_fov = np.load(run_path + '/detection_fov/{0}.npz'.format(location))
-        fov_list = [detection_fov[fov_idx] for fov_idx in sub_Detection['image_key']]
+        fov_list = [image[..., color] for image, color in zip(image_stack, sub_Detection['color_id'])]
 
         print("Starting individual cell metrics for {0} detections".format(len(sub_Detection)))
         with ThreadPoolExecutor(max_workers= MAX_WORKERS) as executor :
@@ -148,7 +161,7 @@ def main(run_path) :
                 [cytoplasm_label] * detection_number,
                 [nucleus_label] * detection_number,
                 fov_list,
-                [dapi_signal]*detection_number
+                dapi_list
             ),total= len(sub_Detection), desc="individual cell metrics"))
         Cell = pd.concat(cell_quantification_result, axis=0) 
         Cell['location'] = location

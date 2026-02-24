@@ -7,6 +7,16 @@ from bigfish.stack import read_image as _read_image
 from typing import cast
 
 import warnings
+import re, os, warnings
+from skimage import io
+from czifile import imread as _imread
+from bigfish.stack import read_image as _read_image
+from datetime import datetime
+from scipy.ndimage import distance_transform_edt
+
+import warnings
+from aicsimageio import AICSImage
+from typing import Optional, Tuple
 
 
 class MappingError(Exception) :
@@ -67,33 +77,53 @@ def auto_map_channels(
     return map_
 
 
-def reorder_image_stack(image, _map) :
+def reorder_image_stack(image, channel_map, is_3D = True) :
     """
     will order image to cycles-zyxc
     """
-    
+
     dim = image.ndim
-    if dim == 5 :
-        new_order = (_map['cycles'], _map['z'], _map['y'], _map['x'], _map['c'])
-        ref_order = [0,1,2,3,4]
-    elif dim == 4 :
-        new_order = (_map['z'], _map['y'], _map['x'], _map['c'])
-        ref_order = [0,1,2,3]
+    if is_3D :
+        if dim == 5 :
+            new_order = (channel_map['cycles'], channel_map['z'], channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2,3,4]
+        elif dim == 4 :
+            new_order = (channel_map['z'], channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2,3]
+        else :
+            raise AssertionError(f"Uncorrect dimension : {dim} ; expected 5 or 4")
     else :
-        raise AssertionError()
+        if dim == 4 :
+            new_order = (channel_map['cycles'], channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2,3]
+        elif dim == 3 :
+            new_order = (channel_map['y'], channel_map['x'], channel_map['c'])
+            ref_order = [0,1,2]
+        else :
+            raise AssertionError(f"Uncorrect dimension : {dim} ; expected 4 or 3")
+
+
 
     image = np.moveaxis(image, new_order, ref_order)
     return image
 
-# def reorder_shape_tuple(shape, map) :
 
-
-def open_image(path:str, _map=None) :
+def open_image(path:str, image_number=None) :
     """
-    Supports czi, png, jpg, jpeg, tif or tiff extensions.
+    Supports czi, png, jpg, jpeg, tif or tiff extensions.  
+    If `image_number` is provided, extension must be .tif or .tiff
     """
 
     SUPPORTED_TYPES = ('.png', '.jpg', '.jpeg','.tif', '.tiff')
+
+    if not image_number is None :
+        if path.endswith('.tif') or path.endswith('.tiff') :
+            im = [io.imread(path, plugin="tifffile", img_num=im_index) for im_index in range(image_number)]
+            im = np.stack(im)
+            return im
+        else :
+            warnings.warn("'image_number' is provided with a non tiff extension, ignoring 'image_number' argument")
+
 
     if path.endswith('.czi') :
         im = _imread(path)
@@ -211,3 +241,168 @@ def gaussian_kernel_size(object_size_nm, voxel_size, width= 'FWHM') :
     else : raise TypeError("object size and voxel_size parameters should be tuple or float like object and be coherent.")
 
 
+
+def open_location(
+        Acquisition : pd.DataFrame,
+        location : str,
+) :
+    """
+    Open all cycles of a location and reorder stacks in order (cycle,z,y,x,channel)
+    """
+    loc_Acquisition : pd.Index = Acquisition.loc[Acquisition['location'] == location].sort_values('cycle').index
+    assert len(loc_Acquisition) == len(Acquisition['cycle'].unique()), "Duplicates locations or missing locations found"
+
+    fish_path = Acquisition.at[loc_Acquisition[0], 'full_path']
+    fish_im = open_image(fish_path)
+
+    stack_map = Acquisition.loc[Acquisition['location'] == location]['fish_map'].iat[0]   
+    fish_im = reorder_image_stack(fish_im, channel_map=stack_map)
+
+    return fish_im
+
+def open_cycle(
+        Acquisition : pd.DataFrame,
+        location : str,
+        cycle : int,
+) :
+    """
+    Open specific cycle of a location and reorder stacks in order (z,y,x,channel)
+    """
+    loc_Acquisition = Acquisition.loc[Acquisition['location'] == location].index
+    assert len(loc_Acquisition) == 1, "Duplicates locations or no location found"
+    fish_path = Acquisition.at[loc_Acquisition[0], 'full_path']
+
+    #Getting image informations
+    fish_path_list = os.listdir(fish_path)
+    fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST ie : filename cycle matches map cycles and rest of filename doesn't change list order.
+    stack_map = Acquisition.iat[(location,cycle), "fish_map"]
+    stack_shape = Acquisition.iat[(location, cycle), "fish_shape"] 
+    fullpath = Acquisition.iat[(location,cycle), "full_path"]
+    
+    #Preparing image shape
+    z = stack_map['z']
+    c = stack_map['c']
+    image_number = stack_shape[z] * stack_shape[c]
+    image_stack = open_image(fullpath, image_number= image_number)
+
+    image_stack = reorder_image_stack(image_stack, channel_map=stack_map)
+
+    return image_stack
+
+def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[int], Optional[int], Optional[int]]]:
+    """
+    Returns voxel size in nanometers (nm) as a tuple (X, Y, Z).
+    Any of the dimensions may be None if not available.
+    /WARINING\ : the unit might not be nm
+    """
+    try:
+        img = AICSImage(filepath)
+        voxel_sizes = img.physical_pixel_sizes  # values in meters
+        if voxel_sizes is None:
+            return None
+        x = voxel_sizes.X * 1e3 if voxel_sizes.X else None
+        y = voxel_sizes.Y * 1e3 if voxel_sizes.Y else None
+        z = voxel_sizes.Z * 1e3 if voxel_sizes.Z else None
+        return (z, y, x)
+    except Exception as e:
+        raise ValueError(f"Failed to read voxel size from {filepath}: {e}")
+        return None
+    
+def get_min_cluster_radius(voxel_size) :
+    return max(voxel_size)
+    
+    
+def get_voxel_size(Detection : pd.DataFrame) :
+    voxel_size = tuple(Detection['voxel_size'].iat[0])
+    voxel_size = [int(i) for i in voxel_size]
+    
+    return voxel_size
+
+
+def get_centroids_list(clusters_df) :
+
+    """
+    clusters_list should be a pd.DataFrame with ['z', 'y', 'x'] or ['y', 'x'] keys.
+    """
+
+    if 'y' in clusters_df.columns and 'x' in clusters_df.columns :
+        if 'z' in clusters_df.columns : keys = [clusters_df['z'], clusters_df['y'], clusters_df['x']]
+        else : keys = [clusters_df['y'], clusters_df['x']]
+    else : raise ValueError("Expected keys : ['z', 'y', 'x'] or ['y', 'x']")
+
+    return list(zip(*keys))
+
+
+def get_centroids_array(cluster_df) :
+
+    if len(cluster_df) == 0 :
+        return np.empty(shape=(0,0), dtype=int)
+
+    else : return np.array(get_centroids_list(cluster_df), dtype= int)
+
+def _compute_critical_spot_number(radius_nm, voxel_size, density) :
+    
+    max_pixel_distance = int(max(nanometer_to_pixel(radius_nm, voxel_size)))
+    kernel = np.ones(shape=(2*max_pixel_distance+1 ,2*max_pixel_distance+1, 2*max_pixel_distance+1)) #always odd number so middle is always at [pixel_radius-1, pixel_radius-1, pixel_radius-1]
+    kernel[max_pixel_distance, max_pixel_distance, max_pixel_distance] = 0
+    kernel = distance_transform_edt(kernel, sampling= voxel_size) <= radius_nm
+
+    return int(round(kernel.sum() * density/100))
+
+
+def nanometer_to_pixel(value, scale) :
+    if isinstance(scale, (float,int)) : scale = [scale]
+    if isinstance(value, (float,int)) : value = [value]*len(scale)
+    if len(value) != len(scale) : raise ValueError("value and scale must have the same dimensionality")
+
+    return list(np.array(value) / np.array(scale))
+
+def compute_anisotropy_coef(voxel_size) :
+    """
+    voxel_size : tuple (z,y,x).
+    """
+
+    if not isinstance(voxel_size, (tuple, list)) : raise TypeError("Expected voxel_size tuple or list")
+    if len(voxel_size) == 2 : is_3D = False
+    elif len(voxel_size) == 3 : is_3D = True
+    else : raise ValueError("Expected 2D or 3D voxel, {0} element(s) found".format(len(voxel_size)))
+
+    if is_3D :
+        z_anisotropy = voxel_size[0] / voxel_size [2]
+        xy_anisotropy = voxel_size[1] / voxel_size [2]
+        return (z_anisotropy, xy_anisotropy, 1)
+
+    else :
+        return (voxel_size[0] / voxel_size[1], 1)
+    
+
+def shift_array(arr : np.ndarray,*args) :
+    indexer_new_array = []
+    indexer_old_array = []
+    for delta in args :
+        if delta == 0 : 
+            indexer_new_array.append(slice(None))
+            indexer_old_array.append(slice(None))
+        elif delta > 0 :
+            indexer_new_array.append(slice(delta,None))
+            indexer_old_array.append(slice(None,-delta))
+
+        else :
+            indexer_new_array.append(slice(None,delta))
+            indexer_old_array.append(slice(-delta,None))
+
+    if len(args) < arr.ndim :
+        indexer_old_array.append(...)
+        indexer_new_array.append(...)
+
+    indexer_new_array = tuple(indexer_new_array)
+    indexer_old_array = tuple(indexer_old_array)
+    new_arr = np.zeros_like(arr)
+
+    if len(args) > arr.ndim :
+        raise ValueError("too many axis to shift; dim : {0}, shift : {1}".format(arr.ndim, args))
+    else :
+        new_arr[indexer_new_array] = arr[indexer_old_array]
+        new_arr[indexer_new_array] = arr[indexer_old_array]
+
+    return new_arr

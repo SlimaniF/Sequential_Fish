@@ -5,7 +5,7 @@
 \usepackage{graphicx}
 
 \title{Probabilistic model of random co-colocalization in a cell}
-\author{}
+\author{IGH - Floric Slimani}
 \date{\today}
 
 \begin{document}
@@ -53,16 +53,6 @@ when a single molecule from distribution \textit{i} occupy the same voxel as a s
 
 
 
-
-
-
-
-
-
-
-
-
-
 \newpage
 \section{Probabilistic model}
 
@@ -73,12 +63,12 @@ before each draw balls are replaced in the urn.
 \subsection{Unique distribution}
 To begin, let us consider a system containing a unique distribution $I$ of single molecules randomly placed amongst the $v$ positions of the cell.
 
-\subsubsection{Self co-localization probability}
-The probability that a specific single molecule $i$ is found at position $m$ is the probability to draw the ball numbered
-$m$:
+\subsubsection{Voxel occupancy by a distribution}
+First let us consider how single molecules from an unique distribution occupy the voxels forming volume $V$. We call a voxel from this distribution $m$, the 
+probability that this voxel m is drawn at any draw ($i \in I$) is:
 
 \[
-    \hspace{3.5cm} p_i(X=m) = \frac{1}{v} \hspace{2cm} \forall  i \in I; \forall m \in V
+    \hspace{3.5cm} p_i(m) = \frac{1}{v} \hspace{2cm} \forall  i \in I; \forall m \in V
 \]
 Then the probability to not draw the specific location \textit{m} is:
 \[
@@ -92,15 +82,14 @@ On the contrary the probability that the location \textit{m} was drawn at least 
 \begin{equation}
 p_k(X_m \geq 1) = 1-(1 - \frac{1}{v})^k
 \end{equation}
-To study self co-localization we are interested to know how many different positions have been drawn in k-trials. To do so let us 
-define the observation variable $\epsilon$.
+We define the observation variable $\epsilon$ to study occupancy of positions $m \in V$:
 \[
 \forall m \in V, \epsilon (m) = \begin{cases}
     0 \text{ if } X_m = 0 \\
     1 \text{ if } X_m \geq 1
 \end{cases}
 \]
-The expected number of \textbf{different} positions $ N^{unique}_{pos} $ drawn is then the expectancy of $ \epsilon $ in the volume after k draws.
+The expected number of \textbf{different} positions $ \mu_{uniquepos} $ drawn is then the expectancy of $ \epsilon $ in the volume after k draws.
 \[
     \mu_{uniquepos} = \sum_{m \in V}p_k(X_m = 0).0 + p_k(X_m \geq 1).1
 \]
@@ -112,20 +101,33 @@ The expected number of \textbf{different} positions $ N^{unique}_{pos} $ drawn i
 \end{equation}
 Where $\mu_{up}$ is the mean number of occupied position.
 The expected number of different positions drawn is, in other words, the expected number of draws \textbf{that discovered a new position}.
-To adress self co-localization probability we are interested to know the number of draws that \textbf{didn't} discover a new position,
-in other words, duplicates draws or \textbf{self co-localization events}. To do so, we remove from the total number of picks (k) the
-number of picks that discover a new position.
+
+\subsubsection{Self co-localization expectancy}
+
+From the voxel occupancy expectancy defined as the number of draws that discovered a new position, we can find the number of duplicates draw by removing the 
+number of draws that discovered a new position to the total number of draws.
 \[
-\mu_{self colocalization} = k - v(1-(1-\frac{1}{v})^k)
+    \mu_{duplicate pos} = k-  v(1-{(1-\frac{1}{v})}^k) \\
 \]
-\begin{equation}
-p_{self colocalization}  = \frac{\mu_{sc}}{k} = 1 - \frac{v}{k}(1-{(1-\frac{1}{v})}^k)
-\end{equation}
-\textit{\textbf{Notes:}}
-\begin{itemize}
-    \item This is true for any distribution \textit{I} of single molecule \textit{i} of abundancy $ k_i $ (i.e. number of single molecule).
-    \item If $k = 1$, $p_{self colocalization} = 0$
-\end{itemize}
+However, to properly count the number of self co-localization we have to take into account the multiplicity of single molecules in voxel when making a duplicate
+draw at this position. For example if a position m is drawn $Xm = 2$ times, the number of duplicate draw is 1 while the number of molecules that self-colocalize is
+at $m$ is 2, that is to say the first duplicate draw at a position will create 2 self co-localization events but any subsequent draw will add only one. To adress 
+this we create a new observation variable $s_m(X_m)$:
+\[
+    s_m(X_m) = \begin{cases}
+    0 \text{ if } X_m < 2 \\
+    X_m \text{ if } X_m \geq 2
+\end{cases}
+\]
+The expectancy of self colocalizing singe molecules at $m$ is:
+\[
+    \mu_{selfcolocalization} = E(s_m(X_m)) = \sum_{X_m=0}^{k}s(X_m)p_m(X_m)
+\]
+\[\begin{split}
+    \Rightarrow \mu_{sc} &= 0 + 0 + \sum_{X_m=2}^{k}s(X_m)p_m(X_m) \\
+    &= 
+\end{split}
+\]
 
 \subsubsection{Self dependency of any distribution within the volume}
 
@@ -154,9 +156,11 @@ the volume of voxels. To conclude calculus using above and \textbf{(1)} :
 \begin{equation}
     P(X_m \geq 1 \cap X_l \geq 1) =  1 - 2(1-\frac{1}{v})^{k} + (1-\frac{2}{v})^{k} 
 \end{equation}
+
 \textbf{Conclusion : }All disitributions \textbf{are} independent from each other, but the occupancy of a voxel \textbf{is not} independent of the
 occupancy of other voxels. This result is important for the computation of variance for the occupancy of voxel, since it means we must introduce a 
 covariance term when summing up variables over voxels.
+
 
 \subsubsection{Covariance between $I_m$ and $I_l$}
 
@@ -182,9 +186,23 @@ After simplification :
     Cov(\epsilon(m);\epsilon(l)) = (1-\frac{2}{v})^k - (1-\frac{1}{v})^{2k}
 \end{equation}
 
+\subsubsection*{Notations:}
+\begin{itemize}
+    \item Let $p_i = (1-{(1-\frac{1}{v})}^{k_i})$, the probability that voxel $m$ is occupied with at least one molecule $i$.
+    \item Let $q_i = (1-2{(1-\frac{1}{v})}^{k_i} + {(1-\frac{2}{v})}^{k_i})$, the probability that voxel $m$ and $l\neq m$ are both occupied with at least
+    one molecule $i$.
+    \item Let $c_i = q_i - p_i^2$ which can be shown equal to $Cov(\epsilon(m);\epsilon(l))$ the covariance between the occupancy of two different voxels by the same distribution $i$.
+\end{itemize}
+
+The previously demonstrated results can be re-written as:
+\[
+\mu_{self colocalization} = k - vp
+\]
+
+
 \subsubsection{Standard deviation}
 To fully determine the probability density of voxel occupancy, let us find its standard deviation. We are computing the variance from the sum of dependent variables
-thus we have to use the law of total variance in its covariant form :
+thus we have to use the law of total variance in its covariant form:
 \[
 Var(N_{up}) = \sum_{m \in \mathbb{J}} Var(\epsilon(m)) +  2\sum_{m < l }Cov(\epsilon(m);\epsilon(l))
 \]
@@ -193,20 +211,25 @@ $I_m$ is a Bernoulli event of variance $p(1-p)$ :
 \[
 Var(\epsilon_m) = (1-(1-\frac{1}{v})^k)(1-\frac{1}{v})^k
 \]
-The number of unordered $(m,l)$ pairs for $l \neq m$ is the number of pairs of voxel we can fit in the $v$ voxels : 
+The number of unordered $(m,l)$ pairs for $l \neq m$ is the number of pairs of voxel we can fit in the $v$ voxels: 
 \[
     2\sum_{m < l }Cov(I_m;I_l) = 2\binom{v}{2}Cov(I_m;I_l) = 2\frac{v(v-1)}{2}Cov 
 \]
 
-So total variance is :
+So total variance is:
 \[
-    \sigma^2_{up} = v[1-(1-\frac{1}{v})^k](1-\frac{1}{v})^k + v(v-1)[(1-\frac{2}{v})^k - (1-\frac{1}{v})^{2k}]
+    \sigma^2_{up} = v[1-{(1-\frac{1}{v})}^k]{(1-\frac{1}{v})}^k + v(v-1)[(1-\frac{2}{v})^k - (1-\frac{1}{v})^{2k}]
 \]
-And standard deviation :
+And standard deviation:
+\[
+    \sigma_{up} = \sqrt{v[1-{(1-\frac{1}{v})}^k]{(1-\frac{1}{v})}^k + v(v-1)[(1-\frac{2}{v})^k - (1-\frac{1}{v})^{2k}]}
+\]
+which simplyfies to:
 \begin{equation}
-    \sigma_{up} = \sqrt{v[1-(1-\frac{1}{v})^k](1-\frac{1}{v})^k + v(v-1)[(1-\frac{2}{v})^k - (1-\frac{1}{v})^{2k}]}
+    \sigma_{up} = \sqrt{vp_i(1-p_i) + v(v-1)c_i}
 \end{equation}
-
+\textbf{Notes:} $\sigma_{up}$ is also the standard deviation for self-colocalization since the number of self co-localization is the also the number
+of draws that didn't discover a new location: $\mu_{sc} = k_i - v*p_i$ so variance arises only from $p_i$ term.
 
 
 \newpage
@@ -224,7 +247,7 @@ drawn while assigning postions to $J$ distribution have been colored in \textbf{
 each draw. Then the co-localization probability $p(C(i,j))$ is the
 probability to draw a red ball.
 
-\subsubsection{Probability of co-localization}
+\subsubsection{Probability of co-localization and co-localization expectancy}
 Drawing ball in the urn is a sequence of independent and uniformly random events. The probability of picking one of the $N^j_{uniquepos}$ red ball amongst the $v$
 balls is :
 \[
@@ -244,7 +267,7 @@ $E(C(i,j) | J)$ is the expectancy from the bionomial law mentioned above.
 \]
 
 \begin{equation}
-    \mu_{Cij} = \frac{k_i}(1-(1-\frac{1}{v})^{k_j})
+    \mu_{Cij} = \frac{k_i}{v}(1-(1-\frac{1}{v})^{k_j})
 \end{equation}
 
 \textit{\textbf{Notes:}}
@@ -252,7 +275,7 @@ $E(C(i,j) | J)$ is the expectancy from the bionomial law mentioned above.
     \item $\mu_{Cij} \neq \mu_{Cji}$
 \end{itemize}
 
-\subsubsection{Co-localization probability standard deviation}
+\subsubsection{Co-localization standard deviation}
 
 Similarly to previous paragraph, let us find the standard deviation for number of co-localization events when considering $J$ not fixed. 
 To do so the calculus of variance should take into consideration the variance of $N^j_{uniquepos}$ and use the law of total variance,
@@ -287,15 +310,19 @@ Total variance is :
     \sigma^2_{Cij} = \frac{k_i}{v}(\mu^j_{up} - \frac{\sigma^2_{up} + \mu^2_{up}}{v}) + k_i\frac{\sigma^{2_j}_{up}}{v}
 \]
 With $\mu^j_{up}$ and $\sigma^j_{up}$ defined in equations \textbf{(2)} and \textbf{(6)}.\newline
-In conclusion we can write the standard deviation of the number of co-localization events as :
+In conclusion we can write the standard deviation of the number of co-localization events as:
 \begin{equation}
     \sigma_{Cij} = \sqrt{\frac{k_i}{v}(\mu^j_{up} - \frac{\sigma^2_{up} + \mu^2_{up}}{v}) + k_i\frac{\sigma^{2_j}_{up}}{v}}
 \end{equation}
+Which simplifies as :
+\[
+    \sigma_{Cij} = \sqrt{k_i((1-\frac{1}{v})(p_j(1-p_j)-c_j)+c_j)}
+\]
 
 
 
 
-\subsubsection{Voxel occupancy by a pair (i,j)}
+\subsubsection{Voxel occupancy by a pair (i,j) - Expectancy}
 In section 3.1 we deduced the probability that a specific location $m$ to be drawn at least once  in $k$ draws as :
 \[
     \hspace{2cm} p_k(X_m \geq 1) = 1-(1 - \frac{1}{v})^k \hspace{2cm} \textbf{(1)}
@@ -327,13 +354,13 @@ or for $J$ not fixed:
 
 
 
-\subsubsection{Voxel occupancy by a pair (i,j)-Standard deviation}
+\subsubsection{Voxel occupancy by a pair (i,j) - Standard deviation}
 
 \textbf{Notes \& notations:}
 \begin{itemize}
-    \item Let $p_i = (1-{(1-\frac{1}{v})}^{k_i})$, the probability that voxel $m$ is occupied with at least one molecule $i$.
+    \item Let's recall $p_i = (1-{(1-\frac{1}{v})}^{k_i})$, the probability that voxel $m$ is occupied with at least one molecule $i$.
     \item The probability that $i$ and $j$ are in voxel $m$ can be written $P(X^i_m \cap X^j_m) = p_ip_j$ since $I$ and $J$ are independent.
-    \item Let $q_i = (1-2{(1-\frac{1}{v})}^{k_i} + {(1-\frac{2}{v})}^{k_i})$, the probability that voxel $m$ and $l\neq m$ are both occupied with at least
+    \item Recall aswell $q_i = (1-2{(1-\frac{1}{v})}^{k_i} + {(1-\frac{2}{v})}^{k_i})$, the probability that voxel $m$ and $l\neq m$ are both occupied with at least
     one molecule $i$.
     \item The probability that $i$ and $j$ are in voxel $m$ and $l$ can be written $P((X^i_m \cap X^j_m) \cap (X^i_l \cap X^j_l)) = q_iq_j$ since $I$ and $J$ are independent.
 \end{itemize}
@@ -405,11 +432,11 @@ After simplification, we have the total variance:
 \end{equation}
 
 \newpage
-\section*{Generalization to \(n\) Distributions}
+\subsection{Generalization to \(n\) Distributions}
 
 Consider \(n\) independent molecule distributions labeled \(1,2,\dots,n\), with abundances \(k_i\) in a volume discretized into \(v\) voxels.
 
-\subsection*{1. Single-Distribution Quantities}
+\subsubsection{Single-Distribution Quantities}
 
 For each distribution \(i\), define
 \[
@@ -421,7 +448,7 @@ q_i \;=\;\Pr(X_{i,m}\ge1,\;X_{i,\ell}\ge1)
 \]
 for any two distinct voxels \(m\neq\ell\).
 
-\subsection*{2. Combination of Distributions}
+\subsubsection{Combination of Distributions}
 
 Let \(c\subseteq\{1,\dots,n\}\) be any nonempty subset of distributions.  Define
 \[
@@ -432,7 +459,7 @@ q_c \;=\;\Pr(\forall\,i\in c:\,X_{i,m}\ge1,\;X_{i,\ell}\ge1)
 =\prod_{i\in c} q_i.
 \]
 
-\subsection*{3. Random Variable}
+\subsubsection{Random Variable}
 
 Define the count of voxels co-occupied by all distributions in \(c\):
 \[
@@ -441,7 +468,7 @@ N_c \;=\;\sum_{m=1}^v I^{(c)}_m,
 I^{(c)}_m = \mathbf{1}\{\forall\,i\in c:\,X_{i,m}\ge1\}.
 \]
 
-\subsection*{4. Expectation}
+\subsubsection{Expectation}
 
 Each \(I^{(c)}_m\) has marginal probability \(p_c\), so
 \[
@@ -449,8 +476,10 @@ E\bigl[N_c\bigr]
 = \sum_{m=1}^v E[I^{(c)}_m]
 = v\,p_c.
 \]
+\textbf{Note:} this is the expected number of combination without accounting for multiplicity of distributions (one distribution having more that 1
+single at the same spot). It will only count the expected location number containing this combination (Co-occupancy). 
 
-\subsection*{5. Variance and Standard Deviation}
+\subsubsection{Variance and Standard Deviation}
 
 Because the indicators \(I^{(c)}_m\) are dependent across voxels, use
 \[

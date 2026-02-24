@@ -6,18 +6,32 @@ import pandas as pd
 from .post_processing import Spots_filtering
 from .density import density_analysis
 from .distributions import distributions_analysis
+<<<<<<< HEAD
+=======
+from .pipeline_metrics import pipeline_metrics
+from .colocalisation import main as coloc_main
+from ..status import select_path_for_analysis
+from ..status import load_analysis_parameters, exists_analysis_parameters, write_analysis_parameters, get_raw_analysis_parameters
+from ..chromatic_abberrations import correct_Spots_dataframe
+
+>>>>>>> Modification_drift_correction
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
 
-def run(*args) :
+def run(run_path,*args) :
     
     if '-h' in args or '--help' in args :    
         print(f"Avalaible modules are {ANALYSIS_MODULES}")
         return True
     
-    run_path = select_path()
     if run_path is None : quit()
     else : print(run_path)
+
+    if exists_analysis_parameters(run_path) :
+        analysis_parameters = load_analysis_parameters(run_path) 
+    else :
+        analysis_parameters = get_raw_analysis_parameters()
+        write_analysis_parameters(run_path, analysis_parameters)
     
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
     Detection = pd.read_feather(run_path + "/result_tables/Detection.feather")
@@ -27,11 +41,15 @@ def run(*args) :
     Cell = pd.read_feather(run_path + "/result_tables/Cell.feather")
 
     #Post-processing
+    Spots = correct_Spots_dataframe(#Chromatic abberation correction
+        Detection=Detection,
+        Spots=Spots,
+        reference_wavelength= analysis_parameters.reference_wavelength
+    ) 
     unfiltered_Spots = Spots.copy()
     
     #Rename target
-    from .analysis_parameters import RENAME_RULE, frameon
-    Gene_map["target"] = Gene_map['target'].replace(RENAME_RULE)
+    Gene_map["target"] = Gene_map['target'].replace(analysis_parameters.RENAME_RULE)
     
     Spots = Spots_filtering(
         Spots,
@@ -48,10 +66,8 @@ def run(*args) :
         Cell=Cell,
         Detection=Detection
     )
-    
+
     if "distributions" in args or "all" in args :
-        
-        from .analysis_parameters import distribution_measures
         
         distribution_sucess = distributions_analysis(
             Acquisition=Acquisition,
@@ -60,23 +76,22 @@ def run(*args) :
             Spots=Spots,
             Gene_map=Gene_map,
             run_path=run_path,
-            disibutions_measures= distribution_measures
+            disibutions_measures= analysis_parameters.distribution_measures
         )
         if not distribution_sucess :
             print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
     
     if "density" in args  or "all" in args:
         
-        from .analysis_parameters import min_diversity, min_spots_number, cluster_radius
         density_sucess = density_analysis(
             Acquisition=Acquisition,
             Detection=Detection,
             Spots=Spots,
             Gene_map=Gene_map,
             run_path=run_path,
-            min_number_spots=min_spots_number,
-            min_diversity=min_diversity,
-            cluster_radius=cluster_radius
+            min_number_spots=analysis_parameters.min_spots_number,
+            min_diversity=analysis_parameters.min_diversity,
+            cluster_radius=analysis_parameters.cluster_radius
         )
         if not density_sucess :
             print("Error raised during density analysis. Please check log in ~analysis/density_analysis folder.")
@@ -87,7 +102,6 @@ def run(*args) :
         "pipeline metrics" in args,
     ))
     if any_pipeline_metrics or "all" in args:
-        from .pipeline_metrics import pipeline_metrics
         drift_sucess = pipeline_metrics(
             Acquisition=Acquisition,
             Detection=Detection,
@@ -111,8 +125,6 @@ def run(*args) :
         
     ))
     if any_paircoloc or "all" in args:
-        from .colocalisation import main as coloc_main
-        from .analysis_parameters import coloc_distance, coloc_significance
         
         coloc_sucess = coloc_main(
             filtered_Spots=Spots,
@@ -120,10 +132,10 @@ def run(*args) :
             Acquisition=Acquisition,
             Detection=Detection,
             Gene_map=Gene_map,
-            colocalisation_distance=coloc_distance,
+            colocalisation_distance=analysis_parameters.coloc_distance,
             run_path=run_path,
-            significance= coloc_significance,
-            frameon=frameon
+            significance= analysis_parameters.coloc_significance,
+            frameon=analysis_parameters.frameon
         )
 
         if not coloc_sucess :

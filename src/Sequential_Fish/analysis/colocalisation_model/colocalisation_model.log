@@ -1,10 +1,10 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.4.15)  6 MAY 2025 11:11
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.4.23)  7 JUL 2025 16:30
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
  %&-line parsing enabled.
-**/home/floric/miniconda3/envs/dev/lib/python3.8/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex
-(/home/floric/miniconda3/envs/dev/lib/python3.8/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex
+**/home/flo/miniconda3/envs/dev/lib/python3.8/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex
+(/home/flo/miniconda3/envs/dev/lib/python3.8/site-packages/Sequential_Fish/analysis/colocalisation_model/colocalisation_model.tex
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
 (/usr/share/texlive/texmf-dist/tex/latex/base/article.cls
@@ -164,22 +164,19 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2] [3] [4] [5] [6]
-Overfull \hbox (2.69505pt too wide) in paragraph at lines 288--291
+Overfull \hbox (2.69505pt too wide) in paragraph at lines 311--314
 \OT1/cmr/m/n/10 In con-clu-sion we can write the stan-dard de-vi-a-tion of the num-ber of co-localization
  []
 
 [7] [8] [9] [10]
-Overfull \hbox (59.42606pt too wide) detected at line 421
+Overfull \hbox (59.42606pt too wide) detected at line 448
 \OML/cmm/m/it/10 p[]  \OT1/cmr/m/n/10 =  [](\OML/cmm/m/it/10 X[] \OMS/cmsy/m/n/10 ^^U \OT1/cmr/m/n/10 1) = 1 \OMS/cmsy/m/n/10 ^^@ []\OT1/cmr/m/n/10 1 \OMS/cmsy/m/n/10 ^^@ [][][]\OML/cmm/m/it/10 ;  q[]  \OT1/cmr/m/n/10 =  [](\OML/cmm/m/it/10 X[] \OMS/cmsy/m/n/10 ^^U \OT1/cmr/m/n/10 1\OML/cmm/m/it/10 ;  X[] \OMS/cmsy/m/n/10 ^^U \OT1/cmr/m/n/10 1) = 1 \OMS/cmsy/m/n/10 ^^@ \OT1/cmr/m/n/10 2[]1 \OMS/cmsy/m/n/10 ^^@ [][][] \OT1/cmr/m/n/10 + []1 \OMS/cmsy/m/n/10 ^^@ [][][]\OML/cmm/m/it/10 ;
  []
 
 
-Overfull \hbox (32.51372pt too wide) detected at line 433
+Overfull \hbox (32.51372pt too wide) detected at line 460
 \OML/cmm/m/it/10 p[]  \OT1/cmr/m/n/10 =  [](\OMS/cmsy/m/n/10 8 \OML/cmm/m/it/10 i \OMS/cmsy/m/n/10 2 \OML/cmm/m/it/10 c \OT1/cmr/m/n/10 :  \OML/cmm/m/it/10 X[] \OMS/cmsy/m/n/10 ^^U \OT1/cmr/m/n/10 1) = [] \OML/cmm/m/it/10 p[];  q[]  \OT1/cmr/m/n/10 =  [](\OMS/cmsy/m/n/10 8 \OML/cmm/m/it/10 i \OMS/cmsy/m/n/10 2 \OML/cmm/m/it/10 c \OT1/cmr/m/n/10 :  \OML/cmm/m/it/10 X[] \OMS/cmsy/m/n/10 ^^U \OT1/cmr/m/n/10 1\OML/cmm/m/it/10 ;  X[] \OMS/cmsy/m/n/10 ^^U \OT1/cmr/m/n/10 1) = [] \OML/cmm/m/it/10 q[]:
  []
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
 
 [11] [12] (./colocalisation_model.aux)
  ***********
@@ -188,15 +185,15 @@ L3 programming layer <2024-01-22>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 2563 strings out of 476182
- 37159 string characters out of 5795595
+ 2558 strings out of 476182
+ 37071 string characters out of 5795595
  1938975 words of memory out of 5000000
- 24558 multiletter control sequences out of 15000+600000
- 568838 words of font info for 77 fonts, out of 8000000 for 9000
+ 24553 multiletter control sequences out of 15000+600000
+ 567591 words of font info for 72 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 57i,16n,65p,343b,220s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </home/floric/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbxti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm7.pfb>
-Output written on colocalisation_model.pdf (12 pages, 213202 bytes).
+ 57i,16n,65p,340b,220s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </home/flo/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbxti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm7.pfb>
+Output written on colocalisation_model.pdf (12 pages, 219205 bytes).
 PDF statistics:
  134 PDF objects out of 1000 (max. 8388607)
  83 compressed objects within 1 object stream

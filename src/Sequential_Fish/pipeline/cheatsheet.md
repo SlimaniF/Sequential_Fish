@@ -6,13 +6,15 @@
         *location	
         *cycle	
         *full_path	
-        *dapi_full_path	
         Gene1 (Ch1 - Cy5)	
         Gene2 (Ch2 - Cy3)	
         Barcode 1	
         Barcode 2
         threshold_i # for i in colors
-
+        "fish_shape",
+        "fish_map",
+        full_path
+        
 ## Detection
         *'detection_id
         *'acquisition_id' : sub_data['acquisition_id']

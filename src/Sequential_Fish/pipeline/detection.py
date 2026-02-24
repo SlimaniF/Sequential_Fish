@@ -13,6 +13,17 @@ from smfishtools.detection import multi_thread_full_detection
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from typing import cast
+import logging
+import os, sys
+import warnings
+from tqdm import tqdm
+from pebble import ProcessPool
+import numpy as np
+import pandas as pd
+from concurrent.futures import TimeoutError
+
+
+from Sequential_Fish.tools._detection import multi_thread_full_detection
 
 #########
 ## USER PARAMETERS
@@ -58,14 +69,14 @@ def main(run_path) :
         os.makedirs(visual_path, exist_ok=True)
 
         #Opening images
-        print("loading images...")
-        image_path = sub_data[sub_data['cycle'] == 0]['full_path']
-        image_map = sub_data[sub_data['cycle'] == 0]['fish_map']
-        assert len(image_path) == 1, image_path
-        image_path = image_path.iat[0]    
-        image_map = image_map.iat[0]    
-        multichannel_stack = open_image(image_path)# This open 4D multichannel image (all the images are loaded in one call)
-        multichannel_stack = reorder_image_stack(multichannel_stack, image_map)
+        multichannel_stack = open_location(Acquisition, location)
+        
+        dapi_channel = sub_data['dapi_channel'].iat[0]
+        bead_channel = sub_data['bead_channel'].iat[0]
+        if not bead_channel is None : 
+            end_signal = min(dapi_channel, bead_channel)
+        else :
+            end_signal = dapi_channel
 
         #Converting na back to None
         bottom_index, top_index = DETECTION_SLICE_TO_REMOVE
@@ -86,8 +97,7 @@ def main(run_path) :
         if not top_index is None : top_index = -top_index
         
         multichannel_stack = multichannel_stack[:,bottom_index:top_index]
-
-        multichannel_stack = multichannel_stack[...,:-1]
+        multichannel_stack = multichannel_stack[...,:end_signal]
         images_list = [np.moveaxis(channel,[3,0,1,2],[0,1,2,3]) for channel in multichannel_stack]
         images_list = [
             [colors for colors in channel]
@@ -141,6 +151,7 @@ def main(run_path) :
             var_name= "color_id",
             value_name= "image",
         )
+        Detection['visual_name'] = [None]*len(Detection)
         Detection = Detection.reset_index(drop=False, names='detection_id')
         Detection['detection_id'] += max_id +1
         max_id = Detection['detection_id'].max()
@@ -152,9 +163,11 @@ def main(run_path) :
                 Detection.loc[loc_index,['threshold']] = Detection[target]
 
         #Launching threads
-        with ThreadPoolExecutor(max_workers= MAX_WORKERS) as executor :
-            detection_result = tqdm(executor.map(
-                multi_thread_full_detection,
+        futures = []
+        args_list = []
+        keys = ['spots','spots_post_decomp','clustered_spots_dataframe','clusters_dataframe','clusters','clustered_spots','free_spots','threshold','voxel_size','spot_radius','alpha','beta','gamma','artifact_size','cluster_radius','min_spot_per_cluster',]
+        with ProcessPool(max_workers=MAX_WORKERS) as executor:
+            for args in zip(
                 Detection['image'],
                 Detection['voxel_size'],
                 Detection['threshold'],
@@ -166,8 +179,29 @@ def main(run_path) :
                 Detection['cluster_size'],
                 Detection['min_spot_per_cluster'],
                 Detection['detection_id'],
-            ))
-        detection_result = cast(dict, detection_result)
+            ):
+                future = executor.schedule(multi_thread_full_detection, args = args, timeout=180)
+                futures.append(future)
+                args_list.append(args)
+
+            detection_result = []
+            for future, args in tqdm(zip(futures, args_list), total=len(futures)):
+                try:
+                    result, warning_msg = future.result()  # Set your timeout in seconds
+                    for msg in warning_msg: logging.warning(f"Worker warning: {msg}")
+
+
+                except TimeoutError as e:
+                    logging.warning(f"Detection timed out: {e}")
+                    detection_id = args[-1]
+                    result = dict.fromkeys(keys, np.NaN)
+                    result['detection_id'] = detection_id
+                    logging.warning("Thread {0} : Returning NaN values".format(detection_id))
+                finally :
+                    detection_result.append(result)
+
+
+
         Spots, Clusters = build_Spots_and_Cluster_df(detection_result)
 
         #Correct coordinates for removed slices
@@ -195,7 +229,7 @@ def main(run_path) :
             Detection_save,
             Detection
             ], axis=0).reset_index(drop=True)
-
+        
         Spots_save = pd.concat([
             Spots_save,
             Spots
@@ -205,10 +239,21 @@ def main(run_path) :
             Clusters_save,  
             Clusters    
             ], axis=0).reset_index(drop=True)   
-        ###### End For loop #####   
+        ###### End For loop #####
 
     #Unique Spots_identifier    
     Spots_save = Spots_save.drop(columns='spot_id').reset_index(drop=False, names="spot_id")
+
+    #Explicit cast to int
+    Detection_save["color_id"] = Detection["color_id"].astype(int)
+    
+    #Setting wavelength
+    Detection_save['wavelength'] = 0
+    color_id_list = list(Detection_save['color_id'].unique())
+    color_id_list.sort()
+    for color_id, wv in zip(color_id_list, WAVELENGTH_LIST) :
+        Detection_save.loc[Detection_save['color_id'] == color_id, ['wavelength']] = wv
+    Detection_save['wavelength'] = Detection_save['wavelength'].astype(int)
 
     #Saving results 
     Detection_save.to_feather(save_path + '/Detection.feather')

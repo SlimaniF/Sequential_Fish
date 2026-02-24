@@ -71,7 +71,7 @@ def main(run_path) :
         #Updating banned coordinates
         ban_len = len(banned_coordinates)
         banned_coordinates += new_banned_coordinates
-        banned_coordinates = list(pd.unique(banned_coordinates))
+        banned_coordinates = list(pd.Series(banned_coordinates).unique())
         print(f"{len(banned_coordinates) - ban_len} coordinates were added to ban list.")
 
     #Merging with clusters and propagating washout

@@ -6,31 +6,43 @@ from npe2.types import LayerData
 import numpy as np
 import pandas as pd
 import napari
+<<<<<<< HEAD
 from typing import Literal, cast
+=======
+from typing import TypedDict
+>>>>>>> Modification_drift_correction
 from tqdm import tqdm
 
 from napari.types import LayerDataTuple
 from magicgui import magicgui
-from magicgui import widgets
+from magicgui.widgets import Widget
 
-from .utils import open_image, open_segmentation
+from ..customtypes import NapariWidget
+from ..tools.utils import open_image, safe_merge_no_duplicates
+from .utils import open_segmentation
 from .utils import pad_to_shape
 from .utils import reorder_image_stack
 from .utils import reshape_stack
 from .utils import correct_map
 from ..types import table_dict_type
 
+<<<<<<< HEAD
 from smfishtools.preprocessing.alignement import shift_array
+=======
+
+from pbwrap.preprocessing.alignement import shift_array
+>>>>>>> Modification_drift_correction
 from ._density import multichannel_clustering, spot_count_map
 
 
 
-#######
-# WIDGETS CONTAINER
-#######
-
 ##  Load tab
+_LOAD_WIDGETS : 'list[NapariWidget]' = []
+def register_load_widget(cls) :
+    _LOAD_WIDGETS.append(cls)
+    return cls
 
+<<<<<<< HEAD
 def fish_container(
         voxel_size : tuple,
         table_dict : table_dict_type,
@@ -95,93 +107,109 @@ def detection_container(
 def segmentation_container(
         run_path :str,
         table_dict : table_dict_type,
+=======
+def initiate_load_widgets(
+        table_dict : dict, 
+>>>>>>> Modification_drift_correction
         voxel_size : tuple,
-        segmentation_folder_name : str = "/segmentation/"
-) :
-    
-    segmentation_loader = load_segmentation(
-        run_path= run_path,
-        table_dict=table_dict,
-        voxel_size= voxel_size,
-        segmentation_folder_name= segmentation_folder_name
-    )
-
-    widget_maker = [segmentation_loader]
-    buttons_container = widgets.Container(widgets=[segmentation_loader.widget], labels=False, layout='vertical')
-
-    return buttons_container, widget_maker
+        color_table : dict,
+        run_path : str
+) -> 'list[NapariWidget]':
+    widget_list = []
+    for cls in _LOAD_WIDGETS :
+        widget_list.extend(cls(table_dict= table_dict, voxel_size=voxel_size, color_table=color_table, run_path=run_path).get_widgets())
+    return widget_list
 
 ##  Location tab
-def locations_container(
-        table_dict,
+_LOCATION_WIDGETS = []
+def register_location_widget(cls) :
+    _LOCATION_WIDGETS.append(cls)
+    return cls
+
+def initiate_location_widgets(
+        *,
+        tables_dict,
         Viewer,
-        *linked_widgets,
-        ) :
-    
-    location_table = location_selector(table_dict, Viewer, *linked_widgets)
+        linked_widgets,
+) :
+    widget_list = []
+    for cls in _LOCATION_WIDGETS :
+        widget_list.extend(cls(table_dict=tables_dict, Viewer=Viewer, linked_widgets=linked_widgets).get_widgets())
+    return widget_list
 
-    location_container = widgets.Container(widgets=[location_table.widget], labels=False, layout='vertical',)
-
-    return location_container
 
 ##  Analysis tab
-def analysis_container(
-        table_dict, 
-        voxel_size
-        ) :
-    
-    multichannel_cluster_instance = multichannel_cluster(table_dict, voxel_size)
-    spots_count_map_instance = spot_count_map_maker(table_dict, voxel_size)
-    instances = [multichannel_cluster_instance, spots_count_map_instance]
-    container = widgets.Container(widgets=[multichannel_cluster_instance.widget, spots_count_map_instance.widget], labels=False, layout='vertical')
+_ANALYSIS_WIDGETS = []
+def register_analysis_widget(cls) :
+    _ANALYSIS_WIDGETS.append(cls)
+    return cls
 
-    return container, instances
+def initiate_analysis_widgets(
+        voxel_size : tuple,
+        table_dict : dict,
+        color_table : dict,
+
+) :
+    widget_list = []
+    for cls in _ANALYSIS_WIDGETS :
+        widget_list.extend(cls(voxel_size=voxel_size, table_dict=table_dict, color_table=color_table, ).get_widgets())
+    return widget_list
 
 #######
 # INDIVIDUAL WIDGETS
 #######
 
 #Load data widgets
-class load_spots :
-    def __init__(
-            self, 
-            table_dict : table_dict_type,
-            voxel_size :tuple, 
-            color_table,
-            ):
-        
+@register_load_widget
+class SpotsLoader(NapariWidget) :
+    """
+    Allow user to load detected spots as layer points
+    """
+    def __init__(    
+        self, 
+        table_dict : table_dict_type,
+        voxel_size :tuple, 
+        color_table,
+        **kwargs
+    ) :
 
         self.Spots = table_dict['Spots']
-        self.Detection = table_dict['Detection'].loc[:,['detection_id']]
-        self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','location']]
+        self.Detection = table_dict['Detection']
+        self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','location','cycle']]
+        self.Detection = safe_merge_no_duplicates(
+            self.Detection,
+            self.Acquisition,
+            on= "acquisition_id",
+            keys= ["location", "cycle"]
+        )
         self.Gene_map = table_dict['Gene_map'].loc[:,['cycle','color_id','target']]
         
         self.update(list(self.Acquisition['location'].unique()))
 
         self.voxel_size = voxel_size
         self.color_table = color_table
-        self.widget = self.create_button()
+        super().__init__()
 
     def update(self, locations) :
 
 
-        data = pd.merge(
+        data = safe_merge_no_duplicates(
             self.Spots,
             self.Detection,
             on= 'detection_id',
-            validate='m:1',
+            keys= ["location", "cycle", "color_id","acquisition_id"]
         )
 
         data = pd.merge(
             data,
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
+            self.Acquisition.loc[self.Acquisition['location'].isin(locations), ['acquisition_id']],
             on= 'acquisition_id',
             validate='m:1',
         )
 
         data = pd.merge(
             data,
-            self.Gene_map,
+            self.Gene_map.loc[:,['cycle','color_id','target']],
             on= ['cycle','color_id'],
             how='left'
         )
@@ -191,8 +219,7 @@ class load_spots :
         self.populations = ['all'] + list(data['population'].unique()) 
         self.target = list(data['target'].unique())
 
-
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
             target={"choices":self.target},
             population={"choices" : self.populations},
@@ -246,6 +273,7 @@ class load_spots :
 
                 spots_array = np.concatenate([spots_array, spots])
 
+<<<<<<< HEAD
             layerdata = cast(LayerDataTuple,
                 (spots_array, 
                              {
@@ -260,49 +288,72 @@ class load_spots :
                                  },
                             'Points')
                 )
+=======
+            layerdata = (spots_array, 
+                         {
+                             "scale" : self.voxel_size,
+                             "size" : 10, 
+                             "name" : name, 
+                             'ndim' : 4, 
+                             'face_color' : '#0000' ,
+                             'border_color' : color, 
+                             'blending' : 'additive',
+                             'symbol' : symbol
+                             },
+                        'Points')
+>>>>>>> Modification_drift_correction
             return layerdata
         return load
-    
-class load_clusters :
+
+@register_load_widget    
+class ClustersLoader(NapariWidget) :
+    """
+    Allow user to load detected cluster as Points layer.
+    """
 
     def __init__(
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple, 
-            color_table
+            color_table,
+            **kwargs
             ):
         
         self.Clusters = table_dict['Clusters']
-        self.Detection = table_dict['Detection'].loc[:,['detection_id','color_id']]
+        self.Detection = table_dict['Detection']
         self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','cycle','location']]
         self.Gene_map = table_dict['Gene_map'].loc[:,['cycle','color_id','target']]
-
+        self.Detection = safe_merge_no_duplicates(
+            self.Detection,
+            self.Acquisition,
+            on= "acquisition_id",
+            keys= ["location", "cycle"]
+        )
         self.update(list(self.Acquisition['location'].unique()))
 
         self.voxel_size = voxel_size
         self.color_table = color_table
-        self.widget = self.create_button()
+        super().__init__()
 
     def update(self, locations) :
 
-
-        data = pd.merge(
+        data = safe_merge_no_duplicates(
             self.Clusters,
             self.Detection,
             on= 'detection_id',
-            validate='m:1',
+            keys= ["location", "cycle", "color_id","acquisition_id"]
         )
 
         data = pd.merge(
             data,
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
+            self.Acquisition.loc[self.Acquisition['location'].isin(locations),['acquisition_id']],
             on= 'acquisition_id',
             validate='m:1',
         )
 
         data = pd.merge(
             data,
-            self.Gene_map,
+            self.Gene_map.loc[:,['cycle','color_id','target']],
             on= ['cycle','color_id'],
             how='left'
         )
@@ -313,7 +364,7 @@ class load_clusters :
         self.target = list(self.data['target'].unique())
 
 
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
             target={"choices":self.target},
             drift_correction={
@@ -366,7 +417,7 @@ class load_clusters :
                 LayerDataTuple,
                 (spots_array, 
                          {"scale" : self.voxel_size,
-                          "size" : 0.2, 
+                          "size" : 12, 
                           "name" : name, 
                           'ndim' : 4, 
                           'face_color' : color,
@@ -377,18 +428,20 @@ class load_clusters :
             return layerdata
         return load
 
-class load_fish :
+@register_load_widget
+class SignalLoader(NapariWidget) :
     def __init__(
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple, 
             color_table : pd.DataFrame,
+            **kwargs
             ):
         
         #Table
         self.Gene_map = table_dict['Gene_map']
 
-        Drift = table_dict['Drift'].loc[table_dict['Drift']['drift_type'] == 'fish']
+        Drift = table_dict['Drift']
         self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
         
         self.Acquisition = table_dict['Acquisition']
@@ -397,7 +450,8 @@ class load_fish :
 
         self.color_table = color_table
         self.voxel_size = voxel_size
-        self.widget = self.create_button()
+        self.has_beads = not self.Acquisition['bead_channel'].isna().all()
+        super().__init__()
 
     def update(self, locations) :
         self.data = pd.merge(
@@ -408,7 +462,7 @@ class load_fish :
         self.data = self.data.sort_values(['location', 'full_path'])
         self.target = sorted(list(self.Gene_map['target'].unique()))
 
-    def create_button(self) :
+    def _create_widget(self) :
         @magicgui(
                 target = {'choices' : self.target},
                 drift_correction={
@@ -416,18 +470,36 @@ class load_fish :
                     "text" : "drift correction",
                     "value" : True,
                     },
-                call_button="Load fish signal",
+                call_button="Load signal",
+                signal_type = {
+                    "widget_type" : "RadioButton",
+                    "choices" : ['fish','dapi','beads'] if self.has_beads else ['fish', 'dapi'],
+                    "value" : "fish"
+                },
                 auto_call=False
                 )
-        def load(target, drift_correction) -> LayerDataTuple:
+        def load(target, drift_correction, signal_type) -> LayerDataTuple:
             data = self.Gene_map.loc[self.Gene_map['target'] == target].iloc[0]
             color = self.color_table[self.color_table['target'] == target].loc[:,['colormaps']].iat[0]
             cycle, color_id = data['cycle'], int(data['color_id'])
-            
-            if drift_correction :
-                name = "{0}_fish_signal_corrected".format(target)
+
+            if signal_type == "fish" :
+                channel_index = color_id
+                name = f"{target}_fish"
+            elif signal_type == "dapi" :
+                channel_index = self.Acquisition['dapi_channel'].iat[0]
+                name = f"dapi_signal_cycle{cycle}"
+            elif signal_type == "beads" :
+                channel_index = self.Acquisition['bead_channel'].iat[0]
+                name = f"beads_signal_cycle{cycle}"
             else :
-                name = "{0}_fish_signal_drifted".format(target)
+                raise NotImplementedError("Unimplemented choice")
+            
+
+            if drift_correction :
+                name += "_corrected"
+            else :
+                name += "_signal_drifted"
 
 
             sub_Acqu = self.data.loc[self.data['cycle'] == cycle]
@@ -450,7 +522,7 @@ class load_fish :
                 
                 image = open_image(fullpath, image_number= image_number)
                 image = reshape_stack(image, image_map=image_map, im_shape=shape)
-                image = image[...,color_id]
+                image = image[...,channel_index]
                 
                 if drift_correction :
                     drift = list(sub_Acqu.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
@@ -463,16 +535,20 @@ class load_fish :
                 image_list.append(image)
             array = np.stack(image_list)
 
+<<<<<<< HEAD
             print(f"SCALE FOR FISH : {self.voxel_size}")
 
             layerdata = cast(LayerDataTuple,
             (
+=======
+            layerdata = (
+>>>>>>> Modification_drift_correction
                 array,
                 {
                     "scale" : self.voxel_size, 
                     "name" : name, 
                     'blending' : 'additive', 
-                    'colormap' : color},
+                    'colormap' : color if signal_type != "dapi" else "blue"},
                 'Image'
             )
             )
@@ -480,97 +556,9 @@ class load_fish :
             return layerdata
 
         return load
-    
-class load_dapi :
-    def __init__(
-            self, 
-            table_dict : table_dict_type,
-            voxel_size :tuple, 
-            ):
-    
-
-        self.Gene_map = table_dict['Gene_map']
-
-        Drift = table_dict['Drift'].loc[table_dict['Drift']['drift_type'] == 'dapi']
-        self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
-        
-        self.Acquisition = table_dict['Acquisition']
-        
-        self.update(list(self.Acquisition['location'].unique()))
-
-        self.voxel_size = voxel_size
-        self.widget = self.create_button()
-
-    def update(self, locations) :
-        self.data = pd.merge(
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
-            self.Drift,
-            on='acquisition_id'
-        )
-        self.data = self.data.sort_values(['location', 'full_path'])
-        self.target = sorted(list(self.Gene_map['target'].unique()))
-
-    def create_button(self) :
-        @magicgui(
-                call_button="Load dapi signal",
-                radio_button = {
-                    "widget_type" : "RadioButtons",
-                    "orientation" : "horizontal",
-                    "choices" : ["signal","beads"],
-                    "value" : "signal",
-                    "label" : ' '
-                    },
-                drift_correction={
-                    "widget_type" : "CheckBox",
-                    "text" : "drift correction",
-                    "value" : True,
-                    },
-                auto_call=False
-                )
-        def load_dapi(radio_button, drift_correction) -> LayerDataTuple:
-
-            if radio_button == "signal" :
-                channel_indexer = 0
-                name = "dapi_signal"
-            else :
-                channel_indexer = -1
-                name = "dapi_beads"
-
-            if drift_correction :
-                name += "_corrected"
-            else :
-                name += "_drifted"
-
-            image_list = []
-            if len(self.data) > 1 :
-                max_shape = np.array(list(self.data["dapi_shape"]), dtype=int).max(axis=0)
-            else :
-                max_shape = self.data['dapi_shape'].iat[0]
-            max_shape = (max_shape[0],max_shape[2], max_shape[3])
-
-            for index in tqdm(self.data.index, desc= "opening {0}".format(radio_button)) :
-                full_path = self.data.at[index, "dapi_full_path"]
-                shape = self.data.at[index, 'dapi_shape']
-                image_map = self.data.at[index, 'dapi_map']
-                image_number = shape[0] * shape[1]
-                
-                image = open_image(full_path, image_number=image_number)
-                image = image.reshape(*shape)
-                image = reorder_image_stack(image, image_map)
-                image = image[:,:,:,channel_indexer]
-
-                if drift_correction :
-                    drift = list(self.data.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
-                    image = shift_array(image, *drift)
-
-                if image.shape != max_shape :
-                    image = pad_to_shape(image, new_shape=max_shape)
-
-                image_list.append(image)
-
-            array = np.stack(image_list)
 
 
+<<<<<<< HEAD
             layerdata = cast(LayerDataTuple,
             (
                 array,
@@ -709,6 +697,10 @@ class load_beads :
         return load
     
 class load_segmentation :
+=======
+@register_load_widget    
+class SegmentationLoader(NapariWidget) :
+>>>>>>> Modification_drift_correction
     
     def __init__(
             self,
@@ -716,17 +708,18 @@ class load_segmentation :
             voxel_size :tuple,
             table_dict : table_dict_type, 
             segmentation_folder_name:str = "/segmentation/",
+            **kwargs
             ):
         
         Drift = table_dict['Drift']
-        self.Drift = Drift.loc[Drift['drift_type'] == 'dapi']
+        self.Drift = Drift
         self.Acquisition = table_dict['Acquisition']
 
         self.update(list(self.Acquisition['location'].unique()))
 
         self.segmentation_fullpath = run_path + segmentation_folder_name
         self.voxel_size = voxel_size
-        self.widget = self.create_widget()
+        super().__init__()
 
     def update(self,locations) :
         self.data = pd.merge(
@@ -737,7 +730,7 @@ class load_segmentation :
             suffixes= ('','_drift')
         )
 
-    def create_widget(self) :
+    def _create_widget(self) :
 
         @magicgui(
                 call_button= "Load segmentation",
@@ -748,25 +741,18 @@ class load_segmentation :
                     "value" : "nucleus",
                     "label" : " ",
                 },
-                drift_correction={
-                    "widget_type" : "CheckBox",
-                    "text" : "drift correction (nucleus)",
-                    "value" : True,
-                    },
                 auto_call=False
         )
-        def load_segmentation(object, drift_correction) -> LayerDataTuple:
+        def load_segmentation(object) -> LayerDataTuple:
 
-            shape_fish = np.array(list(self.Acquisition['fish_shape']),dtype=int)
-            shape_fish = np.max(shape_fish, axis=0)
-            shape_dapi = np.array(list(self.Acquisition['dapi_shape']),dtype=int)
-            shape_dapi = np.max(shape_dapi, axis=0)
-            shape = np.max([shape_fish,shape_dapi],axis=0)
+            shape = np.array(list(self.Acquisition['fish_shape']),dtype=int)
+            shape = np.max(shape, axis=0)
             z_size = shape[0]
             name = "{0}_mask".format(object)
             locations = list(self.data.sort_values('location')['location'].unique())
             masks = open_segmentation(self.segmentation_fullpath, locations , object=object, z_repeat= z_size) #masks list sorted on Acquisition['location']
 
+<<<<<<< HEAD
             if drift_correction and object == "nucleus" :
 
                 name += '_corrected'
@@ -789,6 +775,9 @@ class load_segmentation :
             layerdata = cast(
                 LayerDataTuple,
                 (
+=======
+            layerdata = (
+>>>>>>> Modification_drift_correction
                 masks,
                 {"scale" : self.voxel_size, "name" : name, "blending" : "additive"},
                 'Labels'
@@ -799,20 +788,26 @@ class load_segmentation :
         return load_segmentation
 
 ## Analysis widgets
-class multichannel_cluster :
-    def __init__(self, table_dict, voxel_size):
+@register_analysis_widget
+class MultichannelCluster(NapariWidget) :
+    def __init__(
+            self, 
+            table_dict, 
+            voxel_size,
+            **kwargs
+            ):
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
         self.Spots = table_dict['Spots']
         self.Gene_map = table_dict['Gene_map']
         self.voxel_size = voxel_size
         self.update(list(table_dict['Acquisition']['location'].unique()))
-        self.widget = self.create_widget()
+        super().__init__()
 
     def update(self, locations) :
         self.Acquisition = self.ref_Acquisition.loc[self.ref_Acquisition['location'].isin(locations)]
 
-    def create_widget(self) :
+    def _create_widget(self) :
         @magicgui(
                 cluster_radius = {
                     "widget_type" : "SpinBox",
@@ -885,20 +880,26 @@ class multichannel_cluster :
         
         return multichannel_DBSCAN
 
-class spot_count_map_maker :
-    def __init__(self, table_dict, voxel_size):
+@register_analysis_widget
+class SpotCountMapper(NapariWidget) :
+    def __init__(
+            self, 
+            table_dict, 
+            voxel_size,
+            **kwargs,
+            ):
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
         self.Spots = table_dict['Spots']
         self.Gene_map = table_dict['Gene_map']
         self.voxel_size = voxel_size
         self.update(list(table_dict['Acquisition']['location'].unique()))
-        self.widget = self.create_widget()
+        super().__init__()
 
     def update(self, locations) :
         self.Acquisition = self.ref_Acquisition.loc[self.ref_Acquisition['location'].isin(locations)]
 
-    def create_widget(self) :
+    def _create_widget(self) :
         @magicgui(
                 targets ={
                     "widget_type" : "Select",
@@ -933,14 +934,22 @@ class spot_count_map_maker :
         return generate_spot_count_map
 
 #Location widget
-class location_selector :
-    def __init__(self, table_dict: table_dict_type, Viewer : napari.Viewer, *linked_widgets):
+@register_location_widget
+class LocationSelector(NapariWidget) :
+    def __init__(
+            self, 
+            table_dict: table_dict_type, 
+            Viewer : napari.Viewer, 
+            linked_widgets : 'list[Widget]',
+            **kwargs
+            ):
         self.Full_Acquisiton = table_dict['Acquisition'].copy()
         self.location_choices = list(self.Full_Acquisiton['location'].unique())
-        self.widget = self.create_table()
         self.selection = self.location_choices.copy()
         self.Viewer = Viewer
         self.linked_widgets = linked_widgets
+        super().__init__()
+        
     def update_location(self) :
         for layer in self.Viewer.layers.copy() :
             self.Viewer.layers.remove(layer)
@@ -950,7 +959,7 @@ class location_selector :
             widget.update(self.selection)
             widget.widget.update()
 
-    def create_table(self) :
+    def _create_widget(self) :
         @magicgui(
             selected_location={
                 "widget_type" : "Select",

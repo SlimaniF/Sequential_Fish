@@ -16,6 +16,24 @@ def main(run_path : str) :
     from ..settings import get_settings
     pipeline_parameters = get_settings(run_path)
     FISH_FOLDER = pipeline_parameters.FISH_FOLDER
+from tqdm import tqdm
+
+import Sequential_Fish.tools._folder_integrity as prepro
+from Sequential_Fish.tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack, open_image
+from Sequential_Fish.status import load_pipeline_parameters
+
+def infer_channel(Cycle_map : pd.DataFrame, keyword= 'DAPI') :
+    index = np.argmax(Cycle_map.eq(keyword).all(0)) - 1 # -1 since first columns is cycle number
+    
+    if index < 0 : raise ValueError(f'Could find {keyword} keyword in Cycle map.')
+    
+    return index
+
+def main(run_path) :
+    
+    from Sequential_Fish import __version__
+
+    pipeline_parameters = load_pipeline_parameters(run_path)
     MAP_FILENAME = pipeline_parameters.MAP_FILENAME
     cycle_regex = pipeline_parameters.cycle_regex
     CYCLE_KEY = pipeline_parameters.CYCLE_KEY
@@ -45,9 +63,10 @@ def main(run_path : str) :
         "full_path",
         "fish_shape",
         "fish_map",
-        "dapi_channel",
         "bead_channel",
-        ])
+        "dapi_channel",
+        "pipeline_version"
+        ]
     Acquisition = pd.DataFrame(columns=COLUMNS)
     cycle_map = pd.read_excel(run_path + '/' + MAP_FILENAME)
     color_number = len(GENES_NAMES_KEY)
@@ -81,16 +100,13 @@ def main(run_path : str) :
 
         Acquisition.loc[index, "fish_shape"] = pd.Series((fish_shape,)*cycle_number, index=index)
         Acquisition.loc[index, "fish_map"] = pd.Series((fish_map,)*cycle_number, index=index)
-        Acquisition.loc[index, "full_path"] = full_path_list
         Acquisition.loc[index, "fish_reodered_shape"] = pd.Series((fish_reodered_shape,)*cycle_number, index=index)
 
         cycle_regex_result = Acquisition.loc[:, 'full_path'].apply(_find_one_or_NaN, regex=cycle_regex)
 
     #Integrity checks
     assert all(Acquisition['cycle'].isin(cycle_map[CYCLE_KEY])), "Some cycle are not found in map"
-    assert len(cycle_map[CYCLE_KEY] == len(Acquisition['cycle'])), "{0} column length doesn't match cycle number ({1})".format(CYCLE_KEY, len(Acquisition['cycle']))
-    for key in GENES_NAMES_KEY : 
-        assert len(cycle_map[key] == len(Acquisition['cycle'])), "{0} column length doesn't match cycle number ({1})".format(key, len(Acquisition['cycle']))
+    assert len(cycle_map) == len(Acquisition['cycle'].unique()), "{0} column length doesn't match cycle number ({1})".format(len(cycle_map), len(Acquisition['cycle']))
 
     cycle_regex_result = Acquisition.loc[:, 'full_path'].apply(_find_one_or_NaN, regex=cycle_regex)
     cycles_match = all(Acquisition.loc[~Acquisition['full_path'].isna(),"cycle"] == cycle_regex_result[~cycle_regex_result.isna()])
@@ -124,7 +140,18 @@ def main(run_path : str) :
     Gene_map.loc[washout_index, ['target']] = Gene_map.loc[washout_index]['target'] + '_' + Gene_map.loc[washout_index]['cycle'].astype(str) + '_' + Gene_map.loc[washout_index]['color_id'].astype(str)
     assert len(Gene_map['target']) == len(Gene_map['target'].unique()), "{1} duplicates found in Gene map even after washout renaming... If several cycle targets same RNA please add suffix in Gene map to differenciate.\nFound genes : \n{0}".format(Gene_map['target'], len(Gene_map['target']) - len(Gene_map['target'].unique()))
 
+    #Set constant
+    Acquisition['bead_channel'] = bead_channel
+    Acquisition['dapi_channel'] = dapi_channel
+    Acquisition['pipeline_version'] = __version__
 
+    #Explicit dtype cast
+    Gene_map['color_id'] = Gene_map['color_id'].astype(int)
+    
+    #Set index
+    Gene_map = Gene_map.reset_index(drop=True)
+    Acquisition = Acquisition.reset_index(drop=True)
+    
     #Output
     save_path = run_path + '/result_tables/'
     os.makedirs(save_path, exist_ok=True)

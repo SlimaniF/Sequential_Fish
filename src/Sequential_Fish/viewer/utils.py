@@ -1,18 +1,13 @@
 import numpy as np
-import os
 from typing import Literal
-from skimage import io
 from tqdm import tqdm
 
-def open_image(fullpath, image_number=1) :
-    arrays = [io.imread(fullpath, plugin="tifffile", img_num=im_index) for im_index in range(image_number)]
-
-
-
-    arrays = np.stack(arrays)
-    return arrays
-
-def open_segmentation(segmentation_folder_fullpath: str, locations : 'list[str]', object : Literal['nucleus','cytoplasm'], z_repeat=None) :
+def open_segmentation(
+        segmentation_folder_fullpath: str, 
+        locations : 'list[str]', 
+        object : Literal['nucleus','cytoplasm'], 
+        z_repeat=None
+        ) :
     """
     Open with sorting on 'location'
     """
@@ -22,8 +17,9 @@ def open_segmentation(segmentation_folder_fullpath: str, locations : 'list[str]'
     #Opening masks
     for location in tqdm(locations, desc = "opening {0} masks".format(object)) :
         new_mask = np.load(segmentation_folder_fullpath + '/{0}_segmentation.npz'.format(location))[object]
+        print("new mask : ", new_mask.shape)
 
-        if type(z_repeat) != type(None) :
+        if type(z_repeat) != type(None) and new_mask.ndim == 2:
             new_mask = np.repeat(
                 new_mask[np.newaxis],
                 repeats= z_repeat,
