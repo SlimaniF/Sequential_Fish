@@ -6,15 +6,12 @@ import pandas as pd
 from .post_processing import Spots_filtering
 from .density import density_analysis
 from .distributions import distributions_analysis
-<<<<<<< HEAD
-=======
 from .pipeline_metrics import pipeline_metrics
 from .colocalisation import main as coloc_main
 from ..status import select_path_for_analysis
 from ..status import load_analysis_parameters, exists_analysis_parameters, write_analysis_parameters, get_raw_analysis_parameters
 from ..chromatic_abberrations import correct_Spots_dataframe
 
->>>>>>> Modification_drift_correction
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
 

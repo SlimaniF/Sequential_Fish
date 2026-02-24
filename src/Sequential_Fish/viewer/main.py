@@ -4,22 +4,10 @@ import pandas as pd
 import os
 
 from numpy.random import shuffle
-<<<<<<< HEAD
-from .widgets import fish_container
-from .widgets import detection_container
-from .widgets import dapi_container
-from .widgets import segmentation_container
-from .widgets import locations_container
-from .widgets import analysis_container
-from ..types import table_dict_type
-from magicgui import widgets as wi
-from typing import cast
-=======
 from .widgets import initiate_analysis_widgets
 from .widgets import initiate_load_widgets
 from .widgets import initiate_location_widgets
 from magicgui.widgets import Container
->>>>>>> Modification_drift_correction
 
 from ..status.gui import select_path_for_analysis
 
@@ -36,12 +24,8 @@ def main() :
         table_dict_type,
         {
         table : pd.read_feather(run_path + '/result_tables/' + table + '.feather')  for table in TABLES
-<<<<<<< HEAD
-    })
-=======
     }
     voxel_size = tables_dict['Detection'].at[0,'voxel_size']
->>>>>>> Modification_drift_correction
 
     #Init viewer
     Viewer = napari.Viewer(title=os.path.basename(run_path))
