@@ -5,13 +5,14 @@ Spot quantification for Sequential Fish data
 This script use results from FishSeq_pipeline_segmentation.py that must be run before
 """
 
-import os, sys
-import warnings
+import os
 import numpy as np
 import pandas as pd
-from Sequential_Fish.tools import open_image, reorder_image_stack
+from ..tools import open_image, reorder_image_stack
+from smfishtools.detection import multi_thread_full_detection
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
+from typing import cast
 
 #########
 ## USER PARAMETERS
@@ -21,26 +22,19 @@ def main(run_path) :
 
     print(f"detection runing for {run_path}")
     
-    if len(sys.argv) == 1:
-        from Sequential_Fish.pipeline_parameters import detection_MAX_WORKERS as MAX_WORKERS
-        from Sequential_Fish.pipeline_parameters import VOXEL_SIZE, SPOT_SIZE, ALPHA, BETA, GAMMA, CLUSTER_SIZE, MIN_SPOT_PER_CLUSTER, ARTIFACT_RADIUS, DETECTION_SLICE_TO_REMOVE
+    from ..settings import get_settings
+    pipeline_parameters = get_settings(run_path)
     
-    else :
-        from Sequential_Fish.run_saves import get_parameter_dict
-        PARAMETERS = ['VOXEL_SIZE', 'SPOT_SIZE', 'ALPHA', 'BETA', 'GAMMA', 'CLUSTER_SIZE', 'MIN_SPOT_PER_CLUSTER', 'ARTIFACT_RADIUS', 'DETECTION_SLICE_TO_REMOVE', 'detection_MAX_WORKERS']
-        
-        pipeline_parameters = get_parameter_dict(run_path, PARAMETERS)
-        
-        VOXEL_SIZE = pipeline_parameters['VOXEL_SIZE']
-        SPOT_SIZE = pipeline_parameters['SPOT_SIZE']
-        ALPHA = pipeline_parameters['ALPHA']
-        BETA = pipeline_parameters['BETA']
-        GAMMA = pipeline_parameters['GAMMA']
-        CLUSTER_SIZE = pipeline_parameters['CLUSTER_SIZE']
-        MIN_SPOT_PER_CLUSTER = pipeline_parameters['MIN_SPOT_PER_CLUSTER']
-        ARTIFACT_RADIUS = pipeline_parameters['ARTIFACT_RADIUS']
-        DETECTION_SLICE_TO_REMOVE = pipeline_parameters['DETECTION_SLICE_TO_REMOVE']
-        MAX_WORKERS = pipeline_parameters['detection_MAX_WORKERS']
+    VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
+    SPOT_SIZE = pipeline_parameters.SPOT_SIZE
+    ALPHA = pipeline_parameters.ALPHA
+    BETA = pipeline_parameters.BETA
+    GAMMA = pipeline_parameters.GAMMA
+    CLUSTER_SIZE = pipeline_parameters.CLUSTER_SIZE
+    MIN_SPOT_PER_CLUSTER = pipeline_parameters.MIN_SPOT_PER_CLUSTER
+    ARTIFACT_RADIUS = pipeline_parameters.ARTIFACT_RADIUS
+    DETECTION_SLICE_TO_REMOVE = pipeline_parameters.DETECTION_SLICE_TO_REMOVE
+    MAX_WORKERS = pipeline_parameters.detection_MAX_WORKERS
     
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -77,20 +71,19 @@ def main(run_path) :
         bottom_index, top_index = DETECTION_SLICE_TO_REMOVE
         if bottom_index is None :
             pass
-        elif np.isnan(bottom_index) : 
-            bottom_index = None
-        elif type(bottom_index) != int : bottom_index= int(bottom_index)
+        elif not isinstance(bottom_index,int) : 
+            bottom_index= int(bottom_index)
         
         if top_index is None :
             pass
         elif np.isnan(top_index) : 
             top_index = None
         elif type(top_index) != int : 
-            top_index= int(bottom_index)
+            top_index= int(top_index)
         
         
         #Removing Z slices (USER SETTING)
-        if type(top_index) != type(None) : top_index = -top_index
+        if not top_index is None : top_index = -top_index
         
         multichannel_stack = multichannel_stack[:,bottom_index:top_index]
 
@@ -101,12 +94,10 @@ def main(run_path) :
              for channel in images_list]
         image_number = len(multichannel_stack)
         colors = list(zip(*images_list))
-        colors_number = len(colors)
 
         #Preparing threads arguments
         Detection = pd.DataFrame({
             'acquisition_id' : list(sub_data['acquisition_id'])
-            ,'visual_name' : [visual_path] * image_number
             ,'filename' : list(sub_data['full_path'])
             ,'voxel_size' : [tuple(VOXEL_SIZE)] * image_number
             ,'spot_size' : [tuple(SPOT_SIZE)] * image_number
@@ -150,7 +141,6 @@ def main(run_path) :
             var_name= "color_id",
             value_name= "image",
         )
-        Detection['visual_name'] = Detection['visual_name'] + Detection['acquisition_id'].astype(str) + Detection['color_id'].astype(str)
         Detection = Detection.reset_index(drop=False, names='detection_id')
         Detection['detection_id'] += max_id +1
         max_id = Detection['detection_id'].max()
@@ -175,9 +165,9 @@ def main(run_path) :
                 Detection['artifact_radius'],
                 Detection['cluster_size'],
                 Detection['min_spot_per_cluster'],
-                Detection['visual_name'],
                 Detection['detection_id'],
             ))
+        detection_result = cast(dict, detection_result)
         Spots, Clusters = build_Spots_and_Cluster_df(detection_result)
 
         #Correct coordinates for removed slices
@@ -224,3 +214,68 @@ def main(run_path) :
     Detection_save.to_feather(save_path + '/Detection.feather')
     Spots_save.to_feather(save_path + '/Spots.feather') 
     Clusters_save.to_feather(save_path + '/Clusters.feather')
+
+
+def build_Spots_and_Cluster_df(detection_result : dict) :
+    """
+    Made to build Spots pandas dataframe from result of multi_threaded call to `multi_thread_full_detection`.
+
+    Parameter
+    ---------
+        detection_result
+    """
+
+    SPOTS_COLUMNS = [
+        'detection_id',
+        'spots',
+        'spots_post_decomp',
+        'clustered_spots_dataframe',
+        'clusters_dataframe',
+        'clusters',
+        'clustered_spots',
+        'free_spots',   
+    ]
+    
+    detection_res = pd.DataFrame(columns=pd.Index(SPOTS_COLUMNS), data=detection_result)
+    detection_res = detection_res.set_index('detection_id', verify_integrity=True, drop=False)
+
+    Spots = pd.DataFrame()
+    Clusters = pd.DataFrame()
+
+    for detection_id in detection_res.index :
+        spots: pd.DataFrame = detection_res.at[detection_id, 'clustered_spots_dataframe']
+        clusters: pd.DataFrame = detection_res.at[detection_id, 'clusters_dataframe']
+
+        if isinstance(spots, (int,float)) : 
+            spots = pd.DataFrame(columns=pd.Index(['id','cluster_id','population', 'detection_id'])) 
+        if isinstance(clusters, (int,float)) : 
+            clusters = pd.DataFrame(columns=pd.Index(['id','population', 'detection_id']))
+        
+        #names
+        spots = spots.rename(columns={'id' : 'spot_id'})
+        clusters = clusters.rename(columns={'id' : 'cluster_id'})
+        
+        #is_clustered
+        spots['cluster_id'] = spots['cluster_id'].replace(-1,np.nan)
+        clusters['cluster_id'] = clusters['cluster_id'].replace(-1,np.nan)
+        spots['population'] = spots['cluster_id'].isna()
+        spots['population'] = spots['population'].replace({True : 'free', False : 'clustered'})
+
+        #Detection_id
+        spots['detection_id'] = detection_id
+        clusters['detection_id'] = detection_id
+
+        Spots = pd.concat([
+            Spots,
+            spots,
+        ],axis=0)
+
+        Clusters = pd.concat([
+            Clusters,
+            clusters,
+        ],axis=0)
+
+    Spots = Spots.reset_index(drop=True)
+    Clusters = Clusters.reset_index(drop=True)
+
+    return Spots, Clusters

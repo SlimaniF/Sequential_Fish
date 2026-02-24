@@ -27,6 +27,7 @@ class pipeline_parameters(BaseModel) :
     FISH_FOLDER : str = Field(default= "FISH_Z-stacks")
     MODEL_DICT : dict[str,str] = Field(default_factory=lambda : {'nucleus_model' : 'cpsam', 'cytoplasm_model' : 'cpsam'})
     OBJECT_SIZE_DICT : dict[str,int] = Field(default_factory=lambda : {'nucleus_size' : 60, 'cytoplasm_size' : 80})
+    DO_3D_SEGMENTATION : bool = Field(default=False)
     PLOT_VISUALS : bool = Field(default=True)
     detection_MAX_WORKERS : int = Field(default= 4)
     SPOT_SIZE : tuple[int,int,int] = Field(default= (300,140,140))
