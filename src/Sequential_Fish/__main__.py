@@ -1,14 +1,15 @@
 import sys
+import os
+import logging
 
-from Sequential_Fish import viewer, pipeline, analysis, chromatic_abberrations, status
-from Sequential_Fish.status import select_path_for_pipeline, select_path_for_analysis
-
-from .pipeline import PIPELINE_SCRIPTS
-
+from . import viewer, pipeline, analysis, chromatic_abberrations
+from .customtypes.parameters import PipelineParameters
+from .settings import write_settings
+from .pipeline import launch_script
 
 def main():
 
-    MODULES = ['viewer', 'pipeline', 'analysis', 'status', 'calibration']
+    MODULES = ['viewer', 'pipeline', 'analysis', 'settings', 'calibration']
 
     
     #CALL TO MODULES
@@ -43,7 +44,7 @@ def main():
 
         if not os.path.isfile(RUN_PATH + "/pipeline_settings.json") :
             logging.info("No settings found, initializing settings.json")
-            settings = pipeline_parameters.from_default_parameters()
+            settings = PipelineParameters.from_default_parameters()
             settings.RUN_PATH = RUN_PATH
             settings.SAVE_PATH = RUN_PATH + "/visuals/"
             write_settings(settings, RUN_PATH)
@@ -53,16 +54,13 @@ def main():
         if len(submodules) == 0 :
             pipeline.run(RUN_PATH)
         else :
-            if not all([script in PIPELINE_SCRIPTS for script in submodules]) :
-                print(f"Unknown pipeline scripts. \nChoose from : {PIPELINE_SCRIPTS}")
-            else :
-                error_count = 0
-                for script in submodules : 
-                    sucess = launch_script(script, run_path=RUN_PATH)
+            error_count = 0
+            for script in submodules : 
+                sucess = launch_script(script, run_path=RUN_PATH)
 
-                    if not sucess : error_count +=1
-                
-                print(f"all scripts ended with {error_count} errors. If any, error can be checked in run_log file.")
+                if not sucess : error_count +=1
+            
+            print(f"all scripts ended with {error_count} errors. If any, error can be checked in run_log file.")
     
     elif module == "analysis" :
         
@@ -75,6 +73,12 @@ def main():
         analysis.run(*submodules)
         
         print("Done.")
+
+    elif module == "chromatic_abberations" :
+        chromatic_abberrations.run()
+    
+    elif module == "settings" :
+        raise NotImplementedError()
     
     else:
         print(f"Unknown module: {module}")
