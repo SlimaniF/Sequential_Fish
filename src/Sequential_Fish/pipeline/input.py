@@ -91,6 +91,7 @@ def main(run_path) :
         Acquisition.loc[index, "fish_shape"] = pd.Series((fish_shape,)*cycle_number, index=index)
         Acquisition.loc[index, "fish_map"] = pd.Series((fish_map,)*cycle_number, index=index)
         Acquisition.loc[index, "fish_reodered_shape"] = pd.Series((fish_reodered_shape,)*cycle_number, index=index)
+        Acquisition.loc[index, "full_path"] = pd.Series(full_path_list, index=index, dtype="string")
 
         cycle_regex_result = Acquisition.loc[:, 'full_path'].apply(_find_one_or_NaN, regex=cycle_regex)
 
