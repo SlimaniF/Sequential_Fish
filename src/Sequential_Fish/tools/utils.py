@@ -1,29 +1,28 @@
+import re
+import os
+import warnings
+from typing import cast, Optional, Tuple
+import datetime as dt
+
 import pandas as pd
 import numpy as np
-import datetime as dt
-import re
+import tifffile
 from czifile import imread as _imread
+from czifile import CziFile
 from bigfish.stack import read_image as _read_image
-from typing import cast
 
-import warnings
-import re, os, warnings
 from skimage import io
-from czifile import imread as _imread
-from bigfish.stack import read_image as _read_image
-from datetime import datetime
 from scipy.ndimage import distance_transform_edt
-
-import warnings
-from aicsimageio import AICSImage
-from typing import Optional, Tuple
-
 
 class MappingError(Exception) :
     """
     Raised when user inputs an incorrect image mapping.
     """
-    
+
+class NoVoxelSizeFound(Exception) :
+    """
+    Raised when could not infer voxel size from metadata.
+    """
 
 def auto_map_channels(
     image: np.ndarray, 
@@ -108,7 +107,7 @@ def reorder_image_stack(image, channel_map, is_3D = True) :
     return image
 
 
-def open_image(path:str, image_number=None) :
+def open_image(path:str, _map=None, image_number=None) :
     """
     Supports czi, png, jpg, jpeg, tif or tiff extensions.  
     If `image_number` is provided, extension must be .tif or .tiff
@@ -289,35 +288,58 @@ def open_cycle(
 
     return image_stack
 
-def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[int], Optional[int], Optional[int]]]:
+def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[float], Optional[float], Optional[float]]]:
     """
     Returns voxel size in nanometers (nm) as a tuple (X, Y, Z).
     Any of the dimensions may be None if not available.
-    /WARINING\ : the unit might not be nm
+    /WARINING\\ : the unit might not be nm
     """
     try:
-        img = AICSImage(filepath)
-        voxel_sizes = img.physical_pixel_sizes  # values in meters
-        if voxel_sizes is None:
-            return None
-        x = voxel_sizes.X * 1e3 if voxel_sizes.X else None
-        y = voxel_sizes.Y * 1e3 if voxel_sizes.Y else None
-        z = voxel_sizes.Z * 1e3 if voxel_sizes.Z else None
-        return (z, y, x)
-    except Exception as e:
-        raise ValueError(f"Failed to read voxel size from {filepath}: {e}")
+        if filepath.endswith('.czi'):
+            with CziFile(filepath) as czi:
+                metadata = czi.metadata()  # returns XML metadata
+                # try to parse voxel sizes from XML
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(metadata)
+                scaling_distance = root.findall('.//Scaling//Items//Distance//Value')
+                if len(scaling_distance) in [2,3] :
+                    for scale in scaling_distance :
+                        res = [float(scale.text) * 1e9 for scale in scaling_distance] #m to nm
+                    res.reverse()
+                    return tuple(res)
+                else :
+                    raise NoVoxelSizeFound("Couln't find voxel size on xml metadata")
+
+        elif filepath.endswith(('.tif', '.tiff')):
+            with tifffile.TiffFile(filepath) as tif:
+                ij_meta = tif.imagej_metadata
+                page = tif.pages[0]  # first image page
+                # X/Y resolution as (numerator, denominator)
+                xres = page.tags['XResolution'].value
+                _ = page.tags['YResolution'].value
+                # ResolutionUnit: must be 'nm' for this calculation
+                res_unit = ij_meta.get("unit")
+
+                if res_unit and str(res_unit) != 'nm':
+                    xy_size = 1 / (xres[0] / xres[1]) * 1e3 #um to nm
+                elif res_unit and str(res_unit) != 'NONE':
+                    xy_size = 1 / (xres[0] / xres[1]) #um to nm
+                else:
+                    xy_size = None
+
+                # Z spacing from ImageJ metadata
+                if res_unit and str(res_unit) != 'nm':
+                    z_size = ij_meta.get('spacing', None) * 1e3 
+                else :
+                    z_size = ij_meta.get('spacing', None)
+
+                return (z_size,xy_size, xy_size )
+    except NoVoxelSizeFound as e:
+        print(f"Failed to read voxel size from {filepath}: {e}")
         return None
     
 def get_min_cluster_radius(voxel_size) :
     return max(voxel_size)
-    
-    
-def get_voxel_size(Detection : pd.DataFrame) :
-    voxel_size = tuple(Detection['voxel_size'].iat[0])
-    voxel_size = [int(i) for i in voxel_size]
-    
-    return voxel_size
-
 
 def get_centroids_list(clusters_df) :
 
@@ -331,7 +353,13 @@ def get_centroids_list(clusters_df) :
     else : raise ValueError("Expected keys : ['z', 'y', 'x'] or ['y', 'x']")
 
     return list(zip(*keys))
-
+    
+    
+def get_voxel_size(Detection : pd.DataFrame) :
+    voxel_size = tuple(Detection['voxel_size'].iat[0])
+    voxel_size = [int(i) for i in voxel_size]
+    
+    return voxel_size
 
 def get_centroids_array(cluster_df) :
 

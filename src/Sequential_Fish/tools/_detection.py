@@ -10,7 +10,7 @@ import bigfish.detection as detection
 import bigfish.stack as stack
 import bigfish.plot as plot
 
-from numpy import NaN
+from numpy import nan
 
 from .utils import get_centroids_array, compute_anisotropy_coef, get_centroids_list, _compute_critical_spot_number
 
@@ -38,9 +38,9 @@ def multi_thread_full_detection(
     except Exception as error :
         warning_msgs.append("Thread {0} : Error occured\n{1}".format(detection_id, str(error)))
         keys = ['spots','spots_post_decomp','clustered_spots_dataframe','clusters_dataframe','clusters','clustered_spots','free_spots','threshold','voxel_size','spot_radius','alpha','beta','gamma','artifact_size','cluster_radius','min_spot_per_cluster',]
-        res = dict.fromkeys(keys, NaN)
+        res = dict.fromkeys(keys, nan)
         res['detection_id'] = detection_id
-        warning_msgs.append("Thread {0} : Returning NaN values".format(detection_id))
+        warning_msgs.append("Thread {0} : Returning nan values".format(detection_id))
 
     finally :
         return res, warning_msgs
@@ -64,8 +64,8 @@ def full_detection (
     Performs full detection process : thread-compatible.
 
     1. detect spot (bigfish.detection)
-    2. cluster_deconvolution (pbwrap.detection)
-    3. remove_artificats (pbwrap.detection) (skipped if artificat_size is None)
+    2. cluster_deconvolution (smfishtools.detection)
+    3. remove_artificats (smfishtools.detection) (skipped if artificat_size is None)
     4. cluster_detection
     5. plot detection visual (skipped if filename is None)
 
@@ -147,7 +147,7 @@ def full_detection (
 def cluster_deconvolution(image, spots, spot_radius, voxel_size, alpha, beta, sigma=5, timer= 0) :
     """
     Wrapper handling time out during deconvolution and preprocessing with gaussian background removal --> sigma defines the kernel size if 0 then no denoising is performed.
-    --> `pbwrap.detection.spot_decomposition_nobckgrndrmv`
+    --> `smfishtools.detection.spot_decomposition_nobckgrndrmv`
     """
 
     if len(spots) == 0 : return spots
@@ -467,8 +467,8 @@ def build_Spots_and_Cluster_df(detection_result : dict) :
         clusters = clusters.rename(columns={'id' : 'cluster_id'})
         
         #is_clustered
-        spots['cluster_id'] = spots['cluster_id'].replace(-1,np.NaN)
-        clusters['cluster_id'] = clusters['cluster_id'].replace(-1,np.NaN)
+        spots['cluster_id'] = spots['cluster_id'].replace(-1,np.nan)
+        clusters['cluster_id'] = clusters['cluster_id'].replace(-1,np.nan)
         spots['population'] = spots['cluster_id'].isna()
         spots['population'] = spots['population'].replace({True : 'free', False : 'clustered'})
 
@@ -507,7 +507,7 @@ def _compute_clustered_spots_dataframe(clustered_spots) :
     })
 
     null_idx = df[df['cluster_id'] == -1].index
-    df.loc[null_idx, 'cluster_id'] = np.NaN
+    df.loc[null_idx, 'cluster_id'] = np.nan
 
     return df
 

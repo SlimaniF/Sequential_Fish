@@ -1,6 +1,6 @@
 import numpy as np
 
-import pbwrap.preprocessing 
+import smfishtools.preprocessing 
 from scipy.fft import fftn, fftshift, ifftn, ifftshift
 from skimage.registration import phase_cross_correlation
 
@@ -86,7 +86,7 @@ def fft_phase_correlation_drift(
         drift_z, drift_y, drift_x = shift
     elif len(shift) == 2 :
         drift_y, drift_x = shift
-        drift_z = np.NaN
+        drift_z = np.nan
 
     else :
         raise ValueError("Incorrect number of dimensions in shift : {0}. Should be 2 or 3".format(len(shift)))

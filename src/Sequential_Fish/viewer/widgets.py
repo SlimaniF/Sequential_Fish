@@ -23,7 +23,7 @@ from .utils import correct_map
 from ..types import table_dict_type
 
 
-from pbwrap.preprocessing.alignement import shift_array
+from smfishtools.preprocessing.alignement import shift_array
 from ._density import multichannel_clustering, spot_count_map
 
 

@@ -25,7 +25,7 @@ def p(abundancy : int, volume: int) :
     The probability that a voxel m is occupied with at least one molecule.
     """
     if isinstance(volume, int) :
-        if volume == 0 : return np.NaN #No positions available.
+        if volume == 0 : return np.nan #No positions available.
 
     return 1 - np.power(1-1/volume,abundancy)
 
@@ -34,7 +34,7 @@ def q(abundancy : int, volume : int) :
     The probability that voxel m and l != m are both occupied with at least one molecule i
     """
     if isinstance(volume, int) :
-        if volume == 0 : return np.NaN #No positions available.
+        if volume == 0 : return np.nan #No positions available.
 
     return 1-2*np.power((1-1/volume),abundancy) + np.power((1-2/volume),abundancy)
 
@@ -50,7 +50,7 @@ def compute_unique_position_expectancy(a1,V) :
     """
     Compute expectancy of unique position that will be occupied by at least one molecule with a distribution of a1 single molecule randomly spread in V positions.
     """
-    if V == 0 : return np.NaN #No positions available.
+    if V == 0 : return np.nan #No positions available.
     
     a1_unique = V*p(a1,V)
     return a1_unique
@@ -67,7 +67,7 @@ def compute_self_colocalization_std(a1, V) :
     """
     Compute standard deviation number of self-colocalization which correspond to the expected number of detection that didn't discover a new pixel amongst the V pixels.
     """
-    if V == 0 : return np.NaN #No positions available.
+    if V == 0 : return np.nan #No positions available.
     p1 = p(a1-1,V)
     expected_number_selfcolocalisation = np.sqrt(a1*p1*(1-p1))
     

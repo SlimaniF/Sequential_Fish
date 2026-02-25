@@ -607,9 +607,9 @@ def create_pair_colocalisation_figure(
 
     score_norm = TwoSlopeNorm(vmin=-1, vcenter=0, vmax=20,)
 
-    #Unsgnificative pvalue set to NaN
-    zscore_frame *= pvalue_mask.replace({True : 1, False : np.NaN}).infer_objects(copy=False)
-    colocalization_rates *= pvalue_mask.replace({True : 1, False : np.NaN}).infer_objects(copy=False)
+    #Unsgnificative pvalue set to nan
+    zscore_frame *= pvalue_mask.replace({True : 1, False : np.nan}).infer_objects(copy=False)
+    colocalization_rates *= pvalue_mask.replace({True : 1, False : np.nan}).infer_objects(copy=False)
 
     fig = plt.figure(figsize=(24,10), frameon=frameon)
     left,right = fig.subplots(1,2)
