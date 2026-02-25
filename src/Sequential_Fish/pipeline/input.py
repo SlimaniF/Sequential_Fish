@@ -4,36 +4,21 @@ This script aims at reading the input folder and preparing data folders and loca
 import pandas as pd
 import os
 import warnings
-import numpy as np
-from ..tools.utils import open_image, auto_map_channels, _find_one_or_NaN, reorder_image_stack
-from ..tools._folder_integrity import assert_run_folder_integrity
 from typing import cast
 
-def main(run_path : str) :
+import numpy as np
 
-    print(f"input runing for {run_path}")
-
-    from ..settings import get_settings
-    pipeline_parameters = get_settings(run_path)
-    FISH_FOLDER = pipeline_parameters.FISH_FOLDER
-from tqdm import tqdm
-
-import Sequential_Fish.tools._folder_integrity as prepro
-from Sequential_Fish.tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack, open_image
-from Sequential_Fish.status import load_pipeline_parameters
-
-def infer_channel(Cycle_map : pd.DataFrame, keyword= 'DAPI') :
-    index = np.argmax(Cycle_map.eq(keyword).all(0)) - 1 # -1 since first columns is cycle number
-    
-    if index < 0 : raise ValueError(f'Could find {keyword} keyword in Cycle map.')
-    
-    return index
+from ..customtypes.parameters import PipelineParameters
+from ..tools.utils import open_image, auto_map_channels, _find_one_or_NaN, reorder_image_stack
+from ..tools._folder_integrity import assert_run_folder_integrity
+from ..settings import get_settings
 
 def main(run_path) :
     
     from Sequential_Fish import __version__
 
-    pipeline_parameters = load_pipeline_parameters(run_path)
+    pipeline_parameters = get_settings(run_path, settings_name="pipeline")
+    pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
     MAP_FILENAME = pipeline_parameters.MAP_FILENAME
     cycle_regex = pipeline_parameters.cycle_regex
     CYCLE_KEY = pipeline_parameters.CYCLE_KEY
@@ -41,8 +26,13 @@ def main(run_path) :
     WASHOUT_KEY_WORD = pipeline_parameters.WASHOUT_KEY_WORD
     DAPI_CHANNEL = pipeline_parameters.DAPI_CHANNEl
     BEAD_CHANNEL = pipeline_parameters.BEAD_CHANNEl
+    FISH_FOLDER = pipeline_parameters.FISH_FOLDER
     has_bead_channel = not BEAD_CHANNEL is None
+    WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
     
+
+    if WAVELENGTH_LIST is None :
+        warnings.warn("WAVELENGTH were not set in parameters, pipeline will not be able to perform chromatic abberations corrections.")
     
     #Reading input folder.
     file_dict = assert_run_folder_integrity(
@@ -66,7 +56,7 @@ def main(run_path) :
         "bead_channel",
         "dapi_channel",
         "pipeline_version"
-        ]
+        ])
     Acquisition = pd.DataFrame(columns=COLUMNS)
     cycle_map = pd.read_excel(run_path + '/' + MAP_FILENAME)
     color_number = len(GENES_NAMES_KEY)
@@ -141,8 +131,8 @@ def main(run_path) :
     assert len(Gene_map['target']) == len(Gene_map['target'].unique()), "{1} duplicates found in Gene map even after washout renaming... If several cycle targets same RNA please add suffix in Gene map to differenciate.\nFound genes : \n{0}".format(Gene_map['target'], len(Gene_map['target']) - len(Gene_map['target'].unique()))
 
     #Set constant
-    Acquisition['bead_channel'] = bead_channel
-    Acquisition['dapi_channel'] = dapi_channel
+    Acquisition['bead_channel'] = BEAD_CHANNEL
+    Acquisition['dapi_channel'] = DAPI_CHANNEL
     Acquisition['pipeline_version'] = __version__
 
     #Explicit dtype cast

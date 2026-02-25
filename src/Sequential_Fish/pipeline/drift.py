@@ -3,12 +3,14 @@ Aims at finding drift value for each field of view and store it into a dataframe
 """
 
 import os
+from typing import cast
+
 import pandas as pd
 import numpy as np
 import smfishtools.preprocessing.alignement as prepro
 from tqdm import tqdm
 
-
+from ..customtypes import PipelineParameters
 from ..tools import open_image, reorder_image_stack
 from ..settings import get_settings
 
@@ -17,6 +19,7 @@ def main(run_path) :
 
 
     pipeline_parameters = get_settings(run_path)
+    pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
     DRIFT_SLICE_TO_REMOVE = pipeline_parameters.DRIFT_SLICE_TO_REMOVE
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     BEAD_SIZE = pipeline_parameters.BEAD_SIZE

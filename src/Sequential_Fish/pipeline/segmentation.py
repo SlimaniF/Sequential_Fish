@@ -3,14 +3,17 @@ This script aims at performing segmentation and savings results as .npy format t
 Drift correction is applied in FishSeq_pipeline_drift.py
 """
 import os
+from typing import cast
+
 import numpy as np
 import pandas as pd
 import cellpose.models as models
 import bigfish.plot as plot
-
 from tqdm import tqdm
+
 from ..tools.utils import open_image, reorder_image_stack
 from ..settings import get_settings
+from ..customtypes import PipelineParameters
 
 #### USER PARAMETERS
 
@@ -19,6 +22,7 @@ def main(run_path) :
     print(f"segmentation runing for {run_path}")
     
     pipeline_parameters = get_settings(run_path)
+    pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
 
     PLOT_VISUALS = pipeline_parameters.PLOT_VISUALS
     MODEL_DICT = pipeline_parameters.MODEL_DICT

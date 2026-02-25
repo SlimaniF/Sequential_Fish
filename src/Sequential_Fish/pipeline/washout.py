@@ -2,15 +2,18 @@
 This script aims at removing spots found in washout. 
 If a spot is detected during a washout cycle, all spots detected in succeeding cycles at same location are deleted.
 """
+from typing import cast
 import pandas as pd
 from ..settings import get_settings
 from ..tools import safe_merge_no_duplicates
+from ..customtypes import PipelineParameters
 
 def main(run_path) :
     
     print(f"washout runing for {run_path}")
     
     pipeline_parameters = get_settings(run_path)
+    pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
     WASHOUT_KEY_WORD = pipeline_parameters.WASHOUT_KEY_WORD
 
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
@@ -63,9 +66,9 @@ def main(run_path) :
         Spots.loc[new_washout_idx, ['is_washout']] = True
 
         new_banned_coordinates = list(
-            Spots[
+            pd.unique(Spots[
                 (Spots['is_washout']) & (Spots['cycle'] == cycle)
-                ]['coordinates'].unique() #pylint : ignore=reportAttributeAccessIssue
+                ]['coordinates'])
         )
 
         #Updating banned coordinates

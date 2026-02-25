@@ -1,9 +1,8 @@
 """
 This script aims at correcting drift computed in Drift.py for spots and clusters saving both corrected coordinates and detected coordinates.
 """
-import sys,warnings
 import pandas as pd
-from Sequential_Fish.tools import safe_merge_no_duplicates
+from ..tools import safe_merge_no_duplicates
 
 def main(run_path) :
     
@@ -50,28 +49,18 @@ def main(run_path) :
             Clusters[key[-1]] = Clusters[key]
             Clusters = Clusters.drop(columns=key)
     Spots = Spots.rename(columns={'z' : 'drifted_z', 'y' : 'drifted_y', 'x' : 'drifted_x'}) #Keeping old values
-    for dim_index, i in enumerate(['z','y','x']) :
+    for i in['z','y','x'] :
         Spots[i] = (Spots['drifted_{0}'.format(i)] + Spots['drift_{0}'.format(i)]).astype(int)
-        drop_index = Spots[Spots[i] >= Spots['{0}_shape'.format(i)]].index
-        Spots = Spots.drop(drop_index)
+        drop_index = Spots[Spots[i] >= Spots['{0}_shape'.format(i)]].index.to_list()
+        Spots = Spots.drop(drop_index, axis=0)
         print("drift pushed {0} spots out of range".format(len(drop_index)))
 
     Clusters = Clusters.rename(columns={'z' : 'drifted_z', 'y' : 'drifted_y', 'x' : 'drifted_x'}) #Keeping old values
-    for dim_index, i in enumerate(['z','y','x']) : 
+    for i in ['z','y','x'] : 
         Clusters[i] = (Clusters['drifted_{0}'.format(i)] + Clusters['drift_{0}'.format(i)]).astype(int)
-        drop_index = Clusters[Clusters[i] >= Clusters['{0}_shape'.format(i)]].index
+        drop_index = Clusters[Clusters[i] >= Clusters['{0}_shape'.format(i)]].index.to_list()
         print("drift pushed {0} clusters out of range".format(len(drop_index)))
         Clusters = Clusters.drop(drop_index)
 
     Spots.reset_index(drop=True).to_feather(run_path + "/result_tables/Spots.feather")
     Clusters.reset_index(drop=True).to_feather(run_path + "/result_tables/Clusters.feather")
-    
-    
-if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        warnings.warn("Prefer launching this script with command : 'python -m Sequential_Fish pipeline alignement' or make sure there is no conflict for parameters loading in pipeline_parameters.py")
-        from default_pipeline_parameters import RUN_PATH as run_path
-    else :
-        run_path = sys.argv[1]
-    main(run_path) 
-    

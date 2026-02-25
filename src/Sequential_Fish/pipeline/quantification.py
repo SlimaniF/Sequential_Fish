@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 import pandas as pd
 from bigfish.multistack import match_nuc_cell
@@ -7,7 +9,8 @@ from smfishtools.detection.multithread import cell_quantification
 from tqdm import tqdm
 
 from ..settings import get_settings
-from ..tools import safe_merge_no_duplicates
+from ..tools import safe_merge_no_duplicates, open_location
+from ..customtypes import PipelineParameters
 
 
 def main(run_path) :
@@ -15,6 +18,7 @@ def main(run_path) :
     print(f"quantification runing for {run_path}")
     
     pipeline_parameters = get_settings(run_path)
+    pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
     MAX_WORKERS = pipeline_parameters.quantif_MAX_WORKERS
     
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
@@ -70,8 +74,6 @@ def main(run_path) :
         drift = Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']].to_numpy(dtype=int).squeeze()
         nucleus_label = shift_array(nucleus_label, *drift)
 
-        #Correct abberation for nucleus
-        #TODO
         if nucleus_label.ndim == 3 : nucleus_label = np.max(nucleus_label, axis=0)
         if cytoplasm_label.ndim == 3 : cytoplasm_label = np.max(cytoplasm_label, axis=0)
 

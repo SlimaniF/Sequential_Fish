@@ -49,7 +49,7 @@ def launch_script(script_name, run_path):
         run_duration = (script_end - script_start).total_seconds()
         
 
-    except Exception as e:
+    except Exception as e: # pylint: disable=W0718
         script_end = datetime.now()
         run_duration = (script_end - script_start).total_seconds()
 

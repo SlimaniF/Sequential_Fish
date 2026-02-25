@@ -6,35 +6,25 @@ This script use results from FishSeq_pipeline_segmentation.py that must be run b
 """
 
 import os
+import logging
+from typing import cast
+
 import numpy as np
 import pandas as pd
-from ..tools import open_image, reorder_image_stack
-from smfishtools.detection import multi_thread_full_detection
-from concurrent.futures import ThreadPoolExecutor
-from tqdm import tqdm
-from typing import cast
-import logging
-import os, sys
-import warnings
 from tqdm import tqdm
 from pebble import ProcessPool
-import numpy as np
-import pandas as pd
-from concurrent.futures import TimeoutError
+from smfishtools.detection import multi_thread_full_detection
 
-
-from Sequential_Fish.tools._detection import multi_thread_full_detection
-
-#########
-## USER PARAMETERS
-#########
+from ..tools import open_location
+from ..settings import get_settings
+from ..customtypes.parameters import PipelineParameters
 
 def main(run_path) :
 
     print(f"detection runing for {run_path}")
     
-    from ..settings import get_settings
     pipeline_parameters = get_settings(run_path)
+    pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
     
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     SPOT_SIZE = pipeline_parameters.SPOT_SIZE
@@ -46,6 +36,7 @@ def main(run_path) :
     ARTIFACT_RADIUS = pipeline_parameters.ARTIFACT_RADIUS
     DETECTION_SLICE_TO_REMOVE = pipeline_parameters.DETECTION_SLICE_TO_REMOVE
     MAX_WORKERS = pipeline_parameters.detection_MAX_WORKERS
+    WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
     
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -61,6 +52,7 @@ def main(run_path) :
     os.makedirs(run_path + '/detection_fov/',exist_ok=True)
 
     max_id = 0
+    Detection = pd.DataFrame()
     for location_id, location in enumerate(Acquisition['location'].unique()) :
         print("Starting location {0}...".format(location_id))
         sub_data = Acquisition.loc[Acquisition["location"] == location]
@@ -180,7 +172,7 @@ def main(run_path) :
                 Detection['min_spot_per_cluster'],
                 Detection['detection_id'],
             ):
-                future = executor.schedule(multi_thread_full_detection, args = args, timeout=180)
+                future = executor.schedule(multi_thread_full_detection, args = list(args), timeout=180)
                 futures.append(future)
                 args_list.append(args)
 
@@ -194,10 +186,10 @@ def main(run_path) :
                 except TimeoutError as e:
                     logging.warning(f"Detection timed out: {e}")
                     detection_id = args[-1]
-                    result = dict.fromkeys(keys, np.NaN)
+                    result = dict.fromkeys(keys, np.nan)
                     result['detection_id'] = detection_id
-                    logging.warning("Thread {0} : Returning NaN values".format(detection_id))
-                finally :
+                    logging.warning(f"Thread {detection_id} : Returning nan values")
+                else :
                     detection_result.append(result)
 
 
@@ -251,6 +243,11 @@ def main(run_path) :
     Detection_save['wavelength'] = 0
     color_id_list = list(Detection_save['color_id'].unique())
     color_id_list.sort()
+
+    if WAVELENGTH_LIST is None :
+        WAVELENGTH_LIST = [None]*len(color_id_list)
+    assert len(WAVELENGTH_LIST) == len(color_id_list)
+
     for color_id, wv in zip(color_id_list, WAVELENGTH_LIST) :
         Detection_save.loc[Detection_save['color_id'] == color_id, ['wavelength']] = wv
     Detection_save['wavelength'] = Detection_save['wavelength'].astype(int)
@@ -261,7 +258,7 @@ def main(run_path) :
     Clusters_save.to_feather(save_path + '/Clusters.feather')
 
 
-def build_Spots_and_Cluster_df(detection_result : dict) :
+def build_Spots_and_Cluster_df(detection_result : dict | list) :
     """
     Made to build Spots pandas dataframe from result of multi_threaded call to `multi_thread_full_detection`.
 
