@@ -121,6 +121,7 @@ def main(run_path) :
                     voxel_size=VOXEL_SIZE,
                 )
                 dapi_results = pd.DataFrame(dapi_results)
+                dapi_results["drift_z"] = 0
             else : 
                 max_proj = False
 
@@ -152,6 +153,8 @@ def main(run_path) :
                     )
 
                 fish_result = pd.DataFrame(fish_result)
+                if max_proj : 
+                    fish_result["drift_z"] = 0
                 fish_result['acquisition_id'] = acquisition_id
                 fish_result['drift_type'] = 'fish'
                 fish_result['max_projection'] = max_proj

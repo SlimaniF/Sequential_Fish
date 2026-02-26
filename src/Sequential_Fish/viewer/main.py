@@ -1,22 +1,21 @@
 
+import os
+from typing import cast
 import napari
 import pandas as pd
-import os
 
 from numpy.random import shuffle
+from ..customtypes import table_dict_type
 from .widgets import initiate_analysis_widgets
 from .widgets import initiate_load_widgets
 from .widgets import initiate_location_widgets
 from magicgui.widgets import Container
 
-from ..status.gui import select_path_for_analysis
-
-from smfishtools.plot.utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
+from .utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
 
 
-def main() :
+def main(run_path) :
     
-    run_path = select_path_for_analysis()
     if run_path is None : quit()
     
     TABLES = ['Acquisition', 'Detection', 'Spots', 'Clusters', 'Drift', 'Cell', 'Gene_map']
@@ -24,7 +23,7 @@ def main() :
         table_dict_type,
         {
         table : pd.read_feather(run_path + '/result_tables/' + table + '.feather')  for table in TABLES
-    }
+        })
     voxel_size = tables_dict['Detection'].at[0,'voxel_size']
 
     #Init viewer
@@ -127,6 +126,3 @@ def create_color_table(tables_dict) :
     color_table['colormaps'] = colormaps
 
     return color_table
-
-if __name__ == "__main__" :
-    main()

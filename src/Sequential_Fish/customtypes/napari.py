@@ -4,6 +4,7 @@ Super class for napari usage.
 
 from magicgui.widgets import FunctionGui
 from abc import ABC, abstractmethod
+from typing import Any
 
 class NapariWidget(ABC) :
     """
@@ -16,11 +17,13 @@ class NapariWidget(ABC) :
         self.register_widget(self.widget)
 
     @abstractmethod
-    def _create_widget(self) :
+    def _create_widget(self) -> FunctionGui:
         """
         This should return a widget you can add to the napari (QWidget)
         """
-        pass
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return None
 
     def register_widget(self, attr) :
         self.widgets.append(attr)

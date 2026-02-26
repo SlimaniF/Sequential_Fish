@@ -1,8 +1,8 @@
 """
 Entry point to launch Sequential Fish viewer
 """
+from .main import main
 
 
-def run(*args) :
-    from .main import main
-    main()
+def run(run_path : str) :
+    main(run_path)

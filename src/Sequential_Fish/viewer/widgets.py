@@ -1,26 +1,21 @@
 """
 Submodule containing custom class for napari widgets
 """
+from typing import cast
 
-from npe2.types import LayerData
 import numpy as np
 import pandas as pd
 import napari
-from typing import TypedDict
 from tqdm import tqdm
 
 from napari.types import LayerDataTuple
 from magicgui import magicgui
 from magicgui.widgets import Widget
 
-from ..customtypes import NapariWidget
-from ..tools.utils import open_image, safe_merge_no_duplicates
+from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
 from .utils import open_segmentation
-from .utils import pad_to_shape
-from .utils import reorder_image_stack
-from .utils import reshape_stack
-from .utils import correct_map
-from ..types import table_dict_type
+from ..customtypes import NapariWidget
+from ..customtypes import table_dict_type
 
 
 from smfishtools.preprocessing.alignement import shift_array
@@ -35,7 +30,7 @@ def register_load_widget(cls) :
     return cls
 
 def initiate_load_widgets(
-        table_dict : dict, 
+        table_dict : table_dict_type, 
         voxel_size : tuple,
         color_table : dict,
         run_path : str
@@ -71,7 +66,7 @@ def register_analysis_widget(cls) :
 
 def initiate_analysis_widgets(
         voxel_size : tuple,
-        table_dict : dict,
+        table_dict : table_dict_type,
         color_table : dict,
 
 ) :
@@ -198,7 +193,7 @@ class SpotsLoader(NapariWidget) :
 
                 spots_array = np.concatenate([spots_array, spots])
 
-            layerdata = (spots_array, 
+            layerdata = cast(LayerDataTuple, (spots_array, 
                          {
                              "scale" : self.voxel_size,
                              "size" : 10, 
@@ -209,7 +204,7 @@ class SpotsLoader(NapariWidget) :
                              'blending' : 'additive',
                              'symbol' : symbol
                              },
-                        'Points')
+                        'Points'))
             return layerdata
         return load
 
@@ -343,7 +338,7 @@ class SignalLoader(NapariWidget) :
             table_dict : table_dict_type,
             voxel_size :tuple, 
             color_table : pd.DataFrame,
-            **kwargs
+            **_
             ):
         
         #Table
@@ -352,13 +347,13 @@ class SignalLoader(NapariWidget) :
         Drift = table_dict['Drift']
         self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
         
-        self.Acquisition = table_dict['Acquisition']
+        self.Acquisition = table_dict['Acquisition'].set_index(["location","cycle"], verify_integrity=True)
         
         self.update(list(self.Acquisition['location'].unique()))
 
         self.color_table = color_table
         self.voxel_size = voxel_size
-        self.has_beads = not self.Acquisition['bead_channel'].isna().all()
+        self.has_beads = not cast(bool,self.Acquisition['bead_channel'].isna().all())
         super().__init__()
 
     def update(self, locations) :
@@ -410,40 +405,21 @@ class SignalLoader(NapariWidget) :
                 name += "_signal_drifted"
 
 
-            sub_Acqu = self.data.loc[self.data['cycle'] == cycle]
-
-            if len(sub_Acqu) > 1 : 
-                    shapes = np.array(list(sub_Acqu['fish_shape']))
-                    max_shape = np.max(shapes, axis=0)
-            else :
-                max_shape = sub_Acqu['fish_shape'].iat[0]
-
-            image_list = []
-            for index in tqdm(sub_Acqu.index, desc="Opening fish signal ({0})".format(target)) :
-                fullpath = sub_Acqu.at[index, "full_path"]
-                shape = sub_Acqu.at[index, 'fish_shape']
-                image_map = sub_Acqu.at[index, 'fish_map'].copy()
-                image_map = correct_map(map=image_map)
-                z = image_map['z']
-                c = image_map['c']
-                image_number = shape[z] * shape[c]
+            array = open_all_locations_one_cycle(
+                self.Acquisition,
+                cycle=cycle,
+            )
+            array = array[..., channel_index]
                 
-                image = open_image(fullpath, image_number= image_number)
-                image = reshape_stack(image, image_map=image_map, im_shape=shape)
-                image = image[...,channel_index]
-                
-                if drift_correction :
-                    drift = list(sub_Acqu.loc[index, ['drift_z','drift_y','drift_x']].astype(int))
-                    image = shift_array(image, *drift)
+            if drift_correction :
+                location_list = list(self.Acquisition['location'].unique())
+                location_list.sort()
+                assert len(location_list) == len(array)
+                for location, stack in zip(location_list, array) :
+                    drift = self.Acquisition.loc[(location,cycle),["drift_z","drift_y","drift_x"]].astype(int)
+                    array = shift_array(stack, *drift)
 
-                max_shape_no_channel = tuple(max_shape[:c]) + tuple(max_shape[(c+1):])
-                if (image.shape != max_shape_no_channel) :
-                    image = pad_to_shape(image, new_shape=max_shape_no_channel)
-
-                image_list.append(image)
-            array = np.stack(image_list)
-
-            layerdata = (
+            layerdata = cast(LayerDataTuple, (
                 array,
                 {
                     "scale" : self.voxel_size, 
@@ -516,7 +492,7 @@ class SegmentationLoader(NapariWidget) :
                 masks,
                 {"scale" : self.voxel_size, "name" : name, "blending" : "additive"},
                 'Labels'
-            ))
+            )
 
 
             return layerdata

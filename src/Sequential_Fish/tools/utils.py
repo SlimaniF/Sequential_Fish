@@ -104,6 +104,25 @@ def reorder_image_stack(image, channel_map, is_3D = True) :
     image = np.moveaxis(image, new_order, ref_order)
     return image
 
+def pad_to_shape(array : np.ndarray, new_shape) :
+    shape = array.shape
+
+    if len(array.shape) != len(new_shape) : raise ValueError("dimensions of array and new_shape don't match")
+
+    pad_width_list = []
+
+    for axis, axis_size in enumerate(shape) :
+        target_size = new_shape[axis]
+        
+        pad_width = int(target_size - axis_size)
+        if pad_width >= 0 :
+            pad_width_list.append([0,pad_width])
+        else :
+            raise ValueError("Can't pad to new size {0} on axis {1} because current size {2} is bigger.".format(target_size, axis, axis_size))
+    
+    array = np.pad(array, pad_width_list)
+
+    return array
 
 def open_image(path:str, _map=None) :
     """
@@ -250,6 +269,25 @@ def open_location(
     location_stack = reorder_image_stack(location_stack, channel_map=stack_map)
 
     return location_stack
+
+def open_all_locations_one_cycle(
+    Acquisition : pd.DataFrame,
+    cycle: int,
+) :
+    location_list = list(Acquisition['location'].unique())
+    location_list.sort()
+
+    max_shape_no_channel = np.max(Acquisition["fish_reodered_shape"].to_list(), axis=0)
+    max_shape_no_channel = max_shape_no_channel[:-1]
+    location_stack = []
+    for location in location_list :
+        location = open_cycle(Acquisition,location,cycle)
+
+        if (location.shape != max_shape_no_channel) :
+            location = pad_to_shape(location, new_shape=max_shape_no_channel)
+        location_stack.append(location_stack)
+
+    return np.stack(location_stack)
 
 def open_cycle(
         Acquisition : pd.DataFrame,

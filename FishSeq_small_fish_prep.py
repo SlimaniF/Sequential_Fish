@@ -1,4 +1,4 @@
-RUN_PATH = "/media/SSD_floricslimani/Fish_seq/Davide/2026-02-05 - M-FISH - HeLa - 13 genes_Run1/"
+RUN_PATH = "/media/SSD_floricslimani/Fish_seq/Davide/Organoid/2025-06-06 - SeqFISH - Organoids_Run2/"
 
 
 import os

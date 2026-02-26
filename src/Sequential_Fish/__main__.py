@@ -11,7 +11,6 @@ def main():
 
     MODULES = ['viewer', 'pipeline', 'analysis', 'settings', 'calibration']
 
-    
     #CALL TO MODULES
     if len(sys.argv) < 2:
         print("Usage: python -m my_package <module> [args...]")
@@ -31,7 +30,7 @@ def main():
     if module == "viewer":
         if len(submodules) > 0 :
             print(f"No argument for viewer. Ignoring passed arguments : {submodules}")
-        viewer.run()
+        viewer.run(RUN_PATH)
         
     elif module == "pipeline":
 
