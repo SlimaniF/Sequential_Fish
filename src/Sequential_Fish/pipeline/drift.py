@@ -112,7 +112,6 @@ def main(run_path) :
                 voxel_size=VOXEL_SIZE
             )
             dapi_results = pd.DataFrame(dapi_results)
-            dapi_results['drift_type'] = 'dapi'
 
             if (dapi_results.at[0,'drift_z'], dapi_results.at[0,'drift_y'], dapi_results.at[0,'drift_x'],) == (0,0,0) : #No drift found in 3D, try in 2D
                 max_proj = True
@@ -122,7 +121,11 @@ def main(run_path) :
                     voxel_size=VOXEL_SIZE,
                 )
                 dapi_results = pd.DataFrame(dapi_results)
+            else : 
+                max_proj = False
 
+            dapi_results['drift_type'] = 'dapi'
+            dapi_results['max_projection'] = max_proj
             dapi_results['acquisition_id'] = acquisition_id
             Drift = pd.concat([
                 Drift,

@@ -3,7 +3,6 @@ from typing import cast
 import numpy as np
 import pandas as pd
 from bigfish.multistack import match_nuc_cell
-from smfishtools.preprocessing import shift_array
 from concurrent.futures import ThreadPoolExecutor
 from smfishtools.detection.multithread import cell_quantification
 from tqdm import tqdm
@@ -34,7 +33,6 @@ def main(run_path) :
     if not "cell_label" in Clusters.columns : Clusters['cell_label'] = np.nan
 
     # Matching location with Drift
-    print(Drift['acquisition_id'])
     Drift = safe_merge_no_duplicates(
         Drift,
         Acquisition,
@@ -64,18 +62,20 @@ def main(run_path) :
             Acquisition=Acquisition,
             location=location
         )
+
+        if image_stack.ndim == 5 :
+            image_stack = np.max(image_stack, axis=1)
         dapi_channel = Acquisition['dapi_channel'].iat[0]
-        dapi_list = [image_stack[i,:,:,:,dapi_channel] for i in range(len(image_stack))]
-        if dapi_list[0].ndim == 3 :
-            dapi_list = [np.max(image,axis=0) for image in dapi_list]
+        dapi_list = [image_stack[i,...,dapi_channel] for i in range(len(image_stack))]
+        assert dapi_list[0].ndim == 2, f"{dapi_list[0].shape}"
 
+        # TODO Currently will not work as nucleus is segmented only once and not at each cycle. Need to segment nucleus at each cycle (?) in such case we can correct drift for adapted drift at each cycle.
+        # #Correct drift for nucleus
+        # drift = Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']].to_numpy(dtype=int).squeeze()
+        # print("drift  :",Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']])
+        # print("drift  :",drift)
+        # nucleus_label = shift_array(nucleus_label, *drift)
 
-        #Correct drift for nucleus
-        drift = Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']].to_numpy(dtype=int).squeeze()
-        nucleus_label = shift_array(nucleus_label, *drift)
-
-        if nucleus_label.ndim == 3 : nucleus_label = np.max(nucleus_label, axis=0)
-        if cytoplasm_label.ndim == 3 : cytoplasm_label = np.max(cytoplasm_label, axis=0)
 
         nucleus_label, cytoplasm_label = match_nuc_cell(nucleus_label, cytoplasm_label, single_nuc=True, cell_alone=False)
 
@@ -86,12 +86,21 @@ def main(run_path) :
         # Adding cell label and if spots are in nuc seg
         sub_Spots = Spots.loc[Spots['detection_id'].isin(selected_detection_id)]
         sub_Spots_index = sub_Spots.index
+        z = list(sub_Spots['z'])
         y = list(sub_Spots['y'])
         x = list(sub_Spots['x'])
-        is_in_nucleus = nucleus_label[y,x].astype(bool) #0 is background
-        spots_cell_labels = cytoplasm_label[y,x].astype(int)
+
+        coordinates = [z,y,x]
+        is_2D_nuc = int(nucleus_label.ndim == 2)
+        is_2D_cyto = int(cytoplasm_label.ndim == 2)
+
+        is_in_nucleus = nucleus_label[*coordinates[is_2D_nuc:]].astype(bool) #0 is background
+        spots_cell_labels = cytoplasm_label[*coordinates[is_2D_cyto:]].astype(int)
         sub_Spots.loc[:,['in_nucleus']] = is_in_nucleus
         sub_Spots.loc[:,['cell_label']] = spots_cell_labels
+
+        if not is_2D_nuc : nucleus_label = np.max(nucleus_label, axis=0) # Project in 2D for bigfish quantification
+        if not is_2D_cyto : cytoplasm_label = np.max(cytoplasm_label, axis=0)
 
         sub_Clusters = Clusters.loc[Clusters['detection_id'].isin(selected_detection_id)]
         sub_Clusters_index = sub_Clusters.index
@@ -122,7 +131,6 @@ def main(run_path) :
         sub_Clusters = Clusters.loc[
             (Clusters['detection_id'].isin(selected_detection_id)) & (Clusters['is_washout'] == False) & (Clusters['cell_label'] > 0)
         ]
-
         #Select all spots belonging to this fov; one list element per (cycle,color)
         all_fov_spots_lists = [
             np.array(list(

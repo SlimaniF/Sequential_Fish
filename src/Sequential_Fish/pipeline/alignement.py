@@ -14,10 +14,19 @@ def main(run_path) :
     Clusters = pd.read_feather(run_path + '/result_tables/Clusters.feather')
     Detection = pd.read_feather(run_path + '/result_tables/Detection.feather')
 
+    Drift["drift_z"] = Drift.loc[:,["drift_z"]].fillna(0).astype(int)
+
+    for key in ["drift_z","drift_y","drift_x"] :
+        if key in Spots.columns : 
+            Spots = Spots.drop(key,axis=1)
+        if key in Clusters.columns : 
+            Clusters = Clusters.drop(key,axis=1)
+    
     ### Adding columns to Spots & Clusters
     Spots = safe_merge_no_duplicates(Spots, Detection, 'acquisition_id', on = 'detection_id')
-    Spots = safe_merge_no_duplicates(Spots, Drift.loc[Drift['drift_type'] == 'fish'], keys= ['drift_z','drift_y','drift_x'], on = 'acquisition_id')
+    Spots = safe_merge_no_duplicates(Spots, Drift.loc[Drift['drift_type'] == 'dapi'], keys= ['drift_z','drift_y','drift_x'], on = 'acquisition_id')
     Spots = safe_merge_no_duplicates(Spots, Acquisition, keys='fish_reodered_shape', on = 'acquisition_id')
+
 
     z_shape,y_shape,x_shape,_ = zip(*list(Spots['fish_reodered_shape']))
     Spots['z_shape'] = z_shape
@@ -26,7 +35,7 @@ def main(run_path) :
     Spots = Spots.drop(columns='fish_reodered_shape')
 
     Clusters = safe_merge_no_duplicates(Clusters, Detection, 'acquisition_id', on = 'detection_id')
-    Clusters = safe_merge_no_duplicates(Clusters, Drift.loc[Drift['drift_type'] == 'fish'], keys=['drift_z','drift_y','drift_x'], on = 'acquisition_id')
+    Clusters = safe_merge_no_duplicates(Clusters, Drift.loc[Drift['drift_type'] == 'dapi'], keys=['drift_z','drift_y','drift_x'], on = 'acquisition_id')
     Clusters = safe_merge_no_duplicates(Clusters, Acquisition, 'fish_reodered_shape', on = 'acquisition_id')
 
     if len(Clusters) > 0 :
@@ -50,6 +59,7 @@ def main(run_path) :
             Clusters = Clusters.drop(columns=key)
     Spots = Spots.rename(columns={'z' : 'drifted_z', 'y' : 'drifted_y', 'x' : 'drifted_x'}) #Keeping old values
     for i in['z','y','x'] :
+        print(i)
         Spots[i] = (Spots['drifted_{0}'.format(i)] + Spots['drift_{0}'.format(i)]).astype(int)
         drop_index = Spots[Spots[i] >= Spots['{0}_shape'.format(i)]].index.to_list()
         Spots = Spots.drop(drop_index, axis=0)

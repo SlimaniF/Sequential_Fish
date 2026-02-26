@@ -74,15 +74,12 @@ def main(
     logging.info("NEW RUN")
     
     for round_key in scripts_rounds.keys() :
+        logging.info(f"Starting round : {round_key}")
         scripts = scripts_rounds[round_key]
         sucess = []
         for script in scripts:
-            if os.path.exists(script_folder + '/' + script):
-                result = launch_script(script_folder + '/' + script, run_path=run_path)
-                sucess.append(result)
-            else:
-                logging.warning(f"File {script} not found.")
-                sucess.append(False)
+            result = launch_script(script, run_path=run_path)
+            sucess.append(result)
 
         if all(sucess) :
             logging.info(f"Step {round_key} succeed.")

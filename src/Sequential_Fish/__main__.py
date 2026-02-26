@@ -42,6 +42,9 @@ def main():
             format='%(asctime)s - %(levelname)s - %(message)s',
         )
 
+        logging.info("\n\nSequential Fish is starting\n")
+
+
         if not os.path.isfile(RUN_PATH + "/pipeline_settings.json") :
             logging.info("No settings found, initializing settings.json")
             settings = PipelineParameters.from_default_parameters()

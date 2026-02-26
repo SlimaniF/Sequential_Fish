@@ -179,10 +179,8 @@ def main(run_path) :
             detection_result = []
             for future, args in tqdm(zip(futures, args_list), total=len(futures)):
                 try:
-                    result, warning_msg = future.result()  # Set your timeout in seconds
-                    for msg in warning_msg: logging.warning(f"Worker warning: {msg}")
-
-
+                    result = future.result()  # Set your timeout in seconds
+                    
                 except TimeoutError as e:
                     logging.warning(f"Detection timed out: {e}")
                     detection_id = args[-1]
@@ -250,7 +248,7 @@ def main(run_path) :
 
     for color_id, wv in zip(color_id_list, WAVELENGTH_LIST) :
         Detection_save.loc[Detection_save['color_id'] == color_id, ['wavelength']] = wv
-    Detection_save['wavelength'] = Detection_save['wavelength'].astype(int)
+    Detection_save['wavelength'] = Detection_save['wavelength'].astype("Int16")
 
     #Saving results 
     Detection_save.to_feather(save_path + '/Detection.feather')

@@ -1,5 +1,4 @@
 import re
-import os
 import warnings
 from typing import cast, Optional, Tuple
 import datetime as dt
@@ -11,7 +10,6 @@ from czifile import imread as _imread
 from czifile import CziFile
 from bigfish.stack import read_image as _read_image
 
-from skimage import io
 from scipy.ndimage import distance_transform_edt
 
 class MappingError(Exception) :
@@ -107,21 +105,12 @@ def reorder_image_stack(image, channel_map, is_3D = True) :
     return image
 
 
-def open_image(path:str, _map=None, image_number=None) :
+def open_image(path:str, _map=None) :
     """
     Supports czi, png, jpg, jpeg, tif or tiff extensions.  
     If `image_number` is provided, extension must be .tif or .tiff
     """
-
     SUPPORTED_TYPES = ('.png', '.jpg', '.jpeg','.tif', '.tiff')
-
-    if not image_number is None :
-        if path.endswith('.tif') or path.endswith('.tiff') :
-            im = [io.imread(path, plugin="tifffile", img_num=im_index) for im_index in range(image_number)]
-            im = np.stack(im)
-            return im
-        else :
-            warnings.warn("'image_number' is provided with a non tiff extension, ignoring 'image_number' argument")
 
 
     if path.endswith('.czi') :
@@ -252,12 +241,15 @@ def open_location(
     assert len(loc_Acquisition) == len(Acquisition['cycle'].unique()), "Duplicates locations or missing locations found"
 
     fish_path = Acquisition.at[loc_Acquisition[0], 'full_path']
-    fish_im = open_image(fish_path)
+    
+    with tifffile.TiffFile(fish_path) as tif :
+        location_stack = tif.asarray()
+
 
     stack_map = Acquisition.loc[Acquisition['location'] == location]['fish_map'].iat[0]   
-    fish_im = reorder_image_stack(fish_im, channel_map=stack_map)
+    location_stack = reorder_image_stack(location_stack, channel_map=stack_map)
 
-    return fish_im
+    return location_stack
 
 def open_cycle(
         Acquisition : pd.DataFrame,
@@ -267,13 +259,7 @@ def open_cycle(
     """
     Open specific cycle of a location and reorder stacks in order (z,y,x,channel)
     """
-    loc_Acquisition = Acquisition.loc[Acquisition['location'] == location].index
-    assert len(loc_Acquisition) == 1, "Duplicates locations or no location found"
-    fish_path = Acquisition.at[loc_Acquisition[0], 'full_path']
-
     #Getting image informations
-    fish_path_list = os.listdir(fish_path)
-    fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST ie : filename cycle matches map cycles and rest of filename doesn't change list order.
     stack_map = Acquisition.iat[(location,cycle), "fish_map"]
     stack_shape = Acquisition.iat[(location, cycle), "fish_shape"] 
     fullpath = Acquisition.iat[(location,cycle), "full_path"]
@@ -282,9 +268,11 @@ def open_cycle(
     z = stack_map['z']
     c = stack_map['c']
     image_number = stack_shape[z] * stack_shape[c]
-    image_stack = open_image(fullpath, image_number= image_number)
 
-    image_stack = reorder_image_stack(image_stack, channel_map=stack_map)
+    with tifffile.TiffFile(fullpath) as tif :
+        cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)
+
+    image_stack = reorder_image_stack(cycle_stack, channel_map=stack_map)
 
     return image_stack
 
@@ -297,14 +285,15 @@ def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[float
     try:
         if filepath.endswith('.czi'):
             with CziFile(filepath) as czi:
-                metadata = czi.metadata()  # returns XML metadata
+                metadata = cast(str,czi.metadata())  # returns XML metadata
                 # try to parse voxel sizes from XML
                 import xml.etree.ElementTree as ET
                 root = ET.fromstring(metadata)
                 scaling_distance = root.findall('.//Scaling//Items//Distance//Value')
                 if len(scaling_distance) in [2,3] :
+                    res = []
                     for scale in scaling_distance :
-                        res = [float(scale.text) * 1e9 for scale in scaling_distance] #m to nm
+                        res = [float(cast(str,scale.text)) * 1e9 for scale in scaling_distance] #m to nm
                     res.reverse()
                     return tuple(res)
                 else :
