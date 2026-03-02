@@ -31,6 +31,9 @@ def main(run_path) :
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     DAPI_CHANNEl = pipeline_parameters.DAPI_CHANNEl
     REFERENCE_CYCLE = pipeline_parameters.REFERENCE_CYCLE
+    FLOW_THRESHOLD = pipeline_parameters.FLOW_THRESHOLD
+    CELLPROB_THRESHOLD = pipeline_parameters.CELLPROB_THRESHOLD
+    MIN_SIZE = pipeline_parameters.MIN_SIZE
 
 
     if DO_3D_SEGMENTATION :
@@ -50,8 +53,8 @@ def main(run_path) :
     print("Starting segmentation pipeline")
 
     # Init cellpose models
-    nucleus_model = models.CellposeModel(gpu= True, model_type = MODEL_DICT['nucleus_model'])
-    cytoplasm_model = models.CellposeModel(gpu= True, model_type = MODEL_DICT['cytoplasm_model'])
+    nucleus_model = models.CellposeModel(gpu= True, pretrained_model= MODEL_DICT['nucleus_model'])
+    cytoplasm_model = models.CellposeModel(gpu= True, pretrained_model= MODEL_DICT['cytoplasm_model'])
 
 
     for location in tqdm(Acquisition['location'].unique()) :
@@ -62,19 +65,22 @@ def main(run_path) :
         image = open_image(image_path)
         image = reorder_image_stack(image, image_map)
         
-        nucleus_image = image[REFERENCE_CYCLE,...,DAPI_CHANNEl]
-        image = np.mean(image, axis=0)# mean on cycles
+        image = image[REFERENCE_CYCLE]
         if not DO_3D_SEGMENTATION :
             image = np.mean(image, axis=0)# mean on z
 
         #Nucleus_segmentation
+        nucleus_image = image[...,DAPI_CHANNEl]
         nucleus_image_save = nucleus_image.copy()
         
         nucleus_label,*_ = nucleus_model.eval(
             nucleus_image, 
             diameter= OBJECT_SIZE_DICT['nucleus_size'], 
             do_3D= DO_3D_SEGMENTATION, 
-            anisotropy=anisotropy
+            anisotropy=anisotropy,
+            cellprob_threshold=CELLPROB_THRESHOLD,
+            flow_threshold=FLOW_THRESHOLD,
+            min_size=MIN_SIZE
             )
 
         #Cytoplasm segmentation
@@ -86,7 +92,10 @@ def main(run_path) :
             cytoplasm_image, 
             diameter= OBJECT_SIZE_DICT['cytoplasm_size'], 
             do_3D= DO_3D_SEGMENTATION, 
-            anisotropy=anisotropy
+            anisotropy=anisotropy,
+            flow_threshold=FLOW_THRESHOLD, #not used for 3D
+            cellprob_threshold=CELLPROB_THRESHOLD,
+            min_size=MIN_SIZE
             )
 
 

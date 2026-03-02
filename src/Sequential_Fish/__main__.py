@@ -60,7 +60,9 @@ def main():
             for script in submodules : 
                 sucess = launch_script(script, run_path=RUN_PATH)
 
-                if not sucess : error_count +=1
+                if not sucess : 
+                    print(f"Error caught during computing. Aborting script {script}")
+                    error_count +=1
             
             print(f"all scripts ended with {error_count} errors. If any, error can be checked in run_log file.")
     

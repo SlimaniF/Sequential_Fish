@@ -44,6 +44,9 @@ class PipelineParameters(BaseModel) :
     MODEL_DICT : dict[str,str] = Field(default_factory=lambda : {'nucleus_model' : 'cpsam', 'cytoplasm_model' : 'cpsam'})
     OBJECT_SIZE_DICT : dict[str,int] = Field(default_factory=lambda : {'nucleus_size' : 60, 'cytoplasm_size' : 80})
     DO_3D_SEGMENTATION : bool = Field(default=False)
+    FLOW_THRESHOLD  : float = Field(default=0.4) #Not used in 3D
+    CELLPROB_THRESHOLD : float = Field(default=0.0)
+    MIN_SIZE : int = Field(default=15)
     PLOT_VISUALS : bool = Field(default=True)
     
     #Detection parameters
