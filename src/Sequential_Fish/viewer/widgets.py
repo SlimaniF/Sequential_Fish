@@ -6,11 +6,9 @@ from typing import cast
 import numpy as np
 import pandas as pd
 import napari
-from tqdm import tqdm
 
 from napari.types import LayerDataTuple
 from magicgui import magicgui
-from magicgui.widgets import Widget
 
 from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
 from .utils import open_segmentation
@@ -90,7 +88,7 @@ class SpotsLoader(NapariWidget) :
         table_dict : table_dict_type,
         voxel_size :tuple, 
         color_table,
-        **kwargs
+        **_
     ) :
 
         self.Spots = table_dict['Spots']
@@ -219,7 +217,7 @@ class ClustersLoader(NapariWidget) :
             table_dict : table_dict_type,
             voxel_size :tuple, 
             color_table,
-            **kwargs
+            **_
             ):
         
         self.Clusters = table_dict['Clusters']
@@ -349,21 +347,22 @@ class SignalLoader(NapariWidget) :
         
         self.Acquisition = table_dict['Acquisition'].set_index(["location","cycle"], verify_integrity=True)
         
-        self.update(list(self.Acquisition['location'].unique()))
+        self.update(list(self.Acquisition.index.get_level_values(0).unique()))
 
-        self.color_table = color_table
+        self.color_table = color_table.set_index("target",verify_integrity=True)
         self.voxel_size = voxel_size
         self.has_beads = not cast(bool,self.Acquisition['bead_channel'].isna().all())
         super().__init__()
 
     def update(self, locations) :
+
         self.data = pd.merge(
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
+            self.Acquisition[self.Acquisition.index.get_level_values(0).isin(locations)].reset_index(drop=False),
             self.Drift,
             on='acquisition_id'
         )
-        self.data = self.data.sort_values(['location', 'full_path'])
-        self.target = sorted(list(self.Gene_map['target'].unique()))
+        self.data = self.data.set_index(['location',"cycle"]).sort_index()
+        self.target = list(self.Gene_map['target'].unique())
 
     def _create_widget(self) :
         @magicgui(
@@ -375,7 +374,7 @@ class SignalLoader(NapariWidget) :
                     },
                 call_button="Load signal",
                 signal_type = {
-                    "widget_type" : "RadioButton",
+                    "widget_type" : "RadioButtons",
                     "choices" : ['fish','dapi','beads'] if self.has_beads else ['fish', 'dapi'],
                     "value" : "fish"
                 },
@@ -383,7 +382,7 @@ class SignalLoader(NapariWidget) :
                 )
         def load(target, drift_correction, signal_type) -> LayerDataTuple:
             data = self.Gene_map.loc[self.Gene_map['target'] == target].iloc[0]
-            color = self.color_table[self.color_table['target'] == target].loc[:,['colormaps']].iat[0]
+            color = self.color_table.at[target, "colormaps"]
             cycle, color_id = data['cycle'], int(data['color_id'])
 
             if signal_type == "fish" :
@@ -406,17 +405,17 @@ class SignalLoader(NapariWidget) :
 
 
             array = open_all_locations_one_cycle(
-                self.Acquisition,
+                self.Acquisition.reset_index(drop=False),
                 cycle=cycle,
             )
             array = array[..., channel_index]
                 
             if drift_correction :
-                location_list = list(self.Acquisition['location'].unique())
+                location_list = self.Acquisition.index.get_level_values(0).unique().to_list()
                 location_list.sort()
                 assert len(location_list) == len(array)
                 for location, stack in zip(location_list, array) :
-                    drift = self.Acquisition.loc[(location,cycle),["drift_z","drift_y","drift_x"]].astype(int)
+                    drift = self.data.loc[(location,cycle),["drift_z","drift_y","drift_x"]].astype(int)
                     array = shift_array(stack, *drift)
 
             layerdata = cast(LayerDataTuple, (
@@ -444,7 +443,7 @@ class SegmentationLoader(NapariWidget) :
             voxel_size :tuple,
             table_dict : table_dict_type, 
             segmentation_folder_name:str = "/segmentation/",
-            **kwargs
+            **_
             ):
         
         Drift = table_dict['Drift']
@@ -470,7 +469,7 @@ class SegmentationLoader(NapariWidget) :
 
         @magicgui(
                 call_button= "Load segmentation",
-                object={
+                target={
                     "widget_type" : "RadioButtons",
                     "choices" : ["nucleus","cytoplasm"],
                     "orientation" : "horizontal",
@@ -479,20 +478,25 @@ class SegmentationLoader(NapariWidget) :
                 },
                 auto_call=False
         )
-        def load_segmentation(object) -> LayerDataTuple:
+        def load_segmentation(target) -> LayerDataTuple:
 
             shape = np.array(list(self.Acquisition['fish_shape']),dtype=int)
             shape = np.max(shape, axis=0)
             z_size = shape[0]
-            name = "{0}_mask".format(object)
+            name = "{0}_mask".format(target)
             locations = list(self.data.sort_values('location')['location'].unique())
-            masks = open_segmentation(self.segmentation_fullpath, locations , object=object, z_repeat= z_size) #masks list sorted on Acquisition['location']
+            masks = open_segmentation(
+                self.segmentation_fullpath, 
+                locations, 
+                target=target, 
+                z_repeat= z_size
+                ) #masks list sorted on Acquisition['location']
 
-            layerdata = (
+            layerdata = LayerDataTuple((
                 masks,
                 {"scale" : self.voxel_size, "name" : name, "blending" : "additive"},
                 'Labels'
-            )
+            ))
 
 
             return layerdata
@@ -505,7 +509,7 @@ class MultichannelCluster(NapariWidget) :
             self, 
             table_dict, 
             voxel_size,
-            **kwargs
+            **_
             ):
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
@@ -597,7 +601,7 @@ class SpotCountMapper(NapariWidget) :
             self, 
             table_dict, 
             voxel_size,
-            **kwargs,
+            **_,
             ):
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
@@ -651,8 +655,8 @@ class LocationSelector(NapariWidget) :
             self, 
             table_dict: table_dict_type, 
             Viewer : napari.Viewer, 
-            linked_widgets : 'list[Widget]',
-            **kwargs
+            linked_widgets : list,
+            **_
             ):
         self.Full_Acquisiton = table_dict['Acquisition'].copy()
         self.location_choices = list(self.Full_Acquisiton['location'].unique())

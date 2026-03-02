@@ -256,16 +256,16 @@ def open_location(
     """
     Open all cycles of a location and reorder stacks in order (cycle,z,y,x,channel)
     """
-    loc_Acquisition : pd.Index = Acquisition.loc[Acquisition['location'] == location].sort_values('cycle').index
-    assert len(loc_Acquisition) == len(Acquisition['cycle'].unique()), "Duplicates locations or missing locations found"
 
-    fish_path = Acquisition.at[loc_Acquisition[0], 'full_path']
+    if not ('location' in Acquisition.index.names and 'cycle' in Acquisition.index.names) :
+        Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True)
+
+    fish_path = Acquisition.at[(location,0), 'full_path']
     
     with tifffile.TiffFile(fish_path) as tif :
         location_stack = tif.asarray()
 
-
-    stack_map = Acquisition.loc[Acquisition['location'] == location]['fish_map'].iat[0]   
+    stack_map = Acquisition.at[(location,0)]['fish_map']
     location_stack = reorder_image_stack(location_stack, channel_map=stack_map)
 
     return location_stack
@@ -274,20 +274,29 @@ def open_all_locations_one_cycle(
     Acquisition : pd.DataFrame,
     cycle: int,
 ) :
-    location_list = list(Acquisition['location'].unique())
+
+    if not ('location' in Acquisition.index.names and 'cycle' in Acquisition.index.names) :
+        Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True)
+
+    location_list = list(Acquisition.index.get_level_values(0).unique())
     location_list.sort()
 
     max_shape_no_channel = np.max(Acquisition["fish_reodered_shape"].to_list(), axis=0)
-    max_shape_no_channel = max_shape_no_channel[:-1]
+    # max_shape_no_channel = max_shape_no_channel[:-1]
     location_stack = []
+
     for location in location_list :
         location = open_cycle(Acquisition,location,cycle)
 
-        if (location.shape != max_shape_no_channel) :
+        if not np.equal(location.shape, max_shape_no_channel).all() :
             location = pad_to_shape(location, new_shape=max_shape_no_channel)
-        location_stack.append(location_stack)
+        location_stack.append(location)
 
-    return np.stack(location_stack)
+    if len(location_stack) > 1 :
+        location_stack = np.stack(location_stack)
+    else :
+        location_stack = location_stack[0].reshape((1,) + location_stack[0].shape)
+    return location_stack
 
 def open_cycle(
         Acquisition : pd.DataFrame,
@@ -297,15 +306,22 @@ def open_cycle(
     """
     Open specific cycle of a location and reorder stacks in order (z,y,x,channel)
     """
+    if not ('location' in Acquisition.index.names and 'cycle' in Acquisition.index.names) :
+        Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True)
+
     #Getting image informations
-    stack_map = Acquisition.iat[(location,cycle), "fish_map"]
-    stack_shape = Acquisition.iat[(location, cycle), "fish_shape"] 
-    fullpath = Acquisition.iat[(location,cycle), "full_path"]
+    stack_map = Acquisition.at[(location,cycle), "fish_map"]
+    stack_shape = Acquisition.at[(location, cycle), "fish_shape"] 
+    fullpath = Acquisition.at[(location,cycle), "full_path"]
+    stack_map = correct_map(stack_map)
     
     #Preparing image shape
     z = stack_map['z']
     c = stack_map['c']
     image_number = stack_shape[z] * stack_shape[c]
+
+    print(stack_shape)
+    print("image number : ", image_number)
 
     with tifffile.TiffFile(fullpath) as tif :
         cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)
@@ -461,3 +477,20 @@ def shift_array(arr : np.ndarray,*args) :
         new_arr[indexer_new_array] = arr[indexer_old_array]
 
     return new_arr
+
+def correct_map(_map:dict) : 
+    """
+    Maps needs to be corrected when used on image where cycles axis has been removed.
+    """
+
+    cycles_axis = _map['cycles']
+    res = _map.copy()
+    for key, value in res.items() :
+        if value < cycles_axis :
+            pass
+        else :
+            res[key] = value - 1
+    
+    res.pop('cycles')
+
+    return res

@@ -1,5 +1,5 @@
 
-import os
+import os, platform
 from typing import cast
 import napari
 import pandas as pd
@@ -17,6 +17,13 @@ from .utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_or
 def main(run_path) :
     
     if run_path is None : quit()
+
+    system_type = platform.system()
+    if system_type == "Linux" :
+        try :
+            os.environ["QT_QPA_PLATFORM"] = "xcb"
+        except Exception :
+            pass
     
     TABLES = ['Acquisition', 'Detection', 'Spots', 'Clusters', 'Drift', 'Cell', 'Gene_map']
     tables_dict = cast(

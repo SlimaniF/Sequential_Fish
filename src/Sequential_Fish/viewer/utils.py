@@ -33,26 +33,6 @@ def open_segmentation(
     masks = np.stack(masks)
     return masks
 
-def pad_to_shape(array : np.ndarray, new_shape) :
-    shape = array.shape
-
-    if len(array.shape) != len(new_shape) : raise ValueError("dimensions of array and new_shape don't match")
-
-    pad_width_list = []
-
-    for axis, axis_size in enumerate(shape) :
-        target_size = new_shape[axis]
-        
-        pad_width = int(target_size - axis_size)
-        if pad_width >= 0 :
-            pad_width_list.append([0,pad_width])
-        else :
-            raise ValueError("Can't pad to new size {0} on axis {1} because current size {2} is bigger.".format(target_size, axis, axis_size))
-    
-    array = np.pad(array, pad_width_list)
-
-    return array
-
 
 def reorder_image_stack(image, _map) :
     """
