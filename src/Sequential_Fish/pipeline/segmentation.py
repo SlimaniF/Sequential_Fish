@@ -30,6 +30,7 @@ def main(run_path) :
     DO_3D_SEGMENTATION = pipeline_parameters.DO_3D_SEGMENTATION
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     DAPI_CHANNEl = pipeline_parameters.DAPI_CHANNEl
+    REFERENCE_CYCLE = pipeline_parameters.REFERENCE_CYCLE
 
 
     if DO_3D_SEGMENTATION :
@@ -61,12 +62,12 @@ def main(run_path) :
         image = open_image(image_path)
         image = reorder_image_stack(image, image_map)
         
+        nucleus_image = image[REFERENCE_CYCLE,...,DAPI_CHANNEl]
         image = np.mean(image, axis=0)# mean on cycles
         if not DO_3D_SEGMENTATION :
             image = np.mean(image, axis=0)# mean on z
 
         #Nucleus_segmentation
-        nucleus_image = image[...,DAPI_CHANNEl]
         nucleus_image_save = nucleus_image.copy()
         
         nucleus_label,*_ = nucleus_model.eval(

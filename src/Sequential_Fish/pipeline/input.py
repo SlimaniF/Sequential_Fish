@@ -5,6 +5,7 @@ import pandas as pd
 import os
 import warnings
 from typing import cast
+from tqdm import tqdm
 
 import numpy as np
 
@@ -69,7 +70,7 @@ def main(run_path) :
     cycles_list = list(cycle_map[CYCLE_KEY])*location_number
     cycles_list.sort()
     Acquisition['cycle'] = cycles_list
-    for location in location_list :
+    for location in tqdm(location_list) :
 
         #Setting dapi informations
         index = Acquisition[Acquisition['location'] == location].index
