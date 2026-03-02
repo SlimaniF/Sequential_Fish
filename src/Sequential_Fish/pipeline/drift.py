@@ -63,9 +63,11 @@ def main(run_path) :
         sub_acq = Acquisition.loc[Acquisition["location"] == location].sort_values('cycle')
         path = sub_acq['full_path'].iat[0]
         image_map = sub_acq['fish_map'].iat[0]
+        print(path)
 
 
         image = open_image(path)
+        print(image.shape)
         image = reorder_image_stack(image, image_map)
         assert len(image.shape) == 5
         if not DRIFT_SLICE_TO_REMOVE[1] is None : DRIFT_SLICE_TO_REMOVE[1] *= -1
