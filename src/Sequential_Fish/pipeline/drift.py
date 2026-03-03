@@ -53,6 +53,7 @@ def main(run_path) :
 
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
 
+    if not DRIFT_SLICE_TO_REMOVE[1] is None : DRIFT_SLICE_TO_REMOVE[1] *= -1
     for location in Acquisition['location'].unique() : 
 
         print('Starting ',location)
@@ -70,7 +71,6 @@ def main(run_path) :
         print(image.shape)
         image = reorder_image_stack(image, image_map)
         assert len(image.shape) == 5
-        if not DRIFT_SLICE_TO_REMOVE[1] is None : DRIFT_SLICE_TO_REMOVE[1] *= -1
         image = image[:,DRIFT_SLICE_TO_REMOVE[0]:DRIFT_SLICE_TO_REMOVE[1]]
 
 
