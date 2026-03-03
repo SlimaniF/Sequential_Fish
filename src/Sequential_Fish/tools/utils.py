@@ -259,13 +259,13 @@ def open_location(
 
     if not ('location' in Acquisition.index.names and 'cycle' in Acquisition.index.names) :
         Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True)
-
+    
     fish_path = Acquisition.at[(location,0), 'full_path']
     
     with tifffile.TiffFile(fish_path) as tif :
         location_stack = tif.asarray()
 
-    stack_map = Acquisition.at[(location,0)]['fish_map']
+    stack_map = Acquisition.at[(location,0), 'fish_map']
     location_stack = reorder_image_stack(location_stack, channel_map=stack_map)
 
     return location_stack

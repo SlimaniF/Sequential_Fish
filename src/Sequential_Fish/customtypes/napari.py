@@ -34,3 +34,14 @@ class NapariWidget(ABC) :
     def disable_widget(self) :
         for w in self.widgets :
             w.enabled = False
+
+class OrganoidWizard(ABC) :
+    """
+    Commong super class for wizards to launch only when viewer is open in the context of an organoid run.
+    """
+
+    @abstractmethod
+    def start_listening(self) :
+        """
+        Principal action of widget is launched here.
+        """

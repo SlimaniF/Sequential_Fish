@@ -433,7 +433,6 @@ class SignalLoader(NapariWidget) :
 
         return load
 
-
 @register_load_widget    
 class SegmentationLoader(NapariWidget) :
     
