@@ -1,7 +1,7 @@
 """
 Super class for napari usage.
 """
-
+from napari.components import ViewerModel
 from magicgui.widgets import FunctionGui
 from abc import ABC, abstractmethod
 from typing import Any
@@ -39,9 +39,14 @@ class OrganoidWizard(ABC) :
     """
     Commong super class for wizards to launch only when viewer is open in the context of an organoid run.
     """
+    def __init__(self) -> None:
+        self.enabled = False
 
     @abstractmethod
-    def start_listening(self) :
+    def start_listening(
+        self, 
+        napari_window : ViewerModel
+        ) :
         """
         Principal action of widget is launched here.
         """
