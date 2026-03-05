@@ -54,7 +54,6 @@ def main(run_path) :
     max_id = 0
     Detection = pd.DataFrame()
     for location_id, location in enumerate(Acquisition['location'].unique()) :
-        if location_id >=3 : break
         print("Starting location {0}...".format(location_id))
         sub_data = Acquisition.loc[Acquisition["location"] == location]
 
@@ -230,16 +229,19 @@ def main(run_path) :
             Clusters_save,  
             Clusters    
             ], axis=0, ignore_index=True)
+        
+        print(Detection_save['color_id'].unique())
         ###### End For loop #####
 
     #Unique Spots_identifier    
     Spots_save = Spots_save.drop(columns='spot_id').reset_index(drop=False, names="spot_id")
 
     #Explicit cast to int
-    Detection_save["color_id"] = Detection["color_id"].astype(int)
+    Detection_save["color_id"] = Detection_save["color_id"].astype(int)
+    print("after cast to int : ",Detection_save['color_id'].unique())
     
     #Setting wavelength
-    Detection_save['wavelength'] = 0
+    Detection_save['wavelength'] = None
     color_id_list = list(Detection_save['color_id'].unique())
     color_id_list.sort()
 
@@ -250,6 +252,7 @@ def main(run_path) :
     for color_id, wv in zip(color_id_list, WAVELENGTH_LIST) :
         Detection_save.loc[Detection_save['color_id'] == color_id, ['wavelength']] = wv
     Detection_save['wavelength'] = Detection_save['wavelength'].astype("Int16")
+    print("lastone : ",Detection_save['color_id'].unique())
 
     #Saving results 
     Detection_save.to_feather(save_path + '/Detection.feather')
