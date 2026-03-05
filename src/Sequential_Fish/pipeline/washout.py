@@ -38,6 +38,11 @@ def main(run_path) :
         keys=['cycle','color_id'],
         on= 'detection_id'
     )
+    print(Gene_map)
+
+    print(Spots['cycle'].unique())
+    print(Spots[Spots['color_id'].isna()])
+
     Spots = safe_merge_no_duplicates(
         Spots,
         Gene_map,

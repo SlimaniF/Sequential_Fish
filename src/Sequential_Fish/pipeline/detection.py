@@ -54,6 +54,7 @@ def main(run_path) :
     max_id = 0
     Detection = pd.DataFrame()
     for location_id, location in enumerate(Acquisition['location'].unique()) :
+        if location_id >=3 : break
         print("Starting location {0}...".format(location_id))
         sub_data = Acquisition.loc[Acquisition["location"] == location]
 
@@ -218,17 +219,17 @@ def main(run_path) :
         Detection_save = pd.concat([
             Detection_save,
             Detection
-            ], axis=0).reset_index(drop=True)
+            ],ignore_index=True, axis=0)
         
         Spots_save = pd.concat([
             Spots_save,
             Spots
-            ], axis=0).reset_index(drop=True)
+            ], axis=0, ignore_index=True)
 
         Clusters_save = pd.concat([ 
             Clusters_save,  
             Clusters    
-            ], axis=0).reset_index(drop=True)   
+            ], axis=0, ignore_index=True)
         ###### End For loop #####
 
     #Unique Spots_identifier    

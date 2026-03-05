@@ -1,18 +1,15 @@
 """
 Submodule containing custom class for napari widgets
 """
-import os
 from typing import cast
 
 import numpy as np
 import pandas as pd
 import napari
-from napari.components import ViewerModel
+
 from napari.types import LayerDataTuple
 from magicgui import magicgui
 
-
-from ..customtypes import OrganoidWizard
 from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
 from .utils import open_segmentation
 from ..customtypes import NapariWidget
@@ -504,6 +501,7 @@ class SegmentationLoader(NapariWidget) :
             return layerdata
         return load_segmentation
 
+## Analysis widgets
 @register_analysis_widget
 class MultichannelCluster(NapariWidget) :
     def __init__(
@@ -649,6 +647,7 @@ class SpotCountMapper(NapariWidget) :
             return layer_data
         return generate_spot_count_map
 
+#Location widget
 @register_location_widget
 class LocationSelector(NapariWidget) :
     def __init__(
@@ -691,24 +690,3 @@ class LocationSelector(NapariWidget) :
         
         
         return select_location
-
-class OrganoidMapper(OrganoidWizard) :
-    def __init__(
-        self,
-        Viewer : ViewerModel,
-        run_path : str
-        ) -> None:
-        super().__init__()
-        self.enables_on_organoids()
-        self.run_path = run_path
-        self.Viewer = Viewer
-        if self.enabled :
-            start_listening()
-
-    def enables_on_organoids(self) :
-        list_dir = os.listdir(self.run_path)
-        
-
-
-    def start_listening(self):
-        pass
