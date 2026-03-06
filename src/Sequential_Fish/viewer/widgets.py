@@ -448,6 +448,7 @@ class SignalLoader(NapariWidget) :
                 for location, stack in zip(location_list, array) :
                     drift = self.data.loc[(location,cycle),["drift_z","drift_y","drift_x"]].astype(int)
                     array[location_index] = shift_array(stack, *drift)
+                    location_index +=1
 
             layerdata = cast(LayerDataTuple, (
                 array,
