@@ -1,6 +1,7 @@
 """
 Submodule containing custom class for napari widgets
 """
+import os
 from typing import cast
 
 import numpy as np
@@ -35,7 +36,13 @@ def initiate_load_widgets(
 ) -> 'list[NapariWidget]':
     widget_list = []
     for cls in _LOAD_WIDGETS :
-        widget_list.extend(cls(table_dict= table_dict, voxel_size=voxel_size, color_table=color_table, run_path=run_path).get_widgets())
+        instance = cls(table_dict= table_dict, voxel_size=voxel_size, color_table=color_table, run_path=run_path)
+        if hasattr(instance,"enabled") :
+            if instance.enabled :
+                widget_list.extend(instance.get_widgets())
+        else :
+            widget_list.extend(instance.get_widgets())
+
     return widget_list
 
 ##  Location tab
@@ -70,7 +77,12 @@ def initiate_analysis_widgets(
 ) :
     widget_list = []
     for cls in _ANALYSIS_WIDGETS :
-        widget_list.extend(cls(voxel_size=voxel_size, table_dict=table_dict, color_table=color_table, ).get_widgets())
+        instance = cls(voxel_size=voxel_size, table_dict=table_dict, color_table=color_table)
+        if hasattr(instance,"enabled") :
+            if instance.enabled :
+                widget_list.extend(instance.get_widgets())
+        else :
+            widget_list.extend(instance.get_widgets())
     return widget_list
 
 #######
@@ -90,9 +102,16 @@ class SpotsLoader(NapariWidget) :
         color_table,
         **_
     ) :
+        self.enabled=True
+        self.Spots = table_dict.get('Spots')
+        self.Detection = table_dict.get('Detection')
 
-        self.Spots = table_dict['Spots']
-        self.Detection = table_dict['Detection']
+        if self.Spots is None or self.Detection is None :
+            print("Disabling spots loader (Detection results not found)")
+            self.enabled=False
+
+            return None
+
         self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','location','cycle']]
         self.Detection = safe_merge_no_duplicates(
             self.Detection,
@@ -220,7 +239,17 @@ class ClustersLoader(NapariWidget) :
             **_
             ):
         
-        self.Clusters = table_dict['Clusters']
+        self.enabled=True
+        self.Spots = table_dict.get('Spots')
+        self.Detection = table_dict.get('Detection')
+        self.Clusters = table_dict.get('Clusters')
+
+        if self.Spots is None or self.Detection is None or self.Clusters is None :
+            print("Disabling cluster loader : (Detection results not found)")
+            self.enabled=False
+
+            return None
+
         self.Detection = table_dict['Detection']
         self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','cycle','location']]
         self.Gene_map = table_dict['Gene_map'].loc[:,['cycle','color_id','target']]
@@ -414,9 +443,11 @@ class SignalLoader(NapariWidget) :
                 location_list = self.Acquisition.index.get_level_values(0).unique().to_list()
                 location_list.sort()
                 assert len(location_list) == len(array)
+
+                location_index=0
                 for location, stack in zip(location_list, array) :
                     drift = self.data.loc[(location,cycle),["drift_z","drift_y","drift_x"]].astype(int)
-                    array = shift_array(stack, *drift)
+                    array[location_index] = shift_array(stack, *drift)
 
             layerdata = cast(LayerDataTuple, (
                 array,
@@ -445,24 +476,24 @@ class SegmentationLoader(NapariWidget) :
             **_
             ):
         
-        Drift = table_dict['Drift']
-        self.Drift = Drift
+        self.enabled=True
+
+
         self.Acquisition = table_dict['Acquisition']
 
         self.update(list(self.Acquisition['location'].unique()))
 
         self.segmentation_fullpath = run_path + segmentation_folder_name
+
+        if not os.path.isdir(self.segmentation_fullpath) or len(os.listdir(self.segmentation_fullpath)) == 0 :
+            print("Disabling segmentation masks (Segmentation results not found)")
+            self.enabled=False
+
         self.voxel_size = voxel_size
         super().__init__()
 
     def update(self,locations) :
-        self.data = pd.merge(
-            self.Acquisition[self.Acquisition['location'].isin(locations)],
-            self.Drift,
-            on= 'acquisition_id',
-            how= 'left', #with Drift loc on dapi, only Acquisition on cycle 0 will have a drift, other will be Na
-            suffixes= ('','_drift')
-        )
+        self.data = self.Acquisition.loc[self.Acquisition['location'].isin(locations)]
 
     def _create_widget(self) :
 
@@ -510,6 +541,17 @@ class MultichannelCluster(NapariWidget) :
             voxel_size,
             **_
             ):
+
+        self.enabled=True
+        self.Spots = table_dict.get('Spots')
+        self.Detection = table_dict.get('Detection')
+
+        if self.Spots is None or self.Detection is None :
+            self.enabled=False
+            print("Disabling MultichannelCluster(Detection results not found)")
+
+            return None
+
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
         self.Spots = table_dict['Spots']
@@ -602,6 +644,17 @@ class SpotCountMapper(NapariWidget) :
             voxel_size,
             **_,
             ):
+        
+        self.enabled=True
+        self.Spots = table_dict.get('Spots')
+        self.Detection = table_dict.get('Detection')
+
+        if self.Spots is None or self.Detection is None :
+            self.enabled=False
+            print("Disabling spots heatmap (Detection results not found)")
+
+            return None
+
         self.ref_Acquisition = table_dict['Acquisition']
         self.Detection = table_dict['Detection']
         self.Spots = table_dict['Spots']

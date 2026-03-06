@@ -11,6 +11,7 @@ from czifile import CziFile
 from bigfish.stack import read_image as _read_image
 
 from scipy.ndimage import distance_transform_edt
+from tqdm import tqdm
 
 class MappingError(Exception) :
     """
@@ -285,7 +286,7 @@ def open_all_locations_one_cycle(
     # max_shape_no_channel = max_shape_no_channel[:-1]
     location_stack = []
 
-    for location in location_list :
+    for location in tqdm(location_list, f"opening cycle {cycle}") :
         location = open_cycle(Acquisition,location,cycle)
 
         if not np.equal(location.shape, max_shape_no_channel).all() :
@@ -296,6 +297,7 @@ def open_all_locations_one_cycle(
         location_stack = np.stack(location_stack)
     else :
         location_stack = location_stack[0].reshape((1,) + location_stack[0].shape)
+    
     return location_stack
 
 def open_cycle(
@@ -319,9 +321,6 @@ def open_cycle(
     z = stack_map['z']
     c = stack_map['c']
     image_number = stack_shape[z] * stack_shape[c]
-
-    print(stack_shape)
-    print("image number : ", image_number)
 
     with tifffile.TiffFile(fullpath) as tif :
         cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)

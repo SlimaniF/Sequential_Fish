@@ -12,6 +12,7 @@ from .widgets import initiate_location_widgets
 from magicgui.widgets import Container
 
 from .utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
+from ..settings import get_settings
 
 
 def main(run_path) :
@@ -26,13 +27,23 @@ def main(run_path) :
             pass
     
     TABLES = ['Acquisition', 'Detection', 'Spots', 'Clusters', 'Drift', 'Cell', 'Gene_map']
+    for table in TABLES.copy() : 
+        if not os.path.isfile(run_path + '/result_tables/' + table + '.feather') :
+            if table == "Acquisition" or table == "Gene_map" :
+                raise FileNotFoundError("Acquisiton or Gene_map was not found in result tables. Make sure at least pipeline input was run successfuly.")
+            else :
+                TABLES.remove(table)
+
+
     tables_dict = cast(
         table_dict_type,
         {
         table : pd.read_feather(run_path + '/result_tables/' + table + '.feather')  for table in TABLES
         })
-    voxel_size = tables_dict['Detection'].at[0,'voxel_size']
 
+    settings = get_settings(run_path, settings_name="pipeline")
+    voxel_size = settings.VOXEL_SIZE
+    
     #Init viewer
     Viewer = napari.Viewer(title=os.path.basename(run_path))
     color_table = create_color_table(tables_dict)
