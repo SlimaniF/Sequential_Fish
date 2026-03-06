@@ -32,6 +32,7 @@ dependencies = [
 "tqdm",
 "smfishtools",
 "pebble",
+"openpyxl",
 ]
 
 [project.urls]
