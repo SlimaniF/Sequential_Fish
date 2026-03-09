@@ -1,4 +1,7 @@
 """
+# Decoding
+----------
+
 In the contex of multi-fish sequential fish, different genes are targeted with the same barcode. 
 Although different barcode are mixed in such a way it is possible to decode which is which using the information found on several cycles.  
 

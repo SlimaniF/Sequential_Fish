@@ -1,11 +1,16 @@
 import sys
 import os
 import logging
+from typing import cast
+
+from Sequential_Fish.settings.settings import ALLOWED_SETTINGS, SETTINGS_NAMES
 
 from . import viewer, pipeline, analysis, chromatic_abberrations
+from . import settings as settings_module
 from .customtypes.parameters import PipelineParameters
-from .settings import write_settings
 from .pipeline import launch_script
+from .settings import write_settings
+from .settings import ALLOWED_SETTINGS
 
 def main():
 
@@ -47,8 +52,6 @@ def main():
         if not os.path.isfile(RUN_PATH + "/pipeline_settings.json") :
             logging.info("No settings found, initializing settings.json")
             settings = PipelineParameters.from_default_parameters()
-            settings.RUN_PATH = RUN_PATH
-            settings.SAVE_PATH = RUN_PATH + "/visuals/"
             write_settings(settings, RUN_PATH)
         else :
             logging.info("Loading parameters")
@@ -82,8 +85,15 @@ def main():
         chromatic_abberrations.run()
     
     elif module == "settings" :
-        raise NotImplementedError()
-    
+        if len(submodules) != 1 : raise ValueError(f"To set settings please enter one setting name from {ALLOWED_SETTINGS}")
+        setting_name = submodules[0]
+        if setting_name in ALLOWED_SETTINGS :
+            setting_name = cast(SETTINGS_NAMES, setting_name)
+            settings_module.main(run_path=RUN_PATH, settings_name=setting_name)
+        else :
+            raise ValueError(f"Incorrect setting name : {setting_name}, please use one from list : {ALLOWED_SETTINGS}.")
+
+
     else:
         print(f"Unknown module: {module}")
         print("Available modules: {0}".format(MODULES))
