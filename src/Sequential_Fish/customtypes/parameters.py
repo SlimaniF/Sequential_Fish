@@ -2,7 +2,7 @@ from numpy import ndarray
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from typing import TypedDict
-from typing import Optional, List, Dict
+from typing import List, Dict
 from pydantic import BaseModel, Field
 
 class Calibration(TypedDict) :
@@ -23,9 +23,7 @@ class Calibration(TypedDict) :
 class PipelineParameters(BaseModel) :
     
     #PATH to run folder, images and location to save
-    RUN_PATH : Optional[str] = Field(default="")
     FISH_FOLDER : str = Field(default= "FISH_Z-stacks")
-    SAVE_PATH : str = Field(default="/analysis/")
     
     #Microscope parameters
     VOXEL_SIZE : tuple[int,int,int] = Field(default=(200,97,97))
