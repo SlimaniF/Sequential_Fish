@@ -1,15 +1,19 @@
 
 import os, platform
-from typing import cast
+from typing import cast, Sequence
 import napari
 import pandas as pd
 
 from numpy.random import shuffle
+
+from Sequential_Fish.customtypes.parameters import PipelineParameters
 from ..customtypes import table_dict_type
 from .widgets import initiate_analysis_widgets
 from .widgets import initiate_load_widgets
 from .widgets import initiate_location_widgets
-from magicgui.widgets import Container
+from .thresholds import initiate_thresholds_widgets
+from .organoids import initiate_organoid_wizards
+from magicgui.widgets import Container, Widget
 
 from .utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
 from ..settings import get_settings
@@ -41,7 +45,7 @@ def main(run_path) :
         table : pd.read_feather(run_path + '/result_tables/' + table + '.feather')  for table in TABLES
         })
 
-    settings = get_settings(run_path, settings_name="pipeline")
+    settings = cast(PipelineParameters, get_settings(run_path, settings_name="pipeline"))
     voxel_size = settings.VOXEL_SIZE
     
     #Init viewer
@@ -49,14 +53,14 @@ def main(run_path) :
     color_table = create_color_table(tables_dict)
 
     #Loading tab
-    load_data_widgets = initiate_load_widgets(
+    load_data_widgets, linked_widgets = initiate_load_widgets(
         voxel_size=voxel_size,
         table_dict=tables_dict,
         color_table=color_table,
         run_path=run_path,
     )
     load_data_container = Container(
-        widgets=load_data_widgets,
+        widgets= cast(Sequence[Widget], load_data_widgets),
         labels=False
     )
 
@@ -70,11 +74,21 @@ def main(run_path) :
         widgets= analysis_widgets,
         labels=False
     )
+
+    #Threholds tab
+    thresholds_widgets = initiate_thresholds_widgets(
+        viewer= Viewer,
+        default_threshold = 0,
+        default_spot_size = settings.SPOT_SIZE,
+        voxel_size = settings.VOXEL_SIZE,
+        path= os.path.join(run_path, settings.MAP_FILENAME)
+        )
+    thresholds_container = Container(
+        widgets= thresholds_widgets,
+        labels=True
+    )
     
     # Location tab
-    linked_widgets = []
-    linked_widgets.extend(load_data_widgets)
-    linked_widgets.extend(analysis_widgets)
     location_widgets = initiate_location_widgets(
         tables_dict=tables_dict, 
         Viewer=Viewer,
@@ -88,16 +102,25 @@ def main(run_path) :
 
     #Docking tabs
     Viewer.window.add_dock_widget(
-        load_data_container, 
-        name='Data', 
-        area='right', 
-        add_vertical_stretch=True, 
+        thresholds_container,
+        name="Thresholds",
+        area="right",
+        add_vertical_stretch=True,
         tabify=True
-        )
+    )
+
+    #TODO Update
+    # Viewer.window.add_dock_widget(
+    #     analysis_container, 
+    #     name='Analysis', 
+    #     area='right', 
+    #     add_vertical_stretch=True, 
+    #     tabify=True
+    #     )
 
     Viewer.window.add_dock_widget(
-        analysis_container, 
-        name='Analysis', 
+        load_data_container, 
+        name='Data', 
         area='right', 
         add_vertical_stretch=True, 
         tabify=True

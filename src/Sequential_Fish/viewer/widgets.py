@@ -10,6 +10,7 @@ import napari
 
 from napari.types import LayerDataTuple
 from magicgui import magicgui
+from tqdm import tqdm
 
 from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
 from .utils import open_segmentation
@@ -33,17 +34,20 @@ def initiate_load_widgets(
         voxel_size : tuple,
         color_table : dict,
         run_path : str
-) -> 'list[NapariWidget]':
+) -> tuple[list[NapariWidget], list[NapariWidget]]:
     widget_list = []
+    linked_widgets = []
     for cls in _LOAD_WIDGETS :
         instance = cls(table_dict= table_dict, voxel_size=voxel_size, color_table=color_table, run_path=run_path)
         if hasattr(instance,"enabled") :
             if instance.enabled :
                 widget_list.extend(instance.get_widgets())
+                linked_widgets.append(instance)
         else :
             widget_list.extend(instance.get_widgets())
+            linked_widgets.append(instance)
 
-    return widget_list
+    return widget_list, linked_widgets
 
 ##  Location tab
 _LOCATION_WIDGETS = []
@@ -129,12 +133,11 @@ class SpotsLoader(NapariWidget) :
 
     def update(self, locations) :
 
-
         data = safe_merge_no_duplicates(
             self.Spots,
             self.Detection,
             on= 'detection_id',
-            keys= ["location", "cycle", "color_id","acquisition_id"]
+            keys= ["location", "cycle", "color_id","acquisition_id", "voxel_size", "spot_size"]
         )
 
         data = pd.merge(
@@ -195,6 +198,8 @@ class SpotsLoader(NapariWidget) :
 
             #Fetch spots
             spots_array = np.empty(shape=(0,4),dtype=int)
+            voxel_sizes = []
+            spots_sizes = []
             for location_index, location  in enumerate(sub_Detec['location'].unique()) :
 
                 spot_data = sub_Detec.loc[sub_Detec['location'] == location]
@@ -202,6 +207,8 @@ class SpotsLoader(NapariWidget) :
                 Z = spot_data[z_indexer]
                 Y = spot_data[y_indexer]
                 X = spot_data[x_indexer]
+                voxel_sizes.extend(spot_data["voxel_size"].to_list())
+                spots_sizes.extend(spot_data["spot_size"].to_list())
 
                 spots = np.array(
                     list(zip(C,Z,Y,X)),
@@ -209,7 +216,8 @@ class SpotsLoader(NapariWidget) :
                 )
 
                 spots_array = np.concatenate([spots_array, spots])
-
+            spots_sizes = pd.Series(spots_sizes).apply(tuple)
+            voxel_sizes = pd.Series(voxel_sizes).apply(tuple)
             layerdata = cast(LayerDataTuple, (spots_array, 
                          {
                              "scale" : self.voxel_size,
@@ -219,7 +227,8 @@ class SpotsLoader(NapariWidget) :
                              'face_color' : '#0000' ,
                              'border_color' : color, 
                              'blending' : 'additive',
-                             'symbol' : symbol
+                             'symbol' : symbol,
+                             'features' : {"voxel size" : voxel_sizes, "spot size" : spots_sizes}
                              },
                         'Points'))
             return layerdata
@@ -418,10 +427,10 @@ class SignalLoader(NapariWidget) :
                 channel_index = color_id
                 name = f"{target}_fish"
             elif signal_type == "dapi" :
-                channel_index = self.Acquisition['dapi_channel'].iat[0]
+                channel_index = self.data['dapi_channel'].iat[0]
                 name = f"dapi_signal_cycle{cycle}"
             elif signal_type == "beads" :
-                channel_index = self.Acquisition['bead_channel'].iat[0]
+                channel_index = self.data['bead_channel'].iat[0]
                 name = f"beads_signal_cycle{cycle}"
             else :
                 raise NotImplementedError("Unimplemented choice")
@@ -434,13 +443,13 @@ class SignalLoader(NapariWidget) :
 
 
             array = open_all_locations_one_cycle(
-                self.Acquisition.reset_index(drop=False),
+                self.data.reset_index(drop=False),
                 cycle=cycle,
             )
             array = array[..., channel_index]
                 
             if drift_correction :
-                location_list = self.Acquisition.index.get_level_values(0).unique().to_list()
+                location_list = self.data.index.get_level_values(0).unique().to_list()
                 location_list.sort()
                 assert len(location_list) == len(array)
 
@@ -494,6 +503,7 @@ class SegmentationLoader(NapariWidget) :
         super().__init__()
 
     def update(self,locations) :
+
         self.data = self.Acquisition.loc[self.Acquisition['location'].isin(locations)]
 
     def _create_widget(self) :
@@ -723,7 +733,7 @@ class LocationSelector(NapariWidget) :
             self.Viewer.layers.remove(layer)
         self.Viewer.reset_view()
 
-        for widget in self.linked_widgets : 
+        for widget in tqdm(self.linked_widgets, desc= "Updating locations") : 
             widget.update(self.selection)
             widget.widget.update()
 

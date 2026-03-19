@@ -62,7 +62,7 @@ class LocationsExport(ABC) :
     name : str # All LocationsExport class must define a unique class attribute "name"
 
     @abstractmethod
-    def get_locations(self) -> OrganoidLocations :
+    def get_organoid_locations(self) -> OrganoidLocations :
         """
         This method should return an OrganoidLocations instance enforcing your data can be used by viewer module.
         """
@@ -70,7 +70,7 @@ class LocationsExport(ABC) :
 
 def load_organoid_locations(json_data, location_export : str) -> OrganoidLocations:
     if location_export in _LOCATIONSEXPORTS.keys() :
-        return _LOCATIONSEXPORTS[location_export].get_organoid_locations(json_data)
+        return _LOCATIONSEXPORTS[location_export](json_data).get_organoid_locations()
     else :
         raise NotImplementedError(f"There is no implementation of json data matching name {location_export}. Available implementations are {_LOCATIONSEXPORTS}")
 
@@ -86,6 +86,9 @@ def register_locations_exports(cls) :
             raise LocationDataNameError(f"Cannot register {cls.name} as location export as another class is already registered with same name")
         else :
             _LOCATIONSEXPORTS[cls.name] = cls
+
+def get_locations_export() :
+    return _LOCATIONSEXPORTS
 
 class LocationsDataStructureError(ValueError) :
     """
@@ -108,8 +111,8 @@ class VutaraLocationsExport(LocationsExport) :
     name = "Vutara_SRX_CaptureLocations"
 
     def __init__(self, location_fullpath : str | Path) -> None:
-        super().__init__()
 
+        print("init")
         with open(location_fullpath, "r") as location_rawdata :
             self.rawdata = json.load(location_rawdata)
         self.location_list : list[Location] = self.validate_structure()
@@ -122,31 +125,45 @@ class VutaraLocationsExport(LocationsExport) :
         # Step 1: Check if rawdata is a dictionary
         if not isinstance(self.rawdata, dict):
             raise LocationsDataStructureError("Raw data must be a dictionary.")
+        print("step1")
 
         # Step 2: Check if "value" key exists
         if "value" not in self.rawdata:
             raise LocationsDataStructureError('Raw data must contain a "value" key.')
+        print("step2")
 
         # Step 3: Check if "CaptureLocations" key exists in "value"
         if "CaptureLocations" not in self.rawdata["value"]:
             raise LocationsDataStructureError('"value" must contain a "CaptureLocations" key.')
+        print("step13")
 
         # Step 4: Check if "value" key exists in "CaptureLocations"
         if "value" not in self.rawdata["value"]["CaptureLocations"]:
             raise LocationsDataStructureError('"CaptureLocations" must contain a "value" key.')
+        print("step4")
 
         # Step 5: Check if "value" is a list
         capture_locations = self.rawdata["value"]["CaptureLocations"]["value"]
         if not isinstance(capture_locations, list):
             raise LocationsDataStructureError('"CaptureLocations.value" must be a list.')
+        print("step5")
 
         # Step 6: Validate each location in the list
         try:
-            Location_list = [Location.model_validate(loc) for loc in capture_locations]
+            Location_list = []
+            for loc in capture_locations :
+                Location_list.append(Location.model_validate({
+                    "name" : loc["value"]["Name"],
+                    "x" : loc["value"]["RecordX"],
+                    "y" : loc["value"]["RecordY"],
+                    "z_begin" : loc["value"]["ZBegin"],
+                    "z_end" : loc["value"]["ZEnd"],
+                    }))
         except Exception as e:
             raise LocationsDataStructureError(f"Could not validate data structure from Locations dicts found.\n{e}") from e
         else :
+            print("ok")
             return Location_list
 
-    def get_locations(self) -> OrganoidLocations:
+    def get_organoid_locations(self) -> OrganoidLocations:
         return OrganoidLocations(self.location_list)
