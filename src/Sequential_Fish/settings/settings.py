@@ -78,7 +78,7 @@ def modify_settings(
 
     settings = get_settings(run_path, settings_name)
 
-    app = QApplication(sys.argv[:1])
+    _ = QApplication(sys.argv[:1])
     gui_modifier = ParametersModifier(data_model, **dict(settings))
 
     if gui_modifier.exec() :

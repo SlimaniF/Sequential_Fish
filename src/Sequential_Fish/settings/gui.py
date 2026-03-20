@@ -15,7 +15,6 @@ class ParametersModifier(QDialog):
     def __init__(self, data_model : Type[BaseModel], parent: QWidget | None = None, **parameters: Any):
         super().__init__(parent)
         self.setWindowTitle("Parameter Modification")
-        print(parameters)
         self._data_model = data_model
         self._param_types = data_model.model_fields
         self._default_value = parameters
@@ -122,15 +121,17 @@ class ParametersModifier(QDialog):
             else:
                 raise NotImplementedError(f"not gui implementation for type {name}; {att_type} --> {type_origin} from {default.annotation}. {att_args}")
 
-            form.addRow(QLabel(name.replace('_', ' ').capitalize()), widget)
             if add_none_option :
                 sub_layout = QHBoxLayout()
                 sub_layout.addWidget(widget)
                 cb = QCheckBox()
-                cb.setChecked(self._default_value[name] is None)
+                cb.setChecked(not self._default_value[name] is None)
                 sub_layout.addWidget(cb)
                 self._widgets[name+"__tuple__"] = [widget, cb]
-
+                form.addRow(QLabel(name.replace('_', ' ').capitalize()), sub_layout)
+    
+            else :
+                form.addRow(QLabel(name.replace('_', ' ').capitalize()), widget)
             self._widgets[name] = widget
 
         # Buttons
@@ -148,9 +149,7 @@ class ParametersModifier(QDialog):
     def get_parameters(self) -> Dict[str, Any]:
         """Retrieve parameters as a dict, converting widget values to Python types."""
         result: Dict[str, Any] = {}
-        print(self._widgets)
         for name, default in self._param_types.items():
-
             if not name in self._widgets.keys() :
                 name += "__tuple__"
 
@@ -166,7 +165,7 @@ class ParametersModifier(QDialog):
                 att_args = get_args(att_type)
                 att_type = type_origin
 
-            if type_origin is UnionType :
+            if type_origin is UnionType:
                 allowed_types = list(get_args(default.annotation))
                 if NoneType in allowed_types :
                     add_none_option = True
@@ -174,12 +173,19 @@ class ParametersModifier(QDialog):
                 assert len(allowed_types) == 1, allowed_types
                 att_type = allowed_types[0]
                 type_origin = get_origin(att_type)
+            elif type_origin is list : # Check if list allow None as element
+                assert len(att_args) == 1, "Only one attribute should be allowed but possibily optional"
 
+                list_args = att_args[0]
+                if get_origin(list_args) is UnionType :
+                    if NoneType in get_args(list_args) :
+                        att_args = list(get_args(list_args))
+                        att_args.remove(NoneType)
 
             # int
-            if add_none_option and widget[1].isChecked() :
-                pass
-            if att_type is int :
+            if add_none_option and not self._widgets[name + "__tuple__"][1].isChecked() :
+                result[name] = None
+            elif att_type is int :
                 result[name] = widget.value()
             # float
             elif att_type is float:
@@ -202,9 +208,19 @@ class ParametersModifier(QDialog):
                     raise NotImplementedError()
             
             # List
-            elif att_type is list:
-                text = widget.text(); items = [i.strip() for i in text.split(',')]
-                conv = type(self._default_value[name][0])
+            elif type_origin is list:
+                text = widget.text() 
+                items = [i.strip() for i in text.split(',')]
+                inside_type = get_args(att_type)
+                if len(inside_type) > 1 : raise AssertionError(f"Cannot handle list with different expected types, {inside_type}")
+                elif len(inside_type) == 0 and len(att_args) == 1 :
+                    conv = att_args[0]
+                elif len(inside_type) == 1 : 
+                    conv = inside_type[0]
+
+                else : 
+                    raise AssertionError("Unforseen type hint combination")
+
                 result_items = []
                 if text != "" :
                     for i in items :
@@ -216,7 +232,7 @@ class ParametersModifier(QDialog):
 
                 result[name] = result_items
             # Dict
-            elif att_type is dict :
+            elif type_origin is dict :
                 txt = widget.toPlainText().strip()
                 d: Dict[str, Any] = {}
                 if not txt == "" :
@@ -233,4 +249,6 @@ class ParametersModifier(QDialog):
             # fallback
             else:
                 raise NotImplementedError(f"type {type(self._default_value[name])} not implemented for {name} parameters prompt.")
+            
+        
         return result
