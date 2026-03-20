@@ -10,6 +10,7 @@ from magicgui.widgets import SpinBox
 from napari.types import LayerDataTuple
 from napari.components import ViewerModel
 from ..customtypes._napari import NapariWidget, UserInputError
+from qtpy.QtWidgets import QLabel
 
 import bigfish.stack as stack
 import bigfish.detection as detection
@@ -137,8 +138,8 @@ class ThresholdSelector(ThresholdsWidget) :
             self.filtered_image = cast(np.ndarray, self.filtered_image)
             self.local_maxima = cast(np.ndarray, self.local_maxima)
             ndim = self.filtered_image.ndim
-            print("Computing automated threshold : ...", end="", flush=True)
             if threshold == 0 :
+                print("Computing automated threshold : ...", end="", flush=True)
                 if ndim == 4 :
                     shape = self.filtered_image.shape
                     threshold = cast(int, automated_threshold_setting(
@@ -153,7 +154,7 @@ class ThresholdSelector(ThresholdsWidget) :
                     ))
                 threshold = round(threshold)
                 self.widget.threshold.value = threshold
-            print("\rComputing automated threshold : done.")
+                print("\rComputing automated threshold : done.")
 
             if ndim == 4 :
                 location_index = 0
@@ -205,22 +206,46 @@ class ThresholdSelector(ThresholdsWidget) :
 
         return find_spots
 
-@register_thresholds_widget
+#Not registering to remove label
 class ThreholdsFileEditor(ThresholdsWidget) :
-    def __init__(self, path :str, **_):
-        if os.path.isfile(path) :
-            self.enabled = True
+    def __init__(self, cyclefile_path : str, **_):
+
+        if cyclefile_path.endswith("csv") :
+            self.reader = pd.read_csv
+            self.writer = pd.DataFrame.to_csv
+            self.file_extension = ".csv"
+        elif cyclefile_path.endswith("xlsx") :
+            self.reader = pd.read_excel
+            self.writer = pd.DataFrame.to_excel
+            self.file_extension = ".xlsx"
         else :
-            print(f"{path} is not a valid file, disabling ThresholdsFileEditor")
+            raise ValueError(f"unsupported extension for file : {cyclefile_path}.\nUse .csv or .x")
+
+        if os.path.isfile(cyclefile_path) :
+            self.enabled = True
+            self.file = self.reader(cyclefile_path)
+        else :
+            print(f"{cyclefile_path} is not a valid file creating empty file.")
+            self.file = pd.DataFrame(columns=pd.Index(["cycle", "gene", "thresholds"]))
+            self.writer(self.file, cyclefile_path)
         
-        self.file = pd.read_excel(path)
+        self.path = cyclefile_path
+        super().__init__()
+        self.writer(self.file, self.path.replace(self.file_extension, f"_save{self.file_extension}"))
 
     def _create_widget(self) :
+
+        @magicgui(threshold_table = {
+            "widget_type" : "Table", 
+            "value" : self.file,
+            },
+            call_button="Save")
+        def edit_thresholds(threshold_table : pd.DataFrame)-> None :
+            self.file = cast(dict[str,pd.Series],threshold_table)
+            self.writer(pd.DataFrame(data= self.file["data"], columns= self.file["columns"]), self.path)
         
-        @magic_factory
-        def edit_thresholds(thresholds_file : pd.DataFrame) :
-            return thresholds_file
         return edit_thresholds
+
 
 
 

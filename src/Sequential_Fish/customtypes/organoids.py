@@ -47,11 +47,21 @@ class OrganoidLocations :
     def __contains__(self, name) -> bool :
         return name in self._locations
 
+    def __len__(self) :
+        return len(self._locations)
+
     def validate(self, locations : list[str]) :
         """
         Returns True if all locations are in OrganoidLocations.
         """
         return all([location in self for location in locations])
+
+    def get_translation_list(self) :
+        location_names = list(self._locations.keys())
+        location_names.sort()
+
+        return [(self[loc]["z_begin"], self[loc]["y"], self[loc]["x"]) for loc in location_names]
+
 
 class LocationsExport(ABC) :
     """

@@ -6,13 +6,14 @@ import pandas as pd
 
 from numpy.random import shuffle
 
+from Sequential_Fish.customtypes._napari import NapariWidget
 from Sequential_Fish.customtypes.parameters import PipelineParameters
 from ..customtypes import table_dict_type
 from .widgets import initiate_analysis_widgets
 from .widgets import initiate_load_widgets
 from .widgets import initiate_location_widgets
-from .thresholds import initiate_thresholds_widgets
-from .organoids import initiate_organoid_wizards
+from .thresholds import initiate_thresholds_widgets, ThreholdsFileEditor
+from .organoids import initiate_organoid_wizards, autodetect_organoids
 from magicgui.widgets import Container, Widget
 
 from .utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
@@ -81,13 +82,36 @@ def main(run_path) :
         default_threshold = 0,
         default_spot_size = settings.SPOT_SIZE,
         voxel_size = settings.VOXEL_SIZE,
-        path= os.path.join(run_path, settings.MAP_FILENAME)
         )
+
+    cyclefile_path= os.path.join(run_path, settings.MAP_FILENAME)
+    threshold_editor = ThreholdsFileEditor(cyclefile_path)
+
     thresholds_container = Container(
         widgets= thresholds_widgets,
         labels=True
     )
-    
+    threshold_editor_container = Container(
+        widgets= threshold_editor.widget,
+        labels=False
+    )
+
+    full_threshold_container = Container(
+        widgets = [thresholds_container, threshold_editor_container],
+        labels=False
+    )
+
+    #Organoids
+    print("Starting organoids auto-detection")
+    organoids_locations = autodetect_organoids(run_path, Acquisition=tables_dict['Acquisition'])
+    print("end")
+    if organoids_locations is None :
+        print("No organoids found.")
+    else :
+        print("Organoids locations found")
+        organoids_wizards, organoids_location_linked_widgets = initiate_organoid_wizards(organoids_locations=organoids_locations)
+        linked_widgets.extend(cast(list[NapariWidget], organoids_location_linked_widgets))
+
     # Location tab
     location_widgets = initiate_location_widgets(
         tables_dict=tables_dict, 
@@ -102,7 +126,7 @@ def main(run_path) :
 
     #Docking tabs
     Viewer.window.add_dock_widget(
-        thresholds_container,
+        full_threshold_container,
         name="Thresholds",
         area="right",
         add_vertical_stretch=True,
