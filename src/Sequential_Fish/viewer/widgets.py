@@ -1,6 +1,7 @@
 """
 Submodule containing custom class for napari widgets
 """
+from ast import Slice
 import os
 from typing import cast
 
@@ -740,12 +741,11 @@ class LocationSelector(NapariWidget) :
             **_
             ):
         self.Full_Acquisiton = table_dict['Acquisition'].copy()
-        self.location_choices = list(self.Full_Acquisiton['location'].unique())
-        self.selection = self.location_choices.copy()
-        self.selection.sort()
-        self.selection = pd.Series(self.selection)
-        self.Viewer = Viewer
+        location_choices = list(self.Full_Acquisiton['location'].unique())
+        self.location_choices = pd.Series(location_choices)
+        self.selection = pd.Series(self.location_choices)
         self.linked_widgets = linked_widgets
+        self.Viewer = Viewer
         super().__init__()
         
     def update_location(self) :
@@ -761,15 +761,16 @@ class LocationSelector(NapariWidget) :
         @magicgui(
             selected_location={
                 "widget_type" : "Select",
-                "choices" : self.location_choices,
-                "value" : self.location_choices,
+                "choices" : list(self.location_choices),
+                "value" : list(self.location_choices),
                 "label" : ' ',
             },
             call_button= "select locations"
         )
         def select_location(selected_location) :
             print("Selected locations : ", selected_location)
-            self.selection = selected_location
+            self.selection = self.location_choices[cast(slice, self.location_choices.isin(selected_location))]
+            self.selection.sort_values()
             self.update_location()
         
         
