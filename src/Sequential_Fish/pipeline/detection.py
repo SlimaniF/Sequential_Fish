@@ -149,15 +149,20 @@ def main(run_path) :
         max_id = Detection['detection_id'].max()
 
         for color_id in Detection['color_id'].unique() :
+            print("color_id : ", color_id)
             target = 'Threshold_{0}'.format(color_id)
+            print("target : ", target)
             if target in Detection.columns : 
                 loc_index = Detection.loc[Detection['color_id'] == color_id].index
                 Detection.loc[loc_index,['threshold']] = Detection[target]
+            else :
+                raise KeyError(f"No column named {target} in {Detection.columns}")
 
         #Launching threads
         futures = []
         args_list = []
         keys = ['spots','spots_post_decomp','clustered_spots_dataframe','clusters_dataframe','clusters','clustered_spots','free_spots','threshold','voxel_size','spot_radius','alpha','beta','gamma','artifact_size','cluster_radius','min_spot_per_cluster',]
+        print("Used threshold : ", Detection["threshold"].unique())
         with ProcessPool(max_workers=MAX_WORKERS) as executor:
             for args in zip(
                 Detection['image'],
