@@ -122,10 +122,14 @@ class VutaraLocationsExport(LocationsExport) :
 
     def __init__(self, location_fullpath : str | Path) -> None:
 
-        print("init")
         with open(location_fullpath, "r") as location_rawdata :
             self.rawdata = json.load(location_rawdata)
         self.location_list : list[Location] = self.validate_structure()
+        for location in self.location_list :
+            location.x = location.x * 10e5
+            location.y = -location.y * 10e5 #0.1mm to nm
+            location.z_begin = location.z_begin * 10e3 #um to nm
+            location.z_end = location.z_end * 10e3
 
     def validate_structure(self) :
         """
@@ -135,28 +139,23 @@ class VutaraLocationsExport(LocationsExport) :
         # Step 1: Check if rawdata is a dictionary
         if not isinstance(self.rawdata, dict):
             raise LocationsDataStructureError("Raw data must be a dictionary.")
-        print("step1")
 
         # Step 2: Check if "value" key exists
         if "value" not in self.rawdata:
             raise LocationsDataStructureError('Raw data must contain a "value" key.')
-        print("step2")
 
         # Step 3: Check if "CaptureLocations" key exists in "value"
         if "CaptureLocations" not in self.rawdata["value"]:
             raise LocationsDataStructureError('"value" must contain a "CaptureLocations" key.')
-        print("step13")
 
         # Step 4: Check if "value" key exists in "CaptureLocations"
         if "value" not in self.rawdata["value"]["CaptureLocations"]:
             raise LocationsDataStructureError('"CaptureLocations" must contain a "value" key.')
-        print("step4")
 
         # Step 5: Check if "value" is a list
         capture_locations = self.rawdata["value"]["CaptureLocations"]["value"]
         if not isinstance(capture_locations, list):
             raise LocationsDataStructureError('"CaptureLocations.value" must be a list.')
-        print("step5")
 
         # Step 6: Validate each location in the list
         try:
@@ -172,7 +171,6 @@ class VutaraLocationsExport(LocationsExport) :
         except Exception as e:
             raise LocationsDataStructureError(f"Could not validate data structure from Locations dicts found.\n{e}") from e
         else :
-            print("ok")
             return Location_list
 
     def get_organoid_locations(self) -> OrganoidLocations:

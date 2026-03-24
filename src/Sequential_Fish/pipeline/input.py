@@ -29,6 +29,7 @@ def main(run_path) :
     BEAD_CHANNEL = pipeline_parameters.BEAD_CHANNEl
     FISH_FOLDER = pipeline_parameters.FISH_FOLDER
     has_bead_channel = not BEAD_CHANNEL is None
+    has_dapi_channel = not DAPI_CHANNEL is None
     WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
     
 
@@ -80,6 +81,7 @@ def main(run_path) :
         fish_path_list = os.listdir(fish_path)
         fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST ie : filename cycle matches map cycles and rest of filename doesn't change list order.
         fish_im = open_image(fish_path + fish_path_list[0]) #Opening first tiff file will open all tiff files of this location (multitif_file) with correct reshaping. Ignoring first dim which will be the cycles gives us image dimension
+        
         fish_map = auto_map_channels(fish_im, color_number=color_number, cycle_number=cycle_number, has_bead_channel=has_bead_channel)
         fish_shape = fish_im.shape[:fish_map['cycles']] + fish_im.shape[(fish_map['cycles'] + 1):] #1cycle per acquisition
         reoderdered_shape = reorder_image_stack(fish_im, fish_map).shape

@@ -117,6 +117,7 @@ class SpotsLoader(NapariWidget) :
             return None
 
         self.Acquisition = table_dict['Acquisition'].loc[:,['acquisition_id','location','cycle']]
+        self.location_list = self.Acquisition['location'].unique().tolist()
         self.Detection = safe_merge_no_duplicates(
             self.Detection,
             self.Acquisition,
@@ -153,9 +154,11 @@ class SpotsLoader(NapariWidget) :
             on= ['cycle','color_id'],
             how='left'
         )
+        self.location_list = locations
 
         assert not any(data['target'].isna()), "Missing values for `target` in Spots. Merge is incomplete."
         self.data = data
+        data.groupby(["target","location"])["spot_id"].count().to_excel("/media/SSD_floricslimani/Fish_seq/test.xlsx")
         self.populations = ['all'] + list(data['population'].unique()) 
         self.target = list(data['target'].unique())
 
@@ -200,7 +203,7 @@ class SpotsLoader(NapariWidget) :
             spots_array = np.empty(shape=(0,4),dtype=int)
             voxel_sizes = []
             spots_sizes = []
-            for location_index, location  in enumerate(sub_Detec['location'].unique()) :
+            for location_index, location  in enumerate(self.location_list) :
 
                 spot_data = sub_Detec.loc[sub_Detec['location'] == location]
                 C = [location_index] * len(spot_data)
@@ -210,10 +213,13 @@ class SpotsLoader(NapariWidget) :
                 voxel_sizes.extend(spot_data["voxel_size"].to_list())
                 spots_sizes.extend(spot_data["spot_size"].to_list())
 
-                spots = np.array(
+                if len(spot_data) == 0 :
+                    spots = np.empty(shape=(0,4),dtype=int)
+                else :
+                    spots = np.array(
                     list(zip(C,Z,Y,X)),
                     dtype=int,
-                )
+                    )
 
                 spots_array = np.concatenate([spots_array, spots])
             spots_sizes = pd.Series(spots_sizes).apply(tuple)
@@ -268,6 +274,7 @@ class ClustersLoader(NapariWidget) :
             on= "acquisition_id",
             keys= ["location", "cycle"]
         )
+        self.location_list = self.Acquisition['location'].unique().tolist()
         self.update(list(self.Acquisition['location'].unique()))
 
         self.voxel_size = voxel_size
@@ -300,6 +307,7 @@ class ClustersLoader(NapariWidget) :
         assert not any(data['target'].isna()), "Missing values for `target` in Spots. Merge is incomplete."
 
         self.data = data
+        self.location_list = locations
         self.target = list(self.data['target'].unique())
 
 
@@ -339,17 +347,20 @@ class ClustersLoader(NapariWidget) :
 
             #Fetch cluster centers
             spots_array = np.empty(shape=(0,4),dtype=int)
-            for location_index, location  in enumerate(sub_data['location'].unique()) :
+            for location_index, location  in enumerate(self.location_list) :
                 spots_data = sub_data.loc[sub_data['location'] == location]
                 C = [location_index] * len(spots_data)
                 Z = spots_data[z_indexer]
                 Y = spots_data[y_indexer]
                 X = spots_data[x_indexer]
 
-                spots = np.array(
+                if len(spots_data) == 0 :
+                    spots = np.empty(shape=(0,4),dtype=int)
+                else :
+                    spots = np.array(
                     list(zip(C,Z,Y,X)),
                     dtype=int,
-                )
+                    )
 
                 spots_array = np.concatenate([spots_array, spots])
             layerdata = cast(
@@ -380,8 +391,11 @@ class SignalLoader(NapariWidget) :
         #Table
         self.Gene_map = table_dict['Gene_map']
 
-        Drift = table_dict['Drift']
-        self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
+        Drift = table_dict.get('Drift')
+        if Drift is None :
+            self.Drift = None
+        else :
+            self.Drift = Drift.loc[:,['acquisition_id', 'drift_z', 'drift_y', 'drift_x']]
         
         self.Acquisition = table_dict['Acquisition'].set_index(["location","cycle"], verify_integrity=True)
         
@@ -394,11 +408,14 @@ class SignalLoader(NapariWidget) :
 
     def update(self, locations) :
 
-        self.data = pd.merge(
-            self.Acquisition[self.Acquisition.index.get_level_values(0).isin(locations)].reset_index(drop=False),
-            self.Drift,
-            on='acquisition_id'
-        )
+        if not self.Drift is None :
+            self.data = pd.merge(
+                self.Acquisition[self.Acquisition.index.get_level_values(0).isin(locations)].reset_index(drop=False),
+                self.Drift,
+                on='acquisition_id'
+            )
+        else :
+            self.data = self.Acquisition[self.Acquisition.index.get_level_values(0).isin(locations)].reset_index(drop=False)
         self.data = self.data.set_index(['location',"cycle"]).sort_index()
         self.target = list(self.Gene_map['target'].unique())
 
@@ -408,7 +425,8 @@ class SignalLoader(NapariWidget) :
                 drift_correction={
                     "widget_type" : "CheckBox",
                     "text" : "drift correction",
-                    "value" : True,
+                    "value" : not self.Drift is None,
+                    "enabled" : not self.Drift is None
                     },
                 call_button="Load signal",
                 signal_type = {
@@ -724,6 +742,8 @@ class LocationSelector(NapariWidget) :
         self.Full_Acquisiton = table_dict['Acquisition'].copy()
         self.location_choices = list(self.Full_Acquisiton['location'].unique())
         self.selection = self.location_choices.copy()
+        self.selection.sort()
+        self.selection = pd.Series(self.selection)
         self.Viewer = Viewer
         self.linked_widgets = linked_widgets
         super().__init__()

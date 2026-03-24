@@ -39,7 +39,6 @@ def main(run_path) :
             else :
                 TABLES.remove(table)
 
-
     tables_dict = cast(
         table_dict_type,
         {
@@ -104,12 +103,11 @@ def main(run_path) :
     #Organoids
     print("Starting organoids auto-detection")
     organoids_locations = autodetect_organoids(run_path, Acquisition=tables_dict['Acquisition'])
-    print("end")
     if organoids_locations is None :
         print("No organoids found.")
     else :
         print("Organoids locations found")
-        organoids_wizards, organoids_location_linked_widgets = initiate_organoid_wizards(organoids_locations=organoids_locations)
+        organoids_wizards, organoids_location_linked_widgets = initiate_organoid_wizards(viewer= Viewer, organoids_locations=organoids_locations)
         linked_widgets.extend(cast(list[NapariWidget], organoids_location_linked_widgets))
 
     # Location tab
@@ -122,7 +120,6 @@ def main(run_path) :
         widgets= location_widgets,
         labels=False
     )
-
 
     #Docking tabs
     Viewer.window.add_dock_widget(
