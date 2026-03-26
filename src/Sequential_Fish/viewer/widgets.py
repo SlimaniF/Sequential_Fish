@@ -755,7 +755,8 @@ class LocationSelector(NapariWidget) :
 
         for widget in tqdm(self.linked_widgets, desc= "Updating locations") : 
             widget.update(self.selection)
-            widget.widget.update()
+            if hasattr(widget,"widget") :
+                widget.widget.update()
 
     def _create_widget(self) :
         @magicgui(
