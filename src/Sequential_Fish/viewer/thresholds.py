@@ -1,3 +1,7 @@
+"""
+Widget to handle spot detection related tests in napari viewer.
+"""
+
 import os
 import pandas as pd
 
@@ -5,12 +9,11 @@ from napari.layers import Image
 import numpy as np
 from tqdm import tqdm
 
-from magicgui import magicgui, magic_factory
+from magicgui import magicgui
 from magicgui.widgets import SpinBox
 from napari.types import LayerDataTuple
 from napari.components import ViewerModel
 from ..customtypes._napari import NapariWidget, UserInputError
-from qtpy.QtWidgets import QLabel
 
 import bigfish.stack as stack
 import bigfish.detection as detection

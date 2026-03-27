@@ -1,4 +1,3 @@
-
 import os, platform
 from typing import cast, Sequence
 import napari
@@ -9,9 +8,9 @@ from numpy.random import shuffle
 from Sequential_Fish.customtypes._napari import NapariWidget
 from Sequential_Fish.customtypes.parameters import PipelineParameters
 from ..customtypes import table_dict_type
-from .widgets import initiate_analysis_widgets
-from .widgets import initiate_load_widgets
-from .widgets import initiate_location_widgets
+from .analysis import initiate_analysis_widgets
+from .load import initiate_load_widgets
+from .locations import initiate_location_widgets
 from .thresholds import initiate_thresholds_widgets, ThreholdsFileEditor
 from .organoids import initiate_organoid_wizards, autodetect_organoids
 from magicgui.widgets import Container, Widget
