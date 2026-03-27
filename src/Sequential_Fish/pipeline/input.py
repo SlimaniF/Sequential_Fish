@@ -1,10 +1,17 @@
 """
 This script aims at reading the input folder and preparing data folders and locations for next scripts.
+
+Note : Initially this script is made to handle .ome.tif data. This format corresponds to tiff series with the particularity that metadata are stored exclusively in the cycle 0 file.
+In case your system uses a different mechanism you will need to adapt this script to make a compatible output, by doing so you ensure downstream pipeline need not being change.
+
 """
 import pandas as pd
 import os
 import warnings
-from typing import cast
+from typing import TypedDict, cast
+import tifffile
+from ome_types import from_xml
+from ome_types import OME
 from tqdm import tqdm
 
 import numpy as np
@@ -29,7 +36,6 @@ def main(run_path) :
     BEAD_CHANNEL = pipeline_parameters.BEAD_CHANNEl
     FISH_FOLDER = pipeline_parameters.FISH_FOLDER
     has_bead_channel = not BEAD_CHANNEL is None
-    has_dapi_channel = not DAPI_CHANNEL is None
     WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
     
 
@@ -80,12 +86,48 @@ def main(run_path) :
         fish_path = run_path + "/{0}/{1}/".format(FISH_FOLDER, location)
         fish_path_list = os.listdir(fish_path)
         fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST ie : filename cycle matches map cycles and rest of filename doesn't change list order.
-        fish_im = open_image(fish_path + fish_path_list[0]) #Opening first tiff file will open all tiff files of this location (multitif_file) with correct reshaping. Ignoring first dim which will be the cycles gives us image dimension
         
-        fish_map = auto_map_channels(fish_im, color_number=color_number, cycle_number=cycle_number, has_bead_channel=has_bead_channel)
-        fish_shape = fish_im.shape[:fish_map['cycles']] + fish_im.shape[(fish_map['cycles'] + 1):] #1cycle per acquisition
-        reoderdered_shape = reorder_image_stack(fish_im, fish_map).shape
-        fish_reodered_shape = reoderdered_shape[1:]
+        fish_im = None
+        if ".ome." in fish_path_list[0] :
+            with tifffile.TiffFile(os.path.join(fish_path, fish_path_list[0])) as main_tif :
+
+                #Axes map
+                fish_map = map_from_metadata(main_tif.series[0].axes)
+                if fish_map is None : #Could not infer from metadata
+                    warnings.warn("Could not infer axes map from metadata opening image.")
+                    fish_im = main_tif.asarray()
+                    fish_map = cast(AxisMap, auto_map_channels(fish_im, color_number=color_number, cycle_number=cycle_number, has_bead_channel=has_bead_channel))
+                
+                #Shape
+                fish_shape = None
+                fish_reodered_shape = None
+                #Infer from metadata
+                if not main_tif.ome_metadata is None :
+                    ome_metadata = from_xml(main_tif.ome_metadata)
+                    fish_shape = get_memory_shape_from_metadata(ome_metadata, fish_map)
+                    
+                    if not fish_shape is None :
+                        fish_shape = fish_shape[:fish_map['cycles']] + fish_shape[(fish_map['cycles'] + 1):] #1cycle per acquisition
+                    
+                    fish_reodered_shape = get_ordered_shape_from_metadata(ome_metadata)
+                
+                #Infer from open image : longer
+                if main_tif.ome_metadata is None or fish_shape is None or fish_reodered_shape is None:
+                    warnings.warn("Could not infer shape from metadata opening image.")
+                    if fish_im is None : 
+                        fish_im = main_tif.asarray()
+                    fish_im = cast(np.ndarray, fish_im)
+                    
+                    fish_shape = fish_im.shape[:fish_map['cycles']] + fish_im.shape[(fish_map['cycles'] + 1):] #1cycle per acquisition
+                    fish_reodered_shape = reorder_image_stack(fish_im, fish_map).shape
+                
+
+                fish_reodered_shape = cast(tuple, fish_reodered_shape[1:])
+                
+
+        else :
+            raise NotImplementedError("Initially this script is made to handle .ome.tif data. This format corresponds to tiff series with the particularity that metadata are stored exclusively in the cycle 0 file.\nIn case your system uses a different mechanism you will need to adapt this script to make a compatible output, by doing so you ensure downstream pipeline need not being change.")
+        
 
         full_path_list = [fish_path + file for file in fish_path_list]
         while len(full_path_list) < len(index) :
@@ -154,3 +196,77 @@ def main(run_path) :
     Gene_map.to_excel(save_path + 'Gene_map.xlsx')
     Gene_map.to_feather(save_path + 'Gene_map.feather')
     print("Done")
+
+
+class AxisMap(TypedDict):
+    x : int
+    y : int
+    z : int
+    c : int
+    cycles : int
+
+def map_from_metadata(axes_str : str | None) -> AxisMap | None :
+
+    axis_map = {}
+    if axes_str is None or axes_str == "" :
+        return None
+    elif "Z" in axes_str.upper() and "C" in axes_str.upper() :
+        axis_map["z"] =  axes_str.upper().index("Z")
+        axis_map["c"] =  axes_str.upper().index("C")
+    elif "I" in axes_str.upper() : #I = Intensity usually Z and C are mixed -> Z*C
+        axis_map["z"] = axes_str.upper().index("I")
+        axis_map["c"] = axis_map["z"] + 1
+    else :
+        return None #could not infer
+
+    for i in ["x","y"] :
+        if i.upper() in axes_str.upper() :
+            axis_map[i] = axes_str.upper().index(i.upper())
+        else :
+            return None
+    
+    if "T" in axes_str.upper() : #cycles
+        axis_map["cycles"] = axes_str.upper().index("T")    
+
+    return cast(AxisMap, axis_map)
+
+def get_memory_shape_from_metadata(ome_metadata : OME, im_map : AxisMap) -> tuple | None :
+    pixels_informations = ome_metadata.images[0].pixels
+
+    shape = []
+    items = cast(list, im_map.items())
+    for axe, _ in sorted(items, key= lambda t : t[1]) :
+        match axe :
+            case "cycles" :
+                shape.append(pixels_informations.size_t)
+            case "c" :
+                shape.append(pixels_informations.size_c)
+            case "z" :
+                shape.append(pixels_informations.size_z)
+            case "y" :
+                shape.append(pixels_informations.size_y)
+            case "x" :
+                shape.append(pixels_informations.size_x)
+            case _ :
+                raise AssertionError("Uncorrect map keys")
+    
+    if not all([isinstance(i,int) for i in shape]) : 
+        warnings.warn("Error in getting shape from metadata, metadata containing not int axes")
+        return None
+    if not len(shape) == 5 : 
+        warnings.warn("Expected 5 dimensions in shape")
+        return None
+    
+
+    return tuple(shape)
+
+def get_ordered_shape_from_metadata(ome_metadata : OME) -> tuple | None :
+    pixels_informations = ome_metadata.images[0].pixels
+
+    shape = (pixels_informations.size_t, pixels_informations.size_z,pixels_informations.size_y,pixels_informations.size_x,pixels_informations.size_c)
+    
+    if not all([isinstance(i,int) for i in shape]) : 
+        warnings.warn("Error in getting shape from metadata, metadata containing not int axes")
+        return None
+
+    return tuple(shape)

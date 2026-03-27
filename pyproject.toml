@@ -33,6 +33,8 @@ dependencies = [
 "smfishtools",
 "pebble",
 "openpyxl",
+"ome_types,
+"lxml"
 ]
 
 [project.urls]
