@@ -85,8 +85,6 @@ class ThresholdSelector(ThresholdsWidget) :
             spot_radius=self.spot_radius,
             log_kernel_size= cast(tuple, self.kernel_size)
         )
-        print("filtered_image shape : ", self.filtered_image.shape)
-
         self.local_maxima = _local_maxima_mask(
             image_filtered=self.filtered_image,
             voxel_size=self.voxel_size,
@@ -124,11 +122,21 @@ class ThresholdSelector(ThresholdsWidget) :
                 self.do_update = False
                 raise UserInputError("Selected layer must be an image.")
             
-            elif "filtered" in self.viewer.layers.selection.active.name :
-                self.do_update = False
-                raise UserInputError("Selected layer must not be a filtered image, select a signal image.")
+            elif "filtered image" in self.viewer.layers.selection.active.name :
+                selected_name = self.viewer.layers.selection.active.name
+                selected_name = selected_name.replace("filtered image","").strip()
+                if selected_name in self.viewer.layers :
+                    self.image = self.viewer.layers[selected_name]
+                    if self.layer_name == selected_name :
+                        pass
+                    else :
+                        self.layer_name = selected_name
+                        self.do_update = True
+                else :
+                    self.do_update = False
+                    raise UserInputError("Selected layer must not be a filtered image, select a signal image.")
                 
-            elif not self.viewer.layers.selection.active is self.image :
+            elif self.viewer.layers.selection.active.name != self.layer_name :
                 self.image = self.viewer.layers.selection.active.data
                 self.layer_name = self.viewer.layers.selection.active.name
                 self.do_update = True
@@ -185,7 +193,7 @@ class ThresholdSelector(ThresholdsWidget) :
     
             spot_layer_args = {
                 'name' : f"{self.layer_name} detection",
-                'size': 5, 
+                'size': 10, 
                 'scale' : (1,) + scale if ndim == 4 else scale, 
                 'face_color' : 'transparent', 
                 'border_color' : 'red', 
@@ -199,8 +207,11 @@ class ThresholdSelector(ThresholdsWidget) :
                 "colormap" :  'gray',
                 "scale" : scale,
                 "blending" : 'additive',
-                "name" : f"{self.layer_name} filtered image"
+                "name" : f"{self.layer_name} filtered image",
+                "projection_mode" : "max",
             }
+
+            print(f"Thresholding done ({threshold})")
 
             return [
                     LayerDataTuple((self.filtered_image, filtered_image_layer_args, 'image')),
@@ -245,7 +256,8 @@ class ThreholdsFileEditor(ThresholdsWidget) :
             call_button="Save")
         def edit_thresholds(threshold_table : pd.DataFrame)-> None :
             self.file = cast(dict[str,pd.Series],threshold_table)
-            self.writer(pd.DataFrame(data= self.file["data"], columns= self.file["columns"]), self.path)
+            self.writer(pd.DataFrame(data= self.file["data"], columns= self.file["columns"]), self.path, index=False)
+            print("Thresholds sucessfully saved.")
         
         return edit_thresholds
 
