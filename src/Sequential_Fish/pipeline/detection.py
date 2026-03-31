@@ -6,6 +6,7 @@ This script use results from FishSeq_pipeline_segmentation.py that must be run b
 """
 
 import os
+import multiprocessing
 import logging
 from typing import cast
 
@@ -35,9 +36,9 @@ def main(run_path) :
     MIN_SPOT_PER_CLUSTER = pipeline_parameters.MIN_SPOT_PER_CLUSTER
     ARTIFACT_RADIUS = pipeline_parameters.ARTIFACT_RADIUS
     DETECTION_SLICE_TO_REMOVE = pipeline_parameters.DETECTION_SLICE_TO_REMOVE
-    MAX_WORKERS = pipeline_parameters.detection_MAX_WORKERS
     WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
-    
+    MAX_WORKERS = multiprocessing.cpu_count()
+
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
 
