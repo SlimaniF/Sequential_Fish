@@ -139,7 +139,7 @@ def main(run_path) :
                     sub_Spots[sub_Spots['detection_id'] == detection_id]['y'],
                     sub_Spots[sub_Spots['detection_id'] == detection_id]['x'],
                 )
-            ), dtype=int)
+            ), dtype=np.int32)
         for detection_id in selected_detection_id]
 
         #Select all clusters belonging to this fov; one list element per (cycle,color)
@@ -152,7 +152,7 @@ def main(run_path) :
                     sub_Clusters[sub_Clusters['detection_id'] == detection_id]['spot_number'],
                     sub_Clusters[sub_Clusters['detection_id'] == detection_id]['cluster_id'].fillna(-1), #For bigfish compatibility
                 )
-            ))
+            ),dtype=np.int32)
         for detection_id in selected_detection_id]
         detection_number = len(selected_detection_id)
 
