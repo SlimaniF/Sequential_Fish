@@ -18,7 +18,7 @@ from smfishtools.detection import multi_thread_full_detection
 
 from ..tools import open_location
 from ..settings import get_settings
-from ..customtypes.parameters import PipelineParameters
+from ..settings.parameters import PipelineParameters
 
 def main(run_path) :
 
@@ -37,7 +37,7 @@ def main(run_path) :
     ARTIFACT_RADIUS = pipeline_parameters.ARTIFACT_RADIUS
     DETECTION_SLICE_TO_REMOVE = pipeline_parameters.DETECTION_SLICE_TO_REMOVE
     WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
-    MAX_WORKERS = multiprocessing.cpu_count()
+    MAX_WORKERS = min(multiprocessing.cpu_count(), pipeline_parameters.detection_MAX_WORKERS)
 
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")

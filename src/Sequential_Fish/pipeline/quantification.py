@@ -2,14 +2,16 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
+import multiprocessing
 from bigfish.multistack import match_nuc_cell
 from concurrent.futures import ThreadPoolExecutor
+from pebble import ProcessPool
 from smfishtools.detection.multithread import cell_quantification
 from tqdm import tqdm
 
 from ..settings import get_settings
 from ..tools import safe_merge_no_duplicates, open_location
-from ..customtypes import PipelineParameters
+from ..settings import PipelineParameters
 
 
 def main(run_path) :
@@ -18,7 +20,7 @@ def main(run_path) :
     
     pipeline_parameters = get_settings(run_path)
     pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
-    MAX_WORKERS = pipeline_parameters.quantif_MAX_WORKERS
+    MAX_WORKERS = max(pipeline_parameters.quantif_MAX_WORKERS, multiprocessing.cpu_count())
     
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
     Drift = pd.read_feather(run_path + '/result_tables/Drift.feather')
@@ -68,14 +70,6 @@ def main(run_path) :
         dapi_channel = Acquisition['dapi_channel'].iat[0]
         dapi_list = [image_stack[i,...,dapi_channel] for i in range(len(image_stack))]
         assert dapi_list[0].ndim == 2, f"{dapi_list[0].shape}"
-
-        # TODO Currently will not work as nucleus is segmented only once and not at each cycle. Need to segment nucleus at each cycle (?) in such case we can correct drift for adapted drift at each cycle.
-        # #Correct drift for nucleus
-        # drift = Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']].to_numpy(dtype=int).squeeze()
-        # print("drift  :",Drift.loc[(Drift['drift_type'] == 'dapi') & (Drift['location'] == location), ['drift_y', 'drift_x']])
-        # print("drift  :",drift)
-        # nucleus_label = shift_array(nucleus_label, *drift)
-
 
         nucleus_label, cytoplasm_label = match_nuc_cell(nucleus_label, cytoplasm_label, single_nuc=True, cell_alone=False)
 
@@ -160,8 +154,8 @@ def main(run_path) :
         fov_list = [image[..., color] for image, color in zip(image_stack, sub_Detection['color_id'])]
 
         print("Starting individual cell metrics for {0} detections".format(len(sub_Detection)))
-        with ThreadPoolExecutor(max_workers= MAX_WORKERS) as executor :
-            cell_quantification_result = list(tqdm(executor.map(
+        with ProcessPool(max_workers= MAX_WORKERS) as executor :
+            cell_quantification_futures = executor.map(
                 cell_quantification,
                 sub_Detection['acquisition_id'],
                 selected_detection_id,
@@ -172,8 +166,11 @@ def main(run_path) :
                 [nucleus_label] * detection_number,
                 fov_list,
                 dapi_list
-            ),total= len(sub_Detection), desc="individual cell metrics"))
-        Cell = pd.concat(cell_quantification_result, axis=0) 
+            )
+
+            Cell = pd.concat(
+                [res for res in tqdm(cell_quantification_futures.result(), total= len(sub_Detection), desc="individual cell metrics")
+                ], axis=0) 
         Cell['location'] = location
 
         ## End of loop
@@ -197,7 +194,6 @@ def main(run_path) :
     else :
         del Cell_save
     Cell['detection_id'] = Cell['detection_id'].astype(int)
-
 
     #Save tables
     print("Saving results...")
