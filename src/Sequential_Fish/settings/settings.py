@@ -7,7 +7,7 @@ from typing import Literal, cast
 from PyQt5.QtWidgets import QApplication
 from pydantic import ValidationError
 
-from ..customtypes import PipelineParameters, AnalysisParameters
+from .parameters import PipelineParameters, AnalysisParameters
 from . gui import ParametersModifier
 
 ALLOWED_SETTINGS = ['pipeline', 'analysis']
@@ -58,7 +58,7 @@ def write_settings(
     run_path : str | Path
     ) :
     
-    if not isinstance(settings, PipelineParameters) :
+    if not isinstance(settings, (PipelineParameters, AnalysisParameters)) :
         raise TypeError("Expected SettingsDict type, got {}".format(type(settings)))
     filename = settings.get_filename()
     with open(os.path.join(run_path , f"{filename}"), mode="w") as f:

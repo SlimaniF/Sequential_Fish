@@ -1,7 +1,12 @@
 """
 Main script to call for analysis pipeline.
 """
+import os
 import pandas as pd
+from typing import cast
+
+from ..settings import get_settings
+from ..settings import AnalysisParameters
 
 from .post_processing import Spots_filtering
 from .density import density_analysis
@@ -22,12 +27,12 @@ def run(run_path,*args) :
     if run_path is None : quit()
     else : print(run_path)
 
-    if exists_analysis_parameters(run_path) :
-        analysis_parameters = load_analysis_parameters(run_path) 
-    else :
-        analysis_parameters = get_raw_analysis_parameters()
-        write_analysis_parameters(run_path, analysis_parameters)
+    analysis_parameters = cast(AnalysisParameters, get_settings(run_path, settings_name="analysis"))
     
+    REQUIRED_TABLES = ["Acquisition", "Detection", "Spots", "Drift", "Gene_map", "Cell"]
+    if not all([os.path.isfile(os.path.join(run_path, "result_tables", table,".feather")) for table in REQUIRED_TABLES]) :
+        raise FileNotFoundError(f"All data tables could not be found in result directory. Check that pipeline proceeded correctly. Required tables are {REQUIRED_TABLES}.")
+
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
     Detection = pd.read_feather(run_path + "/result_tables/Detection.feather")
     Spots = pd.read_feather(run_path + "/result_tables/Spots.feather")
@@ -36,11 +41,12 @@ def run(run_path,*args) :
     Cell = pd.read_feather(run_path + "/result_tables/Cell.feather")
 
     #Post-processing
-    Spots = correct_Spots_dataframe(#Chromatic abberation correction
-        Detection=Detection,
-        Spots=Spots,
-        reference_wavelength= analysis_parameters.reference_wavelength
-    ) 
+    if not analysis_parameters.reference_wavelength is None :
+        Spots = correct_Spots_dataframe(#Chromatic abberation correction
+            Detection=Detection,
+            Spots=Spots,
+            reference_wavelength= analysis_parameters.reference_wavelength
+        ) 
     unfiltered_Spots = Spots.copy()
     
     #Rename target
@@ -63,18 +69,18 @@ def run(run_path,*args) :
     )
 
     if "distributions" in args or "all" in args :
-        
-        distribution_sucess = distributions_analysis(
-            Acquisition=Acquisition,
-            Detection=Detection,
-            Cell=Cell,
-            Spots=Spots,
-            Gene_map=Gene_map,
-            run_path=run_path,
-            disibutions_measures= analysis_parameters.distribution_measures
-        )
-        if not distribution_sucess :
-            print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
+        if not analysis_parameters.distribution_measures is None and len(analysis_parameters.distribution_measures) > 0:
+            distribution_sucess = distributions_analysis(
+                Acquisition=Acquisition,
+                Detection=Detection,
+                Cell=Cell,
+                Spots=Spots,
+                Gene_map=Gene_map,
+                run_path=run_path,
+                disibutions_measures= analysis_parameters.distribution_measures
+            )
+            if not distribution_sucess :
+                print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
     
     if "density" in args  or "all" in args:
         

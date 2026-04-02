@@ -113,7 +113,8 @@ class ParametersModifier(QDialog):
             elif att_type is dict :
                 pt = QPlainTextEdit()
                 # key:value per line
-                lines = [f"{k}:{v}" for k, v in self._default_value[name].items()]
+                default_value = {} if self._default_value[name] is None else self._default_value[name]
+                lines = [f"{k}:{v}" for k, v in default_value.items()]
                 pt.setPlainText("\n".join(lines)); pt.setFixedHeight(80)
                 widget = pt
 

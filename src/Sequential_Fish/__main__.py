@@ -7,8 +7,8 @@ from Sequential_Fish.settings.settings import ALLOWED_SETTINGS, SETTINGS_NAMES
 
 from . import viewer, pipeline, analysis, chromatic_abberrations
 from . import settings as settings_module
-from .customtypes.parameters import PipelineParameters
 from .pipeline import launch_script
+from .settings import PipelineParameters
 from .settings import write_settings
 from .settings import ALLOWED_SETTINGS
 
@@ -77,7 +77,7 @@ def main():
         else :
             print("Starting selected analysis modules")
             
-        analysis.run(*submodules)
+        analysis.run(RUN_PATH, *submodules)
         
         print("Done.")
 
