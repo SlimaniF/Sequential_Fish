@@ -3,17 +3,20 @@ Aims at finding drift value for each field of view and store it into a dataframe
 """
 
 import os
+import multiprocessing
 from typing import cast
+from itertools import cycle
 
 import pandas as pd
 import numpy as np
 import smfishtools.preprocessing.alignement as prepro
 from tqdm import tqdm
+from pebble import ProcessPool
+from multiprocessing.shared_memory import SharedMemory
 
-from ..customtypes import PipelineParameters
+from ..settings import PipelineParameters
 from ..tools import open_image, reorder_image_stack
 from ..settings import get_settings
-
 
 def main(run_path) :
 
@@ -27,7 +30,7 @@ def main(run_path) :
     DAPI_CHANNEL = pipeline_parameters.DAPI_CHANNEl
     BEAD_CHANNEL = pipeline_parameters.BEAD_CHANNEl
     REFERENCE_CYCLE = pipeline_parameters.REFERENCE_CYCLE
-    has_beads = not BEAD_CHANNEL is None 
+    MAX_WORKERS = min(4, multiprocessing.cpu_count())
         
     print(f"Drift runing for {run_path}\nBEAD CHANNEL : {BEAD_CHANNEL}\nDAPI CHANNE : {DAPI_CHANNEL}\nREFERENCE_CYCLE : {REFERENCE_CYCLE}")
 
@@ -54,118 +57,19 @@ def main(run_path) :
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
 
     if not DRIFT_SLICE_TO_REMOVE[1] is None : DRIFT_SLICE_TO_REMOVE[1] *= -1
-    for location in Acquisition['location'].unique() : 
 
-        print('Starting ',location)
-        plot_path = save_path + '/drift/{0}/'.format(location)
-        os.makedirs(plot_path,exist_ok=True)
-        #
-        print("opening images...")
-        sub_acq = Acquisition.loc[Acquisition["location"] == location].sort_values('cycle')
-        path = sub_acq['full_path'].iat[0]
-        image_map = sub_acq['fish_map'].iat[0]
-        print(path)
-
-
-        image = open_image(path)
-        print(image.shape)
-        image = reorder_image_stack(image, image_map)
-        assert len(image.shape) == 5
-        image = image[:,DRIFT_SLICE_TO_REMOVE[0]:DRIFT_SLICE_TO_REMOVE[1]]
-
-
-        ref_acquisition_id = sub_acq[sub_acq['cycle'] == REFERENCE_CYCLE]['acquisition_id'].iat[0]
-        stack_index = 0
-        Drift = pd.DataFrame({
-            'acquisition_id' : [ref_acquisition_id],
-            'drift_type' : ['dapi'],
-            'drift_z' : [0],
-            'drift_y' : [0],
-            'drift_x' : [0],
-        })
-        
-
-        #Selecting images
-        if has_beads :
-            fish_image_stack = image[...,BEAD_CHANNEL] # Selecting beads channel
-            assert len(sub_acq) == len(fish_image_stack) == len(sub_acq['acquisition_id'])
-            fish_reference_image = fish_image_stack[REFERENCE_CYCLE]
-            Drift = pd.concat([
-                Drift,
-                pd.DataFrame({
-                    'acquisition_id' : [ref_acquisition_id],
-                    'drift_type' : ['fish'],
-                    'drift_z' : [0],
-                    'drift_y' : [0],
-                    'drift_x' : [0],
-                })
-            ])
-        else : fish_reference_image = None
-
-        dapi_image_stack = image[...,DAPI_CHANNEL]
-        dapi_reference = dapi_image_stack[1]
-
-        for acquisition_id in tqdm(sub_acq[sub_acq['cycle'] != REFERENCE_CYCLE]['acquisition_id']) : #is ordered by cycle which is image stack ordered.
-
-            # Finding drift for dapi
-            dapi_results = prepro.fft_phase_correlation_drift(
-                dapi_reference,
-                dapi_image_stack[stack_index],
-                voxel_size=VOXEL_SIZE
-            )
-            dapi_results = pd.DataFrame(dapi_results)
-
-            if (dapi_results.at[0,'drift_z'], dapi_results.at[0,'drift_y'], dapi_results.at[0,'drift_x'],) == (0,0,0) : #No drift found in 3D, try in 2D
-                max_proj = True
-                dapi_results = prepro.fft_phase_correlation_drift(
-                    reference_image= np.max(dapi_reference,axis=0),
-                    drifted_image= np.max(dapi_image_stack[stack_index], axis=0),
-                    voxel_size=VOXEL_SIZE,
-                )
-                dapi_results = pd.DataFrame(dapi_results)
-                dapi_results["drift_z"] = 0
-            else : 
-                max_proj = False
-
-            dapi_results['drift_type'] = 'dapi'
-            dapi_results['max_projection'] = max_proj
-            dapi_results['acquisition_id'] = acquisition_id
-            Drift = pd.concat([
-                Drift,
-                dapi_results
-            ], axis=0)
-
-            if has_beads :
-                assert not fish_reference_image is None
-                max_proj = False
-                fish_result = prepro.fft_phase_correlation_drift(
-                    reference_image= fish_reference_image,
-                    drifted_image= fish_reference_image[stack_index],
-                    bead_size=BEAD_SIZE,
-                    voxel_size=VOXEL_SIZE,
-                )
-
-                if (fish_result['drift_z'], fish_result['drift_y'], fish_result['drift_x'],) == (0,0,0) : #No drift found in 3D, try in 2D
-                    max_proj = True
-                    fish_result = prepro.fft_phase_correlation_drift(
-                        reference_image= np.max(fish_reference_image,axis=0),
-                        drifted_image= np.max(fish_reference_image[stack_index], axis=0),
-                        bead_size=BEAD_SIZE,
-                        voxel_size=VOXEL_SIZE,
-                    )
-
-                fish_result = pd.DataFrame(fish_result)
-                if max_proj : 
-                    fish_result["drift_z"] = 0
-                fish_result['acquisition_id'] = acquisition_id
-                fish_result['drift_type'] = 'fish'
-                fish_result['max_projection'] = max_proj
-
-                Drift = pd.concat([
-                    Drift,
-                    fish_result,
-                ], axis=0)
-            stack_index +=1
+    for location in Acquisition['location'].unique() :
+        print(f"Starting location : {location}") 
+        Drift = process_location(
+            location,
+            Acquisition=Acquisition,
+            save_path=save_path,
+            DRIFT_SLICE_TO_REMOVE=DRIFT_SLICE_TO_REMOVE,
+            REFERENCE_CYCLE=REFERENCE_CYCLE,
+            DAPI_CHANNEL=DAPI_CHANNEL,
+            VOXEL_SIZE=VOXEL_SIZE,
+            MAX_WORKERS=MAX_WORKERS
+        )
 
         Drift_save = pd.concat([
             Drift_save,
@@ -182,3 +86,134 @@ def main(run_path) :
     Drift_save.to_excel(run_path + '/result_tables/Drift.xlsx')
 
     print("Done")
+
+class DimensionError(ValueError) :
+    """Exception raised when image has not expected dimension"""
+
+def process_location(
+    location : str,
+    Acquisition : pd.DataFrame,
+    save_path : str,
+    DRIFT_SLICE_TO_REMOVE : list,
+    REFERENCE_CYCLE : int,
+    DAPI_CHANNEL : int,
+    VOXEL_SIZE : tuple[int,int,int],
+    MAX_WORKERS : int,
+    ) :
+    plot_path = os.path.join(save_path,"drift",location)
+    os.makedirs(plot_path,exist_ok=True)
+    
+    sub_acq = Acquisition.loc[Acquisition["location"] == location].sort_values('cycle')
+    path = sub_acq['full_path'].iat[0]
+    image_map = sub_acq['fish_map'].iat[0]
+
+    image = open_image(path)
+    image = reorder_image_stack(image, image_map)
+    if len(image.shape) != 5 : raise DimensionError(f"Expected 5 dimensions for image stack got {image.ndim}")
+    image = image[:,DRIFT_SLICE_TO_REMOVE[0]:DRIFT_SLICE_TO_REMOVE[1]]
+    dapi_image_stack = image[...,DAPI_CHANNEL]
+    
+    #Preparing memory share
+    dapi_reference_shape = dapi_image_stack.shape
+    dapi_reference_dtype = dapi_image_stack.dtype
+    dapi_image_stack = dapi_image_stack.ravel()
+    del image
+
+    shared_dapi_mem = SharedMemory(
+        create=True,
+        size=dapi_image_stack.nbytes
+    )
+    shared_dapi = np.ndarray(
+    dapi_image_stack.shape,
+    dtype=dapi_image_stack.dtype,
+    buffer=shared_dapi_mem.buf
+    )
+    try :
+        np.copyto(shared_dapi, dapi_image_stack)
+
+        ref_acquisition_id = sub_acq[sub_acq['cycle'] == REFERENCE_CYCLE]['acquisition_id'].iat[0]
+        Drift = pd.DataFrame({
+            'acquisition_id' : [ref_acquisition_id],
+            'drift_type' : ['dapi'],
+            'drift_z' : [0],
+            'drift_y' : [0],
+            'drift_x' : [0],
+            'error' : [np.nan],
+            'phasediff' : [np.nan],
+            'max_projection' : [None],
+            'cycle' : [REFERENCE_CYCLE]
+        })
+
+
+        location_loc = sub_acq.loc[sub_acq['cycle'] != REFERENCE_CYCLE,['acquisition_id', 'cycle']].sort_values("cycle")
+        cycle_number = len(location_loc)
+        with ProcessPool(max_workers=MAX_WORKERS) as task_pool :
+            futures = task_pool.map(
+                    process_cycle,
+                    [(shared_dapi_mem.name, dapi_reference_shape, dapi_reference_dtype)]*cycle_number,
+                    [REFERENCE_CYCLE] * cycle_number,
+                    location_loc["cycle"].to_list(),
+                    [VOXEL_SIZE] * cycle_number,
+                    location_loc["acquisition_id"].to_list()
+            )
+
+            results = [res for res in tqdm(futures.result(), desc="processing cycles", total=cycle_number)]
+
+    finally :
+        shared_array = None  # Dereference
+        shared_dapi_mem.close()
+        shared_dapi_mem.unlink()
+    
+    Drift = pd.concat([
+        Drift,
+        pd.DataFrame(data=results, columns= Drift.columns)
+    ], axis=0, ignore_index=True
+    )
+
+    Drift = Drift.sort_values("cycle")
+
+    print(Drift)
+
+    return Drift
+
+
+def process_cycle(
+    dapi_image_stack_tuple : tuple,
+    reference_index : int,
+    cycle_index : int,
+    VOXEL_SIZE : tuple[int,int,int],
+    acquisition_id : int,
+    ) -> dict :
+
+    shared_dapi_name, dapi_reference_shape, dapi_reference_dtype = dapi_image_stack_tuple
+    shared_mem = SharedMemory(name=shared_dapi_name)
+    dapi_stack = np.ndarray(
+        dapi_reference_shape,
+        dtype=dapi_reference_dtype,
+        buffer=shared_mem.buf
+    )
+
+    # Finding drift with dapi
+    dapi_results = prepro.fft_phase_correlation_drift(
+        dapi_stack[reference_index],
+        dapi_stack[cycle_index],
+        voxel_size=VOXEL_SIZE
+    )
+
+    if (dapi_results['drift_z'], dapi_results['drift_y'], dapi_results['drift_x']) == (0,0,0) : #No drift found in 3D, try in 2D
+        max_proj = True
+        dapi_results = prepro.fft_phase_correlation_drift(
+            reference_image= np.max(dapi_stack[reference_index],axis=0),
+            drifted_image= np.max(dapi_stack[cycle_index], axis=0),
+            voxel_size=VOXEL_SIZE,
+        )
+        dapi_results["drift_z"] = 0
+    else : 
+        max_proj = False
+
+    dapi_results['drift_type'] = 'dapi'
+    dapi_results['max_projection'] = max_proj
+    dapi_results['acquisition_id'] = acquisition_id
+    dapi_results['cycle'] = cycle_index
+
+    return dapi_results
