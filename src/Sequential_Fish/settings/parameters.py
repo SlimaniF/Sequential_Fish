@@ -69,6 +69,7 @@ class AnalysisParameters(BaseModel) :
     
     #Preprocessing
     FILTER_RNA : list[str] | None = Field(default=None)
+    FILTER_CYCLE : dict[str,list[int]] | None = Field(default=None)
     RENAME_RULE : dict[str,str] | None = Field(default=None)
 
     #Distributions

@@ -4,6 +4,7 @@ Main script to call for analysis pipeline.
 import os
 import pandas as pd
 from typing import cast
+import numpy as np
 
 from ..settings import get_settings
 from ..settings import AnalysisParameters
@@ -29,9 +30,10 @@ def run(run_path,*args) :
 
     analysis_parameters = cast(AnalysisParameters, get_settings(run_path, settings_name="analysis"))
     
-    REQUIRED_TABLES = ["Acquisition", "Detection", "Spots", "Drift", "Gene_map", "Cell"]
-    if not all([os.path.isfile(os.path.join(run_path, "result_tables", table,".feather")) for table in REQUIRED_TABLES]) :
-        raise FileNotFoundError(f"All data tables could not be found in result directory. Check that pipeline proceeded correctly. Required tables are {REQUIRED_TABLES}.")
+    REQUIRED_TABLES = ["Acquisition", "Detection", "Spots", "Clusters", "Drift", "Gene_map", "Cell"]
+    truth_table = [os.path.isfile(os.path.join(run_path, "result_tables", table +".feather")) for table in REQUIRED_TABLES]
+    if not all(truth_table) :
+        raise FileNotFoundError(f"All data tables could not be found in result directory. Missing {np.array(REQUIRED_TABLES)[truth_table]}.")
 
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
     Detection = pd.read_feather(run_path + "/result_tables/Detection.feather")
@@ -50,7 +52,27 @@ def run(run_path,*args) :
     unfiltered_Spots = Spots.copy()
     
     #Rename target
-    Gene_map["target"] = Gene_map['target'].replace(analysis_parameters.RENAME_RULE)
+    if not analysis_parameters.RENAME_RULE is None :
+        Gene_map["target"] = Gene_map['target'].replace(analysis_parameters.RENAME_RULE)
+
+    #Filter RNA
+    if not analysis_parameters.FILTER_RNA is None :
+        print(len(Spots))
+        loc_map = Gene_map.loc[Gene_map["target"].isin(analysis_parameters.FILTER_RNA), ["cycle","color_id"]]
+        filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
+        Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
+        print(len(Spots))
+    
+    #Filter cycles :
+    if not analysis_parameters.FILTER_CYCLE is None :
+        for target, cycles in analysis_parameters.FILTER_CYCLE.items() :
+            loc_map = Gene_map.loc[
+                (Gene_map["target"] == target) & (Gene_map["cycle"].isin(cycles)) ,
+                ["cycle","color_id"]
+                ]
+            filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
+            Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
+
     
     Spots = Spots_filtering(
         Spots,
@@ -67,6 +89,8 @@ def run(run_path,*args) :
         Cell=Cell,
         Detection=Detection
     )
+
+
 
     if "distributions" in args or "all" in args :
         if not analysis_parameters.distribution_measures is None and len(analysis_parameters.distribution_measures) > 0:
