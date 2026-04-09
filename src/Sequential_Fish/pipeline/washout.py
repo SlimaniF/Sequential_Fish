@@ -6,7 +6,7 @@ from typing import cast
 import pandas as pd
 from ..settings import get_settings
 from ..tools import safe_merge_no_duplicates
-from ..customtypes import PipelineParameters
+from ..settings import PipelineParameters
 
 def main(run_path) :
     

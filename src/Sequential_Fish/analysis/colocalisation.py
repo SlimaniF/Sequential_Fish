@@ -454,7 +454,7 @@ def compute_z_score_frame(
     if not measured_colocalisation_events.columns.equals(expected_colocalisation_events.columns) or not measured_colocalisation_events.columns.equals(expected_standard_deviation.columns) :
         raise ValueError("Cannot compute z score, all dataframe don't share the same columns")
     
-    expected_standard_deviation = expected_standard_deviation.replace(0, np.NAN) # Avoid division by 0 error
+    expected_standard_deviation = expected_standard_deviation.replace(0, np.nan) # Avoid division by 0 error
 
     z_score_df = measured_colocalisation_events - expected_colocalisation_events
     z_score_df = z_score_df/expected_standard_deviation

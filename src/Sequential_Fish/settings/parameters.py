@@ -1,24 +1,7 @@
-from numpy import ndarray
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
-from typing import TypedDict
+
 from typing import List, Dict
 from pydantic import BaseModel, Field
 
-class Calibration(TypedDict) :
-    x_fit : LinearRegression
-    y_fit : LinearRegression
-    z_fit : LinearRegression
-    x_inv_fit : LinearRegression
-    y_inv_fit : LinearRegression
-    z_inv_fit : LinearRegression
-    polynomial_features : PolynomialFeatures
-    polynomial_features_inv : PolynomialFeatures
-    voxel_size : ndarray
-    degree : int
-    reference_wavelength : int
-    corrected_wavelength : int
-    timestamp : str
 
 class PipelineParameters(BaseModel) :
     
@@ -85,11 +68,12 @@ class AnalysisParameters(BaseModel) :
     frameon : bool = Field(default=True)
     
     #Preprocessing
-    FILTER_RNA : List[str] | None = Field(default=None)
-    RENAME_RULE : Dict[str,str] | None = Field(default=None)
+    FILTER_RNA : list[str] | None = Field(default=None)
+    FILTER_CYCLE : dict[str,list[int]] | None = Field(default=None)
+    RENAME_RULE : dict[str,str] | None = Field(default=None)
 
     #Distributions
-    distribution_measures : List[str] | None = Field(default=None)
+    distribution_measures : list[str] | None = Field(default=None)
 
     #Chromatic abberration
     reference_wavelength : int | None = Field(default=555) #None to ignore chromatic abberations correction

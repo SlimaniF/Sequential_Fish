@@ -5,8 +5,8 @@ import pandas as pd
 
 from numpy.random import shuffle
 
-from Sequential_Fish.customtypes._napari import NapariWidget
-from Sequential_Fish.customtypes.parameters import PipelineParameters
+from ..customtypes._napari import NapariWidget
+from ..settings import PipelineParameters
 from ..customtypes import table_dict_type
 from .analysis import initiate_analysis_widgets
 from .load import initiate_load_widgets

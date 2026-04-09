@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from ..tools.utils import open_image, reorder_image_stack
 from ..settings import get_settings
-from ..customtypes import PipelineParameters
+from ..settings import PipelineParameters
 
 #### USER PARAMETERS
 

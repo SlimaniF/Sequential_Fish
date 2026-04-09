@@ -1,7 +1,13 @@
 """
 Main script to call for analysis pipeline.
 """
+import os
 import pandas as pd
+from typing import cast
+import numpy as np
+
+from ..settings import get_settings
+from ..settings import AnalysisParameters
 
 from .post_processing import Spots_filtering
 from .density import density_analysis
@@ -22,12 +28,13 @@ def run(run_path,*args) :
     if run_path is None : quit()
     else : print(run_path)
 
-    if exists_analysis_parameters(run_path) :
-        analysis_parameters = load_analysis_parameters(run_path) 
-    else :
-        analysis_parameters = get_raw_analysis_parameters()
-        write_analysis_parameters(run_path, analysis_parameters)
+    analysis_parameters = cast(AnalysisParameters, get_settings(run_path, settings_name="analysis"))
     
+    REQUIRED_TABLES = ["Acquisition", "Detection", "Spots", "Clusters", "Drift", "Gene_map", "Cell"]
+    truth_table = [os.path.isfile(os.path.join(run_path, "result_tables", table +".feather")) for table in REQUIRED_TABLES]
+    if not all(truth_table) :
+        raise FileNotFoundError(f"All data tables could not be found in result directory. Missing {np.array(REQUIRED_TABLES)[truth_table]}.")
+
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
     Detection = pd.read_feather(run_path + "/result_tables/Detection.feather")
     Spots = pd.read_feather(run_path + "/result_tables/Spots.feather")
@@ -36,15 +43,36 @@ def run(run_path,*args) :
     Cell = pd.read_feather(run_path + "/result_tables/Cell.feather")
 
     #Post-processing
-    Spots = correct_Spots_dataframe(#Chromatic abberation correction
-        Detection=Detection,
-        Spots=Spots,
-        reference_wavelength= analysis_parameters.reference_wavelength
-    ) 
+    if not analysis_parameters.reference_wavelength is None :
+        Spots = correct_Spots_dataframe(#Chromatic abberation correction
+            Detection=Detection,
+            Spots=Spots,
+            reference_wavelength= analysis_parameters.reference_wavelength
+        ) 
     unfiltered_Spots = Spots.copy()
     
     #Rename target
-    Gene_map["target"] = Gene_map['target'].replace(analysis_parameters.RENAME_RULE)
+    if not analysis_parameters.RENAME_RULE is None :
+        Gene_map["target"] = Gene_map['target'].replace(analysis_parameters.RENAME_RULE)
+
+    #Filter RNA
+    if not analysis_parameters.FILTER_RNA is None :
+        print(len(Spots))
+        loc_map = Gene_map.loc[Gene_map["target"].isin(analysis_parameters.FILTER_RNA), ["cycle","color_id"]]
+        filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
+        Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
+        print(len(Spots))
+    
+    #Filter cycles :
+    if not analysis_parameters.FILTER_CYCLE is None :
+        for target, cycles in analysis_parameters.FILTER_CYCLE.items() :
+            loc_map = Gene_map.loc[
+                (Gene_map["target"] == target) & (Gene_map["cycle"].isin(cycles)) ,
+                ["cycle","color_id"]
+                ]
+            filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
+            Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
+
     
     Spots = Spots_filtering(
         Spots,
@@ -62,19 +90,21 @@ def run(run_path,*args) :
         Detection=Detection
     )
 
+
+
     if "distributions" in args or "all" in args :
-        
-        distribution_sucess = distributions_analysis(
-            Acquisition=Acquisition,
-            Detection=Detection,
-            Cell=Cell,
-            Spots=Spots,
-            Gene_map=Gene_map,
-            run_path=run_path,
-            disibutions_measures= analysis_parameters.distribution_measures
-        )
-        if not distribution_sucess :
-            print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
+        if not analysis_parameters.distribution_measures is None and len(analysis_parameters.distribution_measures) > 0:
+            distribution_sucess = distributions_analysis(
+                Acquisition=Acquisition,
+                Detection=Detection,
+                Cell=Cell,
+                Spots=Spots,
+                Gene_map=Gene_map,
+                run_path=run_path,
+                disibutions_measures= analysis_parameters.distribution_measures
+            )
+            if not distribution_sucess :
+                print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
     
     if "density" in args  or "all" in args:
         

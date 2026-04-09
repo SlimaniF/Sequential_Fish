@@ -7,14 +7,14 @@ from sklearn.neighbors import NearestNeighbors
 from .constant import CALIBRATION_FOLDER
 from ..customtypes import Calibration
 
-def match_beads(coords1 : np.array, coords2 : np.array, max_dist=5):
+def match_beads(coords1 : np.ndarray, coords2 : np.ndarray, max_dist=5):
     """Match nearest beads between two channels."""
     nn = NearestNeighbors(n_neighbors=1).fit(coords2)
     distances, indices = nn.kneighbors(coords1)
     matches = distances[:, 0] < max_dist
     return coords1[matches], coords2[indices[matches, 0]]
 
-def fit_polynomial_transform_3d(src_points : np.array, dst_points : np.array, degree=2):
+def fit_polynomial_transform_3d(src_points : np.ndarray, dst_points : np.ndarray, degree=2):
     """Fit 3D polynomial regression mapping coords → dst."""
     poly = PolynomialFeatures(degree)
     X_poly = poly.fit_transform(src_points)

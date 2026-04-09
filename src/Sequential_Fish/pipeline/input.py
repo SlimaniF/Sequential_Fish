@@ -16,8 +16,8 @@ from tqdm import tqdm
 
 import numpy as np
 
-from ..customtypes.parameters import PipelineParameters
-from ..tools.utils import open_image, auto_map_channels, _find_one_or_NaN, reorder_image_stack
+from ..settings import PipelineParameters
+from ..tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack
 from ..tools._folder_integrity import assert_run_folder_integrity
 from ..settings import get_settings
 
