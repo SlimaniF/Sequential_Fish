@@ -88,6 +88,7 @@ def main(run_path) :
         fish_path_list.sort() # THIS MUST GIVE CYCLE ORDERED LIST ie : filename cycle matches map cycles and rest of filename doesn't change list order.
         
         fish_im = None
+        found_cycle_number = None
         if ".ome." in fish_path_list[0] :
             with tifffile.TiffFile(os.path.join(fish_path, fish_path_list[0])) as main_tif :
 
@@ -107,23 +108,25 @@ def main(run_path) :
                     fish_shape = get_memory_shape_from_metadata(ome_metadata, fish_map)
                     
                     if not fish_shape is None :
+                        found_cycle_number = fish_shape[fish_map['cycles']]
                         fish_shape = fish_shape[:fish_map['cycles']] + fish_shape[(fish_map['cycles'] + 1):] #1cycle per acquisition
-                    
+
                     fish_reodered_shape = get_ordered_shape_from_metadata(ome_metadata)
                 
                 #Infer from open image : longer
-                if main_tif.ome_metadata is None or fish_shape is None or fish_reodered_shape is None:
+                if main_tif.ome_metadata is None or fish_shape is None or fish_reodered_shape is None :
                     warnings.warn("Could not infer shape from metadata opening image.")
                     if fish_im is None : 
                         fish_im = main_tif.asarray()
                     fish_im = cast(np.ndarray, fish_im)
                     
                     fish_shape = fish_im.shape[:fish_map['cycles']] + fish_im.shape[(fish_map['cycles'] + 1):] #1cycle per acquisition
+                    found_cycle_number = fish_im.shape[fish_map['cycles']]
                     fish_reodered_shape = reorder_image_stack(fish_im, fish_map).shape
                 
+                assert found_cycle_number == cycle_number, f"Cycle file has {cycle_number} entries but only {found_cycle_number} were found in metadata."
 
                 fish_reodered_shape = cast(tuple, fish_reodered_shape[1:])
-                
 
         else :
             raise NotImplementedError("Initially this script is made to handle .ome.tif data. This format corresponds to tiff series with the particularity that metadata are stored exclusively in the cycle 0 file.\nIn case your system uses a different mechanism you will need to adapt this script to make a compatible output, by doing so you ensure downstream pipeline need not being change.")
@@ -138,8 +141,6 @@ def main(run_path) :
         Acquisition.loc[index, "fish_reodered_shape"] = pd.Series((fish_reodered_shape,)*cycle_number, index=index)
         Acquisition.loc[index, "full_path"] = pd.Series(full_path_list, index=index, dtype="string")
 
-        cycle_regex_result = Acquisition.loc[:, 'full_path'].apply(_find_one_or_NaN, regex=cycle_regex)
-
     #Integrity checks
     assert all(Acquisition['cycle'].isin(cycle_map[CYCLE_KEY])), "Some cycle are not found in map"
     assert len(cycle_map) == len(Acquisition['cycle'].unique()), "{0} column length doesn't match cycle number ({1})".format(len(cycle_map), len(Acquisition['cycle']))
@@ -147,7 +148,8 @@ def main(run_path) :
     cycle_regex_result = Acquisition.loc[:, 'full_path'].apply(_find_one_or_NaN, regex=cycle_regex)
     cycles_match = all(Acquisition.loc[~Acquisition['full_path'].isna(),"cycle"] == cycle_regex_result[~cycle_regex_result.isna()])
     if not cycles_match : raise ValueError("Missmatch between cycles assigned and cycles found in filenames. Maybe filenames could not be used to sort on cycles.")
-    if any(Acquisition['full_path'].isna()) : warnings.warn("Warning : Some images registered in metadata were not found in folder. Ignore this message if some files were deleted after acquisition, in such a case pipeline should return as well 'OME series failed to read [...]. Missing data are zeroed' warning. ")
+    if any(Acquisition['full_path'].isna()) : 
+        warnings.warn("Warning : Some images registered in metadata were not found in folder. Ignore this message if some files were deleted after acquisition, in such a case pipeline should return as well 'OME series failed to read [...]. Missing data are zeroed' warning. ")
 
     Acquisition = pd.merge(
         left=Acquisition,
