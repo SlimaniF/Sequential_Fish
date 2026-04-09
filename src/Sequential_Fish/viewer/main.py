@@ -57,6 +57,7 @@ def main(run_path) :
         table_dict=tables_dict,
         color_table=color_table,
         run_path=run_path,
+        viewer = Viewer,
     )
     load_data_container = Container(
         widgets= cast(Sequence[Widget], load_data_widgets),
@@ -83,7 +84,7 @@ def main(run_path) :
         )
 
     cyclefile_path= os.path.join(run_path, settings.MAP_FILENAME)
-    threshold_editor = ThreholdsFileEditor(cyclefile_path)
+    threshold_editor = ThreholdsFileEditor(cyclefile_path, color_number = len(settings.GENES_NAMES_KEY) )
 
     thresholds_container = Container(
         widgets= thresholds_widgets,
