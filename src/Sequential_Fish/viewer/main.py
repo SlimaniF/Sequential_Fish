@@ -4,6 +4,7 @@ import napari
 import pandas as pd
 
 from numpy.random import shuffle
+from torch import view_as_complex
 
 from ..customtypes._napari import NapariWidget
 from ..settings import PipelineParameters
@@ -12,6 +13,7 @@ from .analysis import initiate_analysis_widgets
 from .load import initiate_load_widgets
 from .locations import initiate_location_widgets
 from .thresholds import initiate_thresholds_widgets, ThreholdsFileEditor
+from .segmentation import initiate_segmentation_widgets
 from .organoids import initiate_organoid_wizards, autodetect_organoids
 from magicgui.widgets import Container, Widget
 
@@ -75,30 +77,34 @@ def main(run_path) :
         labels=False
     )
 
+    #Segmentation tab
+    segmentation_container, new_linked_widgets = create_segmentation_tab(viewer=Viewer, voxel_size=voxel_size)
+    linked_widgets.extend(new_linked_widgets)
+    Viewer.window.add_dock_widget(
+        segmentation_container,
+        name="Segmentation",
+        area="right",
+        add_vertical_stretch=True,
+        tabify=True
+    )
+
     #Threholds tab
-    thresholds_widgets = initiate_thresholds_widgets(
-        viewer= Viewer,
-        default_threshold = 0,
-        default_spot_size = settings.SPOT_SIZE,
-        voxel_size = settings.VOXEL_SIZE,
-        )
-
-    cyclefile_path= os.path.join(run_path, settings.MAP_FILENAME)
-    threshold_editor = ThreholdsFileEditor(cyclefile_path, color_number = len(settings.GENES_NAMES_KEY) )
-
-    thresholds_container = Container(
-        widgets= thresholds_widgets,
-        labels=True
+    full_threshold_container = create_thresholds_tab(
+        viewer=Viewer,
+        voxel_size= settings.VOXEL_SIZE,
+        spot_size= settings.SPOT_SIZE,
+        run_path= run_path,
+        map_filename=settings.MAP_FILENAME,
+        gene_number=len(settings.GENES_NAMES_KEY)
     )
-    threshold_editor_container = Container(
-        widgets= threshold_editor.widget,
-        labels=False
+    Viewer.window.add_dock_widget(
+        full_threshold_container,
+        name="Thresholds",
+        area="right",
+        add_vertical_stretch=True,
+        tabify=True
     )
 
-    full_threshold_container = Container(
-        widgets = [thresholds_container, threshold_editor_container],
-        labels=False
-    )
 
     #Organoids
     print("Starting organoids auto-detection")
@@ -121,14 +127,6 @@ def main(run_path) :
         labels=False
     )
 
-    #Docking tabs
-    Viewer.window.add_dock_widget(
-        full_threshold_container,
-        name="Thresholds",
-        area="right",
-        add_vertical_stretch=True,
-        tabify=True
-    )
 
     #TODO Update
     # Viewer.window.add_dock_widget(
@@ -188,3 +186,53 @@ def create_color_table(tables_dict) :
     color_table['colormaps'] = colormaps
 
     return color_table
+
+
+def create_segmentation_tab(
+    viewer : napari.Viewer,
+    voxel_size : tuple,
+    ) :
+
+    widget_list, linked_widgets =  initiate_segmentation_widgets(viewer, voxel_size=voxel_size)
+    segmentation_container = Container(
+        widgets= widget_list,
+        labels=False
+    )
+
+    return segmentation_container, linked_widgets
+
+
+def create_thresholds_tab(
+    viewer : napari.Viewer,
+    voxel_size : tuple,
+    spot_size : tuple,
+    run_path : str,
+    map_filename : str,
+    gene_number : int,
+    ) :
+
+    thresholds_widgets = initiate_thresholds_widgets(
+        viewer= viewer,
+        default_threshold = 0,
+        default_spot_size = spot_size,
+        voxel_size = voxel_size,
+        )
+
+    cyclefile_path= os.path.join(run_path, map_filename)
+    threshold_editor = ThreholdsFileEditor(cyclefile_path, color_number = gene_number)
+
+    thresholds_container = Container(
+        widgets= thresholds_widgets,
+        labels=True
+    )
+    threshold_editor_container = Container(
+        widgets= threshold_editor.widget,
+        labels=False
+    )
+
+    full_threshold_container = Container(
+        widgets = [thresholds_container, threshold_editor_container],
+        labels=False
+    )
+
+    return full_threshold_container

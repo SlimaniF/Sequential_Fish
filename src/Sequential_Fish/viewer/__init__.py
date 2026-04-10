@@ -9,6 +9,7 @@ from . locations import initiate_location_widgets
 from .organoids import initiate_organoid_wizards
 from . thresholds import initiate_thresholds_widgets
 from .thresholds import ThreholdsFileEditor
+from .utils import update_layer_from_LayerDataTuple
 
 
 def run(run_path : str) :
