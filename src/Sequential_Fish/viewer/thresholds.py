@@ -14,6 +14,7 @@ from magicgui.widgets import SpinBox
 from napari.types import LayerDataTuple
 from napari.components import ViewerModel
 from ..customtypes._napari import NapariWidget, UserInputError
+from .load import LoadWidget
 
 import bigfish.stack as stack
 import bigfish.detection as detection
@@ -46,7 +47,7 @@ def initiate_thresholds_widgets(
     return widgets_list
 
 @register_thresholds_widget
-class ThresholdSelector(ThresholdsWidget) :
+class ThresholdSelector(LoadWidget) :
     """
     Widget aimed at helping user to set detection parameters : threshold, spot radius and so on...
     """
@@ -73,7 +74,7 @@ class ThresholdSelector(ThresholdsWidget) :
         self.layer_name = ""
         self.do_update = False
         
-        super().__init__()
+        super().__init__(viewer=viewer)
 
     def _update_filtered_image(self) :
 
@@ -106,7 +107,7 @@ class ThresholdSelector(ThresholdsWidget) :
         def find_spots(
             threshold : int | None,
             spot_radius : tuple[int,int,int],
-        ) -> list[LayerDataTuple] :
+        ) :
 
             if (np.array(spot_radius) < 0).any() :
                 raise ValueError("Spot radius : set value > 0 (0 to ignore argument)")
@@ -222,7 +223,7 @@ class ThresholdSelector(ThresholdsWidget) :
 
 #Not registering to remove label
 class ThreholdsFileEditor(ThresholdsWidget) :
-    def __init__(self, cyclefile_path : str, **_):
+    def __init__(self, cyclefile_path : str, color_number : int,  **_):
 
         if cyclefile_path.endswith("csv") :
             self.reader = pd.read_csv
@@ -238,9 +239,16 @@ class ThreholdsFileEditor(ThresholdsWidget) :
         if os.path.isfile(cyclefile_path) :
             self.enabled = True
             self.file = self.reader(cyclefile_path)
+            for color in range(color_number) :
+                target_col = f'Threshold_{color}'
+                if not target_col in self.file.columns :
+                    self.file[target_col] = pd.Series([pd.NA]*len(self.file), dtype=pd.Int64Dtype)
+                else :
+                    self.file[target_col] = self.file[target_col].astype(pd.Int64Dtype())
+
         else :
             print(f"{cyclefile_path} is not a valid file creating empty file.")
-            self.file = pd.DataFrame(columns=pd.Index(["cycle", "gene", "thresholds"]))
+            self.file = pd.DataFrame(columns=pd.Index(["cycle", "gene", "Threshold_0"]))
             self.writer(self.file, cyclefile_path)
         
         self.path = cyclefile_path

@@ -5,14 +5,16 @@ Napari widgets used to load information in napari ()
 import os
 from typing import cast
 
+from napari import Viewer
 import numpy as np
 import pandas as pd
 
 from napari.types import LayerDataTuple
+from napari.qt.threading import thread_worker, create_worker
 from magicgui import magicgui
 
 from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
-from .utils import open_segmentation
+from .utils import open_segmentation, update_layer_from_LayerDataTuple
 from ..customtypes import NapariWidget
 from ..customtypes import table_dict_type
 
@@ -20,7 +22,31 @@ from ..customtypes import table_dict_type
 from smfishtools.preprocessing.alignement import shift_array
 
 
-##  Load tab
+class LoadWidget(NapariWidget) :
+    """
+    Subclass of NapariWidget aimed for widgets returning a LayerDataTuple, it wraps the loading process into a worker thread to not pause the main GUI thread.
+    """
+
+    def __init__(self, *, viewer : Viewer):
+        super().__init__()
+        self.viewer = viewer
+        self._wrap_with_threading()
+
+    def _wrap_with_threading(self):
+        """
+        Wraps the widget's function with napari's threading.
+        """
+        if hasattr(self.widget, 'native'):
+            # Get the underlying function from the magicgui widget
+            original_func = self.widget._function
+            def threaded_func(*args, **kwargs):
+                worker = create_worker(original_func, *args, **kwargs)
+                worker.returned.connect(lambda result: update_layer_from_LayerDataTuple(self.viewer, result))
+                worker.start()
+                return worker
+            # Replace the widget's function with the threaded version
+            self.widget._function = threaded_func
+
 _LOAD_WIDGETS : 'list[NapariWidget]' = []
 def register_load_widget(cls) :
     _LOAD_WIDGETS.append(cls)
@@ -30,12 +56,13 @@ def initiate_load_widgets(
         table_dict : table_dict_type, 
         voxel_size : tuple,
         color_table : dict,
-        run_path : str
+        run_path : str,
+        viewer : Viewer,
 ) -> tuple[list[NapariWidget], list[NapariWidget]]:
     widget_list = []
     linked_widgets = []
     for cls in _LOAD_WIDGETS :
-        instance = cls(table_dict= table_dict, voxel_size=voxel_size, color_table=color_table, run_path=run_path)
+        instance = cls(table_dict= table_dict, voxel_size=voxel_size, color_table=color_table, run_path=run_path, viewer=viewer)
         if hasattr(instance,"enabled") :
             if instance.enabled :
                 widget_list.extend(instance.get_widgets())
@@ -46,16 +73,9 @@ def initiate_load_widgets(
 
     return widget_list, linked_widgets
 
-##  Location tab
-_LOCATION_WIDGETS = []
-def register_location_widget(cls) :
-    _LOCATION_WIDGETS.append(cls)
-    return cls
 
-
-#Load data widgets
 @register_load_widget
-class SpotsLoader(NapariWidget) :
+class SpotsLoader(LoadWidget) :
     """
     Allow user to load detected spots as layer points
     """
@@ -64,8 +84,10 @@ class SpotsLoader(NapariWidget) :
         table_dict : table_dict_type,
         voxel_size :tuple, 
         color_table,
+        viewer : Viewer,
         **_
     ) :
+        self.viewer = viewer
         self.enabled=True
         self.Spots = table_dict.get('Spots')
         self.Detection = table_dict.get('Detection')
@@ -90,7 +112,7 @@ class SpotsLoader(NapariWidget) :
 
         self.voxel_size = voxel_size
         self.color_table = color_table
-        super().__init__()
+        super().__init__(viewer=viewer)
 
     def update(self, locations) :
 
@@ -134,7 +156,7 @@ class SpotsLoader(NapariWidget) :
             call_button= 'Load spots',
             auto_call=False
         )
-        def load(target, population, drift_correction) -> LayerDataTuple :
+        def load(target, population, drift_correction) :
             
             if drift_correction : 
                 name = "{1}_{0}_spots_corrected".format(target, population)
@@ -201,7 +223,7 @@ class SpotsLoader(NapariWidget) :
         return load
 
 @register_load_widget    
-class ClustersLoader(NapariWidget) :
+class ClustersLoader(LoadWidget) :
     """
     Allow user to load detected cluster as Points layer.
     """
@@ -211,9 +233,11 @@ class ClustersLoader(NapariWidget) :
             table_dict : table_dict_type,
             voxel_size :tuple, 
             color_table,
+            viewer : Viewer,
             **_
             ):
         
+        self.viewer = viewer
         self.enabled=True
         self.Spots = table_dict.get('Spots')
         self.Detection = table_dict.get('Detection')
@@ -239,7 +263,7 @@ class ClustersLoader(NapariWidget) :
 
         self.voxel_size = voxel_size
         self.color_table = color_table
-        super().__init__()
+        super().__init__(viewer=viewer)
 
     def update(self, locations) :
 
@@ -282,7 +306,7 @@ class ClustersLoader(NapariWidget) :
             call_button= 'Load clusters',
             auto_call=False
         )
-        def load(target, drift_correction) -> LayerDataTuple :
+        def load(target, drift_correction) :
             
             if drift_correction : 
                 name = "{0}_clusters_corrected".format(target)
@@ -339,15 +363,18 @@ class ClustersLoader(NapariWidget) :
         return load
 
 @register_load_widget
-class SignalLoader(NapariWidget) :
+class SignalLoader(LoadWidget) :
     def __init__(
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple, 
             color_table : pd.DataFrame,
+            viewer : Viewer,
             **_
             ):
         
+        self.viewer = viewer
+
         #Table
         self.Gene_map = table_dict['Gene_map']
 
@@ -364,7 +391,7 @@ class SignalLoader(NapariWidget) :
         self.color_table = color_table.set_index("target",verify_integrity=True)
         self.voxel_size = voxel_size
         self.has_beads = not cast(bool,self.Acquisition['bead_channel'].isna().all())
-        super().__init__()
+        super().__init__(viewer=viewer)
 
     def update(self, locations) :
 
@@ -396,7 +423,7 @@ class SignalLoader(NapariWidget) :
                 },
                 auto_call=False
                 )
-        def load(target, drift_correction, signal_type) -> LayerDataTuple:
+        def load(target, drift_correction, signal_type):
             data = self.Gene_map.loc[self.Gene_map['target'] == target].iloc[0]
             color = self.color_table.at[target, "colormaps"]
             cycle, color_id = data['cycle'], int(data['color_id'])
@@ -412,7 +439,7 @@ class SignalLoader(NapariWidget) :
                 name = f"beads_signal_cycle{cycle}"
             else :
                 raise NotImplementedError("Unimplemented choice")
-            
+
 
             if drift_correction :
                 name += "_corrected"
@@ -425,7 +452,7 @@ class SignalLoader(NapariWidget) :
                 cycle=cycle,
             )
             array = array[..., channel_index]
-                
+
             if drift_correction :
                 location_list = self.data.index.get_level_values(0).unique().to_list()
                 location_list.sort()
@@ -447,25 +474,25 @@ class SignalLoader(NapariWidget) :
                 'Image'
             )
             )
-
             return layerdata
-
+            
         return load
 
 @register_load_widget    
-class SegmentationLoader(NapariWidget) :
+class SegmentationLoader(LoadWidget) :
     
     def __init__(
             self,
             run_path : str,
             voxel_size :tuple,
             table_dict : table_dict_type, 
+            viewer : Viewer,
             segmentation_folder_name:str = "/segmentation/",
             **_
             ):
         
         self.enabled=True
-
+        self.viewer = viewer
 
         self.Acquisition = table_dict['Acquisition']
 
@@ -478,7 +505,7 @@ class SegmentationLoader(NapariWidget) :
             self.enabled=False
 
         self.voxel_size = voxel_size
-        super().__init__()
+        super().__init__(viewer=viewer)
 
     def update(self,locations) :
 
@@ -497,7 +524,7 @@ class SegmentationLoader(NapariWidget) :
                 },
                 auto_call=False
         )
-        def load_segmentation(target) -> LayerDataTuple:
+        def load_segmentation(target):
 
             shape = np.array(list(self.Acquisition['fish_shape']),dtype=int)
             shape = np.max(shape, axis=0)

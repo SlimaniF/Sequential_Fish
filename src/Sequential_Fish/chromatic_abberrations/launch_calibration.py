@@ -2,11 +2,17 @@
 This script launch napari to allow user to calibrate chromatic abberration correction using fluorescent beads.
 """
 
-import napari,os
+import napari,os, platform
 from magicgui import widgets
 from Sequential_Fish.chromatic_abberrations.widgets import initiate_all_calibration_widgets
 
 def main() :
+    system_type = platform.system()
+    if system_type == "Linux" :
+        try :
+            os.environ["QT_QPA_PLATFORM"] = "xcb"
+        except Exception :
+            pass
     Viewer = napari.Viewer(title= "SequentialFish - Chromatic abberration calibration")
 
     calibration_widgets = initiate_all_calibration_widgets()

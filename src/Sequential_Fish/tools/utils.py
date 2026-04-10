@@ -157,7 +157,7 @@ def _find_one_or_NaN(path, regex) :
         elif len(res) == 0 : raise ValueError("cycle regex yields no results for {0}.".format(path))
         res = int(res[0])
     
-    elif np.isnan(path) :
+    elif pd.isna(path) :
         res = np.nan
     
     else :

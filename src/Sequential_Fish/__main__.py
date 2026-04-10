@@ -81,7 +81,7 @@ def main():
         
         print("Done.")
 
-    elif module == "chromatic_abberations" :
+    elif module in ["chromatic_abberations", "calibration", "calib"] :
         chromatic_abberrations.run()
     
     elif module == "settings" :

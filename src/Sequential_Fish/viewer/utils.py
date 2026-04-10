@@ -4,6 +4,23 @@ from tqdm import tqdm
 from itertools import zip_longest
 from math import ceil
 from typing import cast
+from napari.types import LayerDataTuple
+from napari import Viewer
+
+
+def update_layer_from_LayerDataTuple(viewer : Viewer, layer_data_tuple : LayerDataTuple | list[LayerDataTuple]) :
+    
+    if not isinstance(layer_data_tuple, list) :
+        layer_data_tuple = [layer_data_tuple]
+    
+    for datalayer in layer_data_tuple :
+        if "name" in datalayer[1].keys() :
+            layer_name = datalayer[1]["name"]
+            if layer_name in viewer.layers :
+                print(f"updating existing layer : {layer_name}")
+                viewer.layers[layer_name].data = datalayer[0]
+                return None
+        viewer._add_layer_from_data(*datalayer)
 
 def open_segmentation(
         segmentation_folder_fullpath: str, 

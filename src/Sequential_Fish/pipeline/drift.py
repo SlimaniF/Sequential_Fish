@@ -172,8 +172,6 @@ def process_location(
 
     Drift = Drift.sort_values("cycle")
 
-    print(Drift)
-
     return Drift
 
 

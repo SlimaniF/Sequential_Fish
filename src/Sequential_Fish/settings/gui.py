@@ -146,7 +146,10 @@ class ParametersModifier(QDialog):
         form.addRow(btn_layout)
         self.setLayout(form)
 
+<<<<<<< HEAD
     
+=======
+>>>>>>> main
     def get_parameters(self) -> Dict[str,Any] :
 
         result: Dict[str, Any] = {}
@@ -309,11 +312,6 @@ def _process_list(list_string : str, elmts_type, allow_None : bool) -> list:
     if not isinstance(list_string, str) : raise TypeError(f"Expected string type to convert to list, got : {type(list_string)}")
 
     list_string = list_string.strip()
-    list_string = list_string.replace("[","")
-    list_string = list_string.replace("]","")
-    list_string = list_string.replace("(","")
-    list_string = list_string.replace(")","")
-
 
     if "," in list_string :
         res = []

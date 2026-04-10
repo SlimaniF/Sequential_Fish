@@ -35,11 +35,12 @@ number of single molecule per plane and 'volume' of plane (pixels) then we compu
     From this new normal distribution we can use usual statistical tests.
 
 """
+import warnings
 import matplotlib.colorbar
 import pandas as pd
 import numpy as np
 
-from typing import Literal
+from typing import Literal, cast
 
 from ..tools import safe_merge_no_duplicates
 
@@ -91,7 +92,7 @@ def _create_coordinate_df(
 
 def _create_neighbor_model_dict(
     spots_coordinates_df : pd.DataFrame, 
-    colocalisation_distance : int
+    colocalisation_distance : int,
     ) :
     """
     Prepare for each single distribution a Nearestneighbor model, population passed to those must be 'population2' in other words the population where co-localization is tried WITH. See submodule description above.
@@ -130,6 +131,9 @@ def _compute_colocalisation_truth_df(
     for location in colocalisation_truth_df['location'].unique() :
         target_idx = colocalisation_truth_df[colocalisation_truth_df['location'] == location].index
         for rna in RNAs :
+            if not (location,rna) in neighbor_models_dict : 
+                warnings.warn(f"No spots detected at {location} for target {rna}.")
+                continue
             model : NearestNeighbors = neighbor_models_dict[(location, rna)]
             coordinates = list(colocalisation_truth_df.loc[target_idx]['coordinates'].apply(np.array,dtype=int))
             coordinates = np.array(coordinates, dtype=int)
@@ -309,6 +313,9 @@ def _compute_corrected_positions_number(
     voxel_size : 'tuple[int]',
     colocalisation_distance : int,
     ) :
+    """
+    Corrects volume used in modelisation by taking into accound co-localization range in scanned volume.
+    """
 
     dim = len(voxel_size)
 
@@ -328,7 +335,7 @@ def _compute_corrected_positions_number(
         scanned_volume[center_index,center_index,center_index] = 0
     else : raise ValueError(f"Unsupported dimension for voxel size. Must be 2 or 3, it is {dim}")
         
-    scanned_volume = distance_transform_edt(scanned_volume, sampling=voxel_size)
+    scanned_volume = cast(np.ndarray, distance_transform_edt(scanned_volume, sampling=voxel_size))
     scanned_volume = scanned_volume <= colocalisation_distance
     corrected_positions_number = scanned_volume.sum()
 
@@ -345,8 +352,8 @@ def _get_cell_area(
 def _get_spot_per_plane(
     Spots : pd.DataFrame,
     ) :
-    Cell_spots_count : pd.DataFrame = Spots.groupby(['cell_id','target','z'], as_index=False)['spot_id'].count()
-    Cell_spots_count : pd.DataFrame = Cell_spots_count.groupby(['cell_id','target'], as_index=False)['spot_id'].mean().rename(columns={'spot_id' : 'spot_per_plane'})
+    Cell_spots_count = Spots.groupby(['cell_id','target','z'], as_index=False)['spot_id'].count()
+    Cell_spots_count = Cell_spots_count.groupby(['cell_id','target'], as_index=False, axis=0)['spot_id'].mean().rename(columns={'spot_id' : 'spot_per_plane'})
     Cell_spots_count = Cell_spots_count.pivot(columns='target',index='cell_id',values='spot_per_plane')
 
     return Cell_spots_count
