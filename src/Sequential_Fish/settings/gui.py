@@ -146,10 +146,7 @@ class ParametersModifier(QDialog):
         form.addRow(btn_layout)
         self.setLayout(form)
 
-<<<<<<< HEAD
     
-=======
->>>>>>> main
     def get_parameters(self) -> Dict[str,Any] :
 
         result: Dict[str, Any] = {}
