@@ -15,7 +15,7 @@ from magicgui import magicgui
 
 from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
 from .utils import open_segmentation, update_layer_from_LayerDataTuple
-from ..customtypes import NapariWidget
+from .types import NapariWidget
 from ..customtypes import table_dict_type
 
 

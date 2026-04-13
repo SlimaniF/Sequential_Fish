@@ -1,5 +1,4 @@
-from torch.cuda import is_available
-from ..customtypes import NapariWidget
+from .types import NapariWidget
 from .utils import update_layer_from_LayerDataTuple
 
 import torch
@@ -26,7 +25,6 @@ def estimate_batch_size() :
     if torch.cuda.is_available() :
         device = torch.cuda.current_device()
         total_memory = torch.cuda.get_device_properties(device).total_memory
-        print(f"  Total Memory: {total_memory / (1024**3):.2f} GB")
 
         if (total_memory / (1024**3)) > 8 :
             batch_size = 16
@@ -72,7 +70,7 @@ def register_segmentation_widget(cls) :
 def initiate_segmentation_widgets(
         viewer : Viewer,
         voxel_size : tuple,
-) -> tuple[list[NapariWidget], list[NapariWidget]]:
+) -> tuple[list, list[NapariWidget]]:
     widget_list = []
     linked_widgets = []
 

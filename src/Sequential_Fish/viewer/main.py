@@ -4,9 +4,8 @@ import napari
 import pandas as pd
 
 from numpy.random import shuffle
-from torch import view_as_complex
 
-from ..customtypes._napari import NapariWidget
+from .types import NapariWidget
 from ..settings import PipelineParameters
 from ..customtypes import table_dict_type
 from .analysis import initiate_analysis_widgets
@@ -15,6 +14,7 @@ from .locations import initiate_location_widgets
 from .thresholds import initiate_thresholds_widgets, ThreholdsFileEditor
 from .segmentation import initiate_segmentation_widgets
 from .organoids import initiate_organoid_wizards, autodetect_organoids
+from .chromatic_abberations import initiate_chromatic_widgets
 from magicgui.widgets import Container, Widget
 
 from .utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
@@ -24,7 +24,6 @@ from ..settings import get_settings
 def main(run_path) :
     
     if run_path is None : quit()
-
     system_type = platform.system()
     if system_type == "Linux" :
         try :
@@ -48,23 +47,11 @@ def main(run_path) :
 
     settings = cast(PipelineParameters, get_settings(run_path, settings_name="pipeline"))
     voxel_size = settings.VOXEL_SIZE
-    
+
     #Init viewer
     Viewer = napari.Viewer(title=os.path.basename(run_path))
+    linked_widgets = []
     color_table = create_color_table(tables_dict)
-
-    #Loading tab
-    load_data_widgets, linked_widgets = initiate_load_widgets(
-        voxel_size=voxel_size,
-        table_dict=tables_dict,
-        color_table=color_table,
-        run_path=run_path,
-        viewer = Viewer,
-    )
-    load_data_container = Container(
-        widgets= cast(Sequence[Widget], load_data_widgets),
-        labels=False
-    )
 
     #Analysis tab
     analysis_widgets = initiate_analysis_widgets(
@@ -105,12 +92,26 @@ def main(run_path) :
         tabify=True
     )
 
+    #Chromatic tab
+    if not settings.WAVELENGTH_LIST is None :
+        chromatic_container, new_linked_widgets = create_chromatic_tab(
+            viewer=Viewer,
+            wavelength_list=settings.WAVELENGTH_LIST,
+            voxel_size=voxel_size
+        )
+        linked_widgets.extend(new_linked_widgets)
+        Viewer.window.add_dock_widget(
+            chromatic_container,
+            name= "Chromatic aberrations",
+            area="right",
+            add_vertical_stretch=True,
+            tabify=True
+        )
 
     #Organoids
-    print("Starting organoids auto-detection")
     organoids_locations = autodetect_organoids(run_path, Acquisition=tables_dict['Acquisition'])
     if organoids_locations is None :
-        print("No organoids found.")
+        print("No organoids location found.")
     else :
         print("Organoids locations found")
         organoids_wizards, organoids_location_linked_widgets = initiate_organoid_wizards(viewer= Viewer, organoids_locations=organoids_locations)
@@ -137,6 +138,15 @@ def main(run_path) :
     #     tabify=True
     #     )
 
+    #Load tab
+    load_data_container, new_linked_widgets = create_load_tab(
+        tables_dict=tables_dict,
+        voxel_size=voxel_size,
+        color_table=color_table,
+        run_path=run_path,
+        viewer=Viewer
+    )
+    linked_widgets.extend(new_linked_widgets)
     Viewer.window.add_dock_widget(
         load_data_container, 
         name='Data', 
@@ -188,6 +198,28 @@ def create_color_table(tables_dict) :
     return color_table
 
 
+def create_load_tab(
+    tables_dict : table_dict_type,
+    voxel_size : tuple,
+    color_table : dict,
+    run_path : str,
+    viewer : napari.Viewer
+) :
+    #Loading tab
+    load_data_widgets, linked_widgets = initiate_load_widgets(
+        voxel_size=voxel_size,
+        table_dict=tables_dict,
+        color_table=color_table,
+        run_path=run_path,
+        viewer = viewer,
+    )
+    load_data_container = Container(
+        widgets= cast(Sequence[Widget], load_data_widgets),
+        labels=False
+    )
+
+    return load_data_container, linked_widgets
+
 def create_segmentation_tab(
     viewer : napari.Viewer,
     voxel_size : tuple,
@@ -236,3 +268,17 @@ def create_thresholds_tab(
     )
 
     return full_threshold_container
+
+def create_chromatic_tab(
+    viewer : napari.Viewer,
+    wavelength_list : list[int],
+    voxel_size : tuple,
+    ) :
+
+    chromatic_widgets, linked_widgets = initiate_chromatic_widgets(viewer=viewer, wavelength_list=wavelength_list, voxel_size=voxel_size)
+    chromatic_container = Container(
+        widgets= chromatic_widgets,
+        labels=False
+    )
+
+    return chromatic_container, linked_widgets

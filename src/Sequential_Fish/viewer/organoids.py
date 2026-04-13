@@ -10,7 +10,7 @@ from napari.layers import Image, Points, Labels
 from qtpy.QtCore import QTimer
 from napari.experimental import link_layers
 
-from ..customtypes import NapariWizard
+from .types import NapariWizard
 from ..customtypes.organoids import OrganoidLocations, load_organoid_locations, get_locations_export, LocationsDataStructureError
 
 

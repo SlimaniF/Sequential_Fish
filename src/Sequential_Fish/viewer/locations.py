@@ -10,7 +10,7 @@ import napari
 from magicgui import magicgui
 from tqdm import tqdm
 
-from ..customtypes import NapariWidget
+from .types import NapariWidget
 from ..customtypes import table_dict_type
 
 

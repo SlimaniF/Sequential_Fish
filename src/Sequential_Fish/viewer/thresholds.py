@@ -13,7 +13,7 @@ from magicgui import magicgui
 from magicgui.widgets import SpinBox
 from napari.types import LayerDataTuple
 from napari.components import ViewerModel
-from ..customtypes._napari import NapariWidget, UserInputError
+from .types import NapariWidget, UserInputError
 from .load import LoadWidget
 
 import bigfish.stack as stack

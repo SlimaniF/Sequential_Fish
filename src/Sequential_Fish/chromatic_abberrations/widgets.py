@@ -18,7 +18,7 @@ from itertools import cycle
 from Sequential_Fish.chromatic_abberrations import CALIBRATION_FOLDER
 from ..tools import get_datetime, reorder_image_stack, get_voxel_size_from_metadata
 from ..tools.utils import open_image 
-from ..customtypes import NapariWidget
+from ..viewer.types import NapariWidget
 from .calibration import match_beads
 from .calibration import fit_polynomial_transform_3d
 from .calibration import save_fit_model

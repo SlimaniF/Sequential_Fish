@@ -12,7 +12,7 @@ def apply_polynomial_transform_to_signal(
         model_x : LinearRegression, 
         model_y : LinearRegression, 
         voxel_size : np.ndarray,
-        model_z : LinearRegression = None, 
+        model_z : LinearRegression | None = None, 
         ):
     """Warp 3D image using learned polynomial transform."""
     z, y, x = image.shape

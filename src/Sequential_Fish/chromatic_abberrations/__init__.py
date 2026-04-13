@@ -3,6 +3,7 @@ Module to handle chromatic abberrations corrections and its calibration.
 """
 
 from .calibration import load_calibration
+from .calibration import calibration_exist
 
 from .correction import apply_polynomial_transform_spots
 from .correction import apply_polynomial_transform_to_signal
