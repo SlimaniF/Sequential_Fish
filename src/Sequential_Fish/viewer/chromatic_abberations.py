@@ -1,3 +1,4 @@
+from itertools import cycle
 from typing import cast
 
 from napari._qt.utils import signal
@@ -150,7 +151,6 @@ class SignalCorrector(ChromaticWidget) :
             else :
                 raise AssertionError("Unforseen dimension")
 
-            print("new signal equals old : ", np.equal(new_signal, np.array(Signal.data, dtype= new_signal.dtype)))
 
             res = LayerDataTuple((
                 new_signal,
@@ -161,8 +161,7 @@ class SignalCorrector(ChromaticWidget) :
                     "scale" : Signal.scale,
                     "projection_mode" : Signal.projection_mode,
                     "colormap" : Signal.colormap,
-                    "interpolation" : Signal.interpolation2d,
-                    "contrast_limit" : Signal.contrast_limits,
+                    "contrast_limits" : Signal.contrast_limits,
                     "gamma" : Signal.gamma,
                 },
                 'Image'
@@ -203,7 +202,7 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
                 image_abberation={'label' : 'Image to correct :'},
                 spatial_reference={'label' : 'Points reference'},
                 spatial_reference_shifted={'label' : 'Points with aberrations'},
-                location = {"min" : 1},
+                location = {"min" : 0},
                 degree={'label' : 'Degree'},
                 auto_call=False,
                 call_button= "Correct chromatic aberrations",
@@ -212,15 +211,29 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
             image_abberation : Image,
             spatial_reference : Points,
             spatial_reference_shifted : Points,
+            location : int,
             degree : int = self.degree,
         ) :
             
             voxel_size = spatial_reference.scale
+            if len(voxel_size) == 4 :
+                voxel_size = voxel_size[1:]
             self.voxel_size = tuple([int(v) for v in voxel_size]) # save as reference if user save calibration
-            
+
             #Convert pixel coordinates to nm to account for anisotropy
-            coords1 = spatial_reference.data * voxel_size
-            coords2 = spatial_reference_shifted.data * voxel_size
+            coords1 = spatial_reference.data
+            coords2 = spatial_reference_shifted.data
+
+            if coords1.shape[1] == 4 :
+                coords1 = coords1[coords1[:,0] == location]
+                coords1 = coords1[:,1:]
+            if coords2.shape[1] == 4 :
+                coords2 = coords2[coords2[:,0] == location]
+                coords2 = coords2[:,1:]
+            
+            coords1 = coords1 * voxel_size
+            coords2 = coords2 * voxel_size
+
 
             beads, dist = match_beads(
                 coords1= coords1,
@@ -271,8 +284,7 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
                     "scale" : image_abberation.scale,
                     "projection_mode" : image_abberation.projection_mode,
                     "colormap" : image_abberation.colormap,
-                    "interpolation" : image_abberation.interpolation2d,
-                    "contrast_limit" : image_abberation.contrast_limits,
+                    "contrast_limits" : image_abberation.contrast_limits,
                     "gamma" : image_abberation.gamma,},
                 "Image"
 
