@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pebble import ProcessPool
 from smfishtools.detection.multithread import cell_quantification
 from tqdm import tqdm
+from itertools import product
 
 from ..settings import get_settings
 from ..tools import safe_merge_no_duplicates, open_location
@@ -65,17 +66,19 @@ def main(run_path) :
             location=location
         )
 
+        sub_Detection = Detection.loc[Detection['location'] == location].sort_values(["color_id","cycle"])
+        selected_detection_id = sub_Detection['detection_id']
+        color_number = len(sub_Detection["color_id"].unique())
+
         if image_stack.ndim == 5 :
             image_stack = np.max(image_stack, axis=1)
         dapi_channel = Acquisition['dapi_channel'].iat[0]
-        dapi_list = [image_stack[i,...,dapi_channel] for i in range(len(image_stack))]
+        dapi_list = [image_stack[i,...,dapi_channel] for i in range(len(image_stack))] * color_number #Ordered by ("color_id",cycle) --> 1,2,3,4,5,... ; end of color 1 ; 1,2,3,4,5 
         assert dapi_list[0].ndim == 2, f"{dapi_list[0].shape}"
 
         nucleus_label, cytoplasm_label = match_nuc_cell(nucleus_label, cytoplasm_label, single_nuc=True, cell_alone=False)
 
         #Getting Detection ids for this fov
-        sub_Detection = Detection.loc[Detection['location'] == location].sort_values("cycle")
-        selected_detection_id = sub_Detection['detection_id']
 
         # Adding cell label and if spots are in nuc seg
         sub_Spots = Spots.loc[Spots['detection_id'].isin(selected_detection_id)]
@@ -151,7 +154,7 @@ def main(run_path) :
         detection_number = len(selected_detection_id)
 
         #Launching threads on cell features
-        fov_list = [image[..., color] for image, color in zip(image_stack, sub_Detection['color_id'])]
+        fov_list = [image[..., color] for color, image in product(sub_Detection['color_id'],image_stack)] # Ordered by ("color_id",cycle) --> 1,2,3,4,5,... ; end of color 1 ; 1,2,3,4,5 
 
         print("Starting individual cell metrics for {0} detections".format(len(sub_Detection)))
         with ProcessPool(max_workers= MAX_WORKERS) as executor :
@@ -168,10 +171,12 @@ def main(run_path) :
                 dapi_list
             )
 
+
             Cell = pd.concat(
-                [res for res in tqdm(cell_quantification_futures.result(), total= len(sub_Detection), desc="individual cell metrics")
+                [res for res in list(tqdm(cell_quantification_futures.result(), total= len(sub_Detection), desc="individual cell metrics"))
                 ], axis=0) 
         Cell['location'] = location
+
 
         ## End of loop
         Cell_save = pd.concat([

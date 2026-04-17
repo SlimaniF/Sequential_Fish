@@ -478,7 +478,7 @@ def compute_wilcoxon_signed_rank(zscore_distribution)->pd.Series :
     else :
         name =  None
 
-    statistic, pvalue = wilcoxon(zscore_distribution)
+    statistic, pvalue = wilcoxon(zscore_distribution, nan_policy="omit") # Safe to disacard nan; cell with no spots in this distributions or expected std is 0
 
     if isinstance(pvalue, (int, float)) : pvalue = [pvalue]
     if isinstance(zscore_distribution, pd.DataFrame) :
@@ -733,7 +733,6 @@ def pairwise_colocalization_analysis(
 
     RNA_list = list(filtered_Spots['target'].unique())
     RNA_list.sort()
-    print("RNA _list : ", RNA_list)
 
     #Coloc rates from models
     coloc_rates, selfcoloc_rates = create_coloc_rate_expectancy(
@@ -751,8 +750,8 @@ def pairwise_colocalization_analysis(
     multi_index.names = ['target','cell_id']
 
     ## Initialise empty dataframes for expectancy/std
-    expected_event_count = pd.DataFrame(columns= RNA_list, index=multi_index, dtype=float)
-    expected_event_count_std = pd.DataFrame(columns= RNA_list, index=multi_index, dtype=float)
+    expected_event_count = pd.DataFrame(columns= pd.Index(RNA_list), index=multi_index, dtype=float)
+    expected_event_count_std = pd.DataFrame(columns= pd.Index(RNA_list), index=multi_index, dtype=float)
 
     ## Filling
     for rna in RNA_list :
@@ -787,6 +786,8 @@ def pairwise_colocalization_analysis(
     )
 
     measure_coloc_events = colocalisation_truth.groupby(['target','cell_id'])[RNA_list].sum()
+    measure_coloc_events.to_excel(output_path + "/datasheet/measure_coloc_events.xlsx")
+    assert not measure_coloc_events.isna().any().any(), "Analysis shouldn't yield nan at this point. Make sure that that previously nan values are safe to discard and discard them prior to this point." #Then safe to ignore nan values as nan values comes from 0 abundancies, ie cell without spot which should be discarded when comptuting co-localization statistic.
     coloc_rates = measure_coloc_events.divide(abundancies)
     
     #Zscore computation
@@ -807,6 +808,7 @@ def pairwise_colocalization_analysis(
     pvalue_frame = compute_pvalue_frame(
         zscore_frame=zscore_frame
     )
+    pvalue_frame.to_excel(output_path + "/datasheet/pvalue_frame.xlsx")
     pvalue_mask = pvalue_frame <= significance
     
     #Create graph
