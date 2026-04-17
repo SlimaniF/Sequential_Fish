@@ -31,9 +31,9 @@ def run(run_path,*args) :
     analysis_parameters = cast(AnalysisParameters, get_settings(run_path, settings_name="analysis"))
     
     REQUIRED_TABLES = ["Acquisition", "Detection", "Spots", "Clusters", "Drift", "Gene_map", "Cell"]
-    truth_table = [os.path.isfile(os.path.join(run_path, "result_tables", table +".feather")) for table in REQUIRED_TABLES]
+    truth_table = np.array([os.path.isfile(os.path.join(run_path, "result_tables", table +".feather")) for table in REQUIRED_TABLES], dtype=bool)
     if not all(truth_table) :
-        raise FileNotFoundError(f"All data tables could not be found in result directory. Missing {np.array(REQUIRED_TABLES)[truth_table]}.")
+        raise FileNotFoundError(f"All data tables could not be found in result directory. Missing {np.array(REQUIRED_TABLES)[~truth_table]}.")
 
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
     Detection = pd.read_feather(run_path + "/result_tables/Detection.feather")
@@ -44,6 +44,9 @@ def run(run_path,*args) :
 
     #Post-processing
     if not analysis_parameters.reference_wavelength is None :
+        print("Correcting chromatic abberations :")
+        print(f"reference wavelength : {analysis_parameters.reference_wavelength}")
+        print(f"found wavelengths : {Detection["wavelength"].unique()}")
         Spots = correct_Spots_dataframe(#Chromatic abberation correction
             Detection=Detection,
             Spots=Spots,
@@ -57,12 +60,10 @@ def run(run_path,*args) :
 
     #Filter RNA
     if not analysis_parameters.FILTER_RNA is None :
-        print(len(Spots))
         loc_map = Gene_map.loc[Gene_map["target"].isin(analysis_parameters.FILTER_RNA), ["cycle","color_id"]]
         filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
         Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
-        print(len(Spots))
-    
+
     #Filter cycles :
     if not analysis_parameters.FILTER_CYCLE is None :
         for target, cycles in analysis_parameters.FILTER_CYCLE.items() :

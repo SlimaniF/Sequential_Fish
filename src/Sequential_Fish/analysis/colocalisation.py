@@ -697,6 +697,7 @@ def main(
             frameon=frameon
         )
 
+
     except Exception as e :
         logging.error(f"Pairwise co-localization analysis failed :\n{traceback.format_exc()}")
         error_count += 1
@@ -732,6 +733,7 @@ def pairwise_colocalization_analysis(
 
     RNA_list = list(filtered_Spots['target'].unique())
     RNA_list.sort()
+    print("RNA _list : ", RNA_list)
 
     #Coloc rates from models
     coloc_rates, selfcoloc_rates = create_coloc_rate_expectancy(
