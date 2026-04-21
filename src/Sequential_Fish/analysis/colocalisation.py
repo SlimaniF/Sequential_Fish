@@ -754,7 +754,6 @@ def pairwise_colocalization_analysis(
     )
 
     measure_coloc_events = colocalisation_truth.groupby(['target','cell_id'])[RNA_list].sum()
-    measure_coloc_events.to_excel(output_path + "/datasheet/measure_coloc_events.xlsx")
     assert not measure_coloc_events.isna().any().any(), "Analysis shouldn't yield nan at this point. Make sure that that previously nan values are safe to discard and discard them prior to this point." #Then safe to ignore nan values as nan values comes from 0 abundancies, ie cell without spot which should be discarded when comptuting co-localization statistic.
     coloc_rates = measure_coloc_events.divide(abundancies).replace(np.inf,np.nan).replace(-np.inf,np.nan)
     
@@ -768,15 +767,15 @@ def pairwise_colocalization_analysis(
     #Save datasheet
     os.makedirs(output_path + "/datasheet/",exist_ok=True)
     mean_coloc_rates = coloc_rates.groupby('target',level=0,dropna=True).mean()
-    mean_coloc_rates.to_excel(output_path + "/datasheet/coloc_rates_mean.xlsx")
+    mean_coloc_rates.to_csv(output_path + "/datasheet/coloc_rates_mean.csv")
     median_zscore = zscore_frame.groupby('target',level=0).median()
-    median_zscore.to_excel(output_path + "/datasheet/zscore.xlsx")
+    median_zscore.to_csv(output_path + "/datasheet/zscore.csv")
     
     #p-values computation
     pvalue_frame = compute_pvalue_frame(
         zscore_frame=zscore_frame
     )
-    pvalue_frame.to_excel(output_path + "/datasheet/pvalue_frame.xlsx")
+    pvalue_frame.to_csv(output_path + "/datasheet/pvalue_frame.csv")
     pvalue_mask = pvalue_frame <= significance
     
     #Create graph
