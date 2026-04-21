@@ -14,7 +14,9 @@ from .density import density_analysis
 from .distributions import distributions_analysis
 from .pipeline_metrics import pipeline_metrics
 from .colocalisation import main as coloc_main
+from ..tools import safe_merge_no_duplicates
 from ..chromatic_abberrations import correct_Spots_dataframe
+from Sequential_Fish import settings
 
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
@@ -46,7 +48,7 @@ def run(run_path,*args) :
     if not analysis_parameters.reference_wavelength is None :
         print("Correcting chromatic abberations :")
         print(f"reference wavelength : {analysis_parameters.reference_wavelength}")
-        print(f"found wavelengths : {Detection["wavelength"].unique()}")
+        print(f"found wavelengths : {list(Detection["wavelength"].unique())}")
         Spots = correct_Spots_dataframe(#Chromatic abberation correction
             Detection=Detection,
             Spots=Spots,
@@ -60,6 +62,7 @@ def run(run_path,*args) :
 
     #Filter RNA
     if not analysis_parameters.FILTER_RNA is None :
+        print("Detection : ",Detection.columns)
         loc_map = Gene_map.loc[Gene_map["target"].isin(analysis_parameters.FILTER_RNA), ["cycle","color_id"]]
         filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
         Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
@@ -89,6 +92,22 @@ def run(run_path,*args) :
         segmentation_filter=True,
         Cell=Cell,
         Detection=Detection
+    )
+
+    Spots = _spots_merge_data(
+        Spots=Spots,
+        Acquisition=Acquisition,
+        Detection=Detection,
+        Gene_map=Gene_map,
+        Cell=Cell
+    )
+
+    Spots_with_washout = _spots_merge_data(
+        Spots=Spots_with_washout,
+        Acquisition=Acquisition,
+        Detection=Detection,
+        Gene_map=Gene_map,
+        Cell=Cell
     )
 
 
@@ -151,6 +170,12 @@ def run(run_path,*args) :
         
     ))
     if any_paircoloc or "all" in args:
+
+        if not analysis_parameters.foci_rnas is None :
+            Spots = add_foci_to_analysis(
+                Spots,
+                foci_rnas=analysis_parameters.foci_rnas
+            )
         
         coloc_sucess = coloc_main(
             filtered_Spots=Spots,
@@ -166,3 +191,68 @@ def run(run_path,*args) :
 
         if not coloc_sucess :
             print(f"Error raised during coloc analysis. Please check log in ~analysis/co_localization/")
+
+
+def _spots_merge_data(
+    Spots : pd.DataFrame,
+    Acquisition : pd.DataFrame,
+    Detection : pd.DataFrame,
+    Gene_map : pd.DataFrame,
+    Cell : pd.DataFrame,
+    ) :
+    """
+    Merge required information into Spots df
+    """
+    
+    Detection = safe_merge_no_duplicates(
+    Detection,
+    Acquisition,
+    on= ['acquisition_id'],
+    keys=['cycle','location', 'fish_reodered_shape']
+)
+
+    Detection = safe_merge_no_duplicates(
+        Detection,
+        Gene_map,
+        on= ['cycle','color_id'],
+        keys=['target']
+    )
+
+    Spots =safe_merge_no_duplicates(
+        Spots,
+        Detection,
+        on= 'detection_id',
+        keys= ['location','target', 'voxel_size', 'fish_reodered_shape']
+    )
+
+    Spots = safe_merge_no_duplicates(
+        Spots,
+        Cell.rename(columns={'label' : 'cell_label'}),
+        on=['acquisition_id','detection_id','cell_label'],
+        keys=['cell_id']
+    )
+
+
+    return Spots
+
+def add_foci_to_analysis(
+    Spots : pd.DataFrame, 
+    foci_rnas : list[str]
+    ) :
+    """
+    Separate part of Spots data to analyse spots by populations : clustered and free.
+    """
+
+    save_len = len(Spots.dropna())
+
+    foci_spots = Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "clustered")]
+    foci_spots.loc[:,["target"]] = foci_spots["target"].str.cat(['_clustered']*len(foci_spots))
+    Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "clustered")] = foci_spots
+
+    free_spots = Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "free")]
+    free_spots.loc[:,["target"]] = free_spots["target"].str.cat(['_free']*len(free_spots))
+    Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "free")] = free_spots
+
+    assert save_len == len(Spots.dropna())
+
+    return Spots

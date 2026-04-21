@@ -86,6 +86,7 @@ class AnalysisParameters(BaseModel) :
     #Co-localization analysis
     coloc_distance : int = Field(default=0)
     coloc_significance : float = Field(default=10e-3)
+    foci_rnas : list[str] | None = Field(default=None)
 
     @classmethod
     def from_default_parameters(cls) :

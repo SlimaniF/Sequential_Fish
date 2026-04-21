@@ -148,47 +148,6 @@ def _compute_colocalisation_truth_df(
     
     return colocalisation_truth_df
 
-def _spots_merge_data(
-    Spots : pd.DataFrame,
-    Acquisition : pd.DataFrame,
-    Detection : pd.DataFrame,
-    Gene_map : pd.DataFrame,
-    Cell : pd.DataFrame,
-    ) :
-    """
-    Merge required information into Spots df
-    """
-    
-    Detection = safe_merge_no_duplicates(
-    Detection,
-    Acquisition,
-    on= ['acquisition_id'],
-    keys=['cycle','location', 'fish_reodered_shape']
-)
-
-    Detection = safe_merge_no_duplicates(
-        Detection,
-        Gene_map,
-        on= ['cycle','color_id'],
-        keys=['target']
-    )
-
-    Spots =safe_merge_no_duplicates(
-        Spots,
-        Detection,
-        on= 'detection_id',
-        keys= ['location','target', 'voxel_size', 'fish_reodered_shape']
-    )
-
-    Spots = safe_merge_no_duplicates(
-        Spots,
-        Cell.rename(columns={'label' : 'cell_label'}),
-        on=['acquisition_id','detection_id','cell_label'],
-        keys=['cell_id']
-    )
-
-
-    return Spots
 
 def colocalisation_truth_df(
     Spots : pd.DataFrame,
@@ -218,13 +177,6 @@ def colocalisation_truth_df(
         - `boolean key` : + one key for each different `target` value, representing a boolean value indicating TRUE if this spot co-localize with this distribution
     
     """
-    Spots = _spots_merge_data(
-        Spots=Spots,
-        Detection=Detection,
-        Acquisition=Acquisition,
-        Gene_map=Gene_map,
-        Cell=Cell
-    )
     
     population_1_index = _get_population_index(
         Spots, 
@@ -353,7 +305,7 @@ def _get_spot_per_plane(
     Spots : pd.DataFrame,
     ) :
     Cell_spots_count = Spots.groupby(['cell_id','target','z'], as_index=False)['spot_id'].count()
-    Cell_spots_count = Cell_spots_count.groupby(['cell_id','target'], as_index=False, axis=0)['spot_id'].mean().rename(columns={'spot_id' : 'spot_per_plane'})
+    Cell_spots_count = Cell_spots_count.groupby(['cell_id','target'], as_index=False)['spot_id'].mean().rename(columns={'spot_id' : 'spot_per_plane'})
     Cell_spots_count = Cell_spots_count.pivot(columns='target',index='cell_id',values='spot_per_plane')
 
     return Cell_spots_count
@@ -513,8 +465,16 @@ def get_combinations_abundancies() :
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, AsinhNorm, LinearSegmentedColormap, TwoSlopeNorm
+from scipy.cluster.hierarchy import linkage, dendrogram
 from matplotlib.cm import get_cmap
+from itertools import product
 import matplotlib
+
+def hierarchical_ordering(data : pd.DataFrame, method = "single") :
+    linkage_matrix = linkage(data, method=method)
+    dn = dendrogram(linkage_matrix)
+        
+    return np.array(dn["leaves"],dtype=int)
 
 def score_color_scale(vmax=2) :
     
@@ -604,6 +564,7 @@ def create_pair_colocalisation_figure(
         zscore_frame : pd.DataFrame,
         pvalue_mask : pd.DataFrame,
         frameon = True,
+        annotations = False,
 ) :
     
     if len(colocalization_rates.index) != len(colocalization_rates.columns) : raise ValueError("Colocalization rate df is not squared. Did you group by target first ?\n{}".format(colocalization_rates))
@@ -618,7 +579,11 @@ def create_pair_colocalisation_figure(
     zscore_frame *= pvalue_mask.replace({True : 1, False : np.nan}).infer_objects(copy=False)
     colocalization_rates *= pvalue_mask.replace({True : 1, False : np.nan}).infer_objects(copy=False)
 
-    fig = plt.figure(figsize=(24,10), frameon=frameon)
+    order = hierarchical_ordering(zscore_frame.fillna(0))
+    zscore_frame = zscore_frame.iloc[order,order]
+    colocalization_rates = colocalization_rates.iloc[order,order]
+
+    fig = plt.figure(figsize=(2*len(zscore_frame),len(zscore_frame)), frameon=frameon)
     left,right = fig.subplots(1,2)
     
     right.set_title("Z-score (standardised normalistion)")
@@ -647,6 +612,16 @@ def create_pair_colocalisation_figure(
  
     left.set_ylabel('Wich fraction of ..')
     left.set_ylabel('Co-localizes with ..')
+
+    for ax in right,left :
+        ax.set_yticklabels([lab.get_text().replace("_","\n") for lab in ax.get_yticklabels()])
+        ax.set_xticklabels([lab.get_text().replace("_","\n") for lab in ax.get_xticklabels()])
+
+    if annotations :
+        for i,j in product(range(len(order)), range(len(order))) :
+            zscore = zscore_frame.iat[i,j]
+            if not np.isnan(zscore) : 
+                right.text(j+0.25,i+0.6, round(zscore, 1))
 
     
     return fig
@@ -683,6 +658,7 @@ def main(
     error_count = 0
 
     try :
+
         print("Starting pairwise co-localization analysis...")
         logging.info(f"Pairwise co-localization analysis start")
         sucess = pairwise_colocalization_analysis(
@@ -720,14 +696,6 @@ def pairwise_colocalization_analysis(
         significance : float = 1e-4,
         frameon = True,
 ) :
-    
-    filtered_Spots = _spots_merge_data(
-        Spots=filtered_Spots,
-        Acquisition=Acquisition,
-        Detection=Detection,
-        Gene_map=Gene_map,
-        Cell=Cell
-    )
 
     voxel_size = Detection['voxel_size'].at[0]
 
@@ -788,7 +756,7 @@ def pairwise_colocalization_analysis(
     measure_coloc_events = colocalisation_truth.groupby(['target','cell_id'])[RNA_list].sum()
     measure_coloc_events.to_excel(output_path + "/datasheet/measure_coloc_events.xlsx")
     assert not measure_coloc_events.isna().any().any(), "Analysis shouldn't yield nan at this point. Make sure that that previously nan values are safe to discard and discard them prior to this point." #Then safe to ignore nan values as nan values comes from 0 abundancies, ie cell without spot which should be discarded when comptuting co-localization statistic.
-    coloc_rates = measure_coloc_events.divide(abundancies)
+    coloc_rates = measure_coloc_events.divide(abundancies).replace(np.inf,np.nan).replace(-np.inf,np.nan)
     
     #Zscore computation
     zscore_frame = compute_z_score_frame(
@@ -799,7 +767,7 @@ def pairwise_colocalization_analysis(
 
     #Save datasheet
     os.makedirs(output_path + "/datasheet/",exist_ok=True)
-    mean_coloc_rates = coloc_rates.groupby('target',level=0).mean()
+    mean_coloc_rates = coloc_rates.groupby('target',level=0,dropna=True).mean()
     mean_coloc_rates.to_excel(output_path + "/datasheet/coloc_rates_mean.xlsx")
     median_zscore = zscore_frame.groupby('target',level=0).median()
     median_zscore.to_excel(output_path + "/datasheet/zscore.xlsx")
@@ -816,11 +784,12 @@ def pairwise_colocalization_analysis(
         colocalization_rates= mean_coloc_rates,
         zscore_frame= median_zscore,
         pvalue_mask=pvalue_mask,
-        frameon=frameon
+        frameon=frameon,
+        annotations=True,
     )
 
     #Save graph
-    pairwise_coloc_fig.savefig(output_path + "/pairwise_colocalisation_heatmap.svg")
+    pairwise_coloc_fig.savefig(output_path + f"/pairwise_colocalisation_heatmap_{colocalisation_distance}nm.svg")
     plt.close()
 
     return True

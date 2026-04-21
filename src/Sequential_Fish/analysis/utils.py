@@ -21,14 +21,13 @@ def get_ylabels(ax : plt.Axes) :
     
     return ylabels
     
-
 def merge_data(
     Acquisition : pd.DataFrame,
     Detection : pd.DataFrame,
     Cell : pd.DataFrame,
     Spots : pd.DataFrame,
     Gene_map : pd.DataFrame,
-) :
+    ) :
     """
     Returns : Detection, Cell, Spots
     """
