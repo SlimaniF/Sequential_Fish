@@ -64,7 +64,13 @@ def merge_data(
     return Detection, Cell, Spots
 
 
-
+def print_execution_time(func) :
+    def inner(*args,**kwargs) :
+        clock = t.time()
+        res = func(*args,**kwargs)
+        print(f"run time : {t.time() - clock}")
+        return res
+    return inner
 
 ## PLOTS
 

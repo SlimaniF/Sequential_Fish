@@ -12,11 +12,10 @@ from ..settings import AnalysisParameters
 from .post_processing import Spots_filtering
 from .density import density_analysis
 from .distributions import distributions_analysis
-from .pipeline_metrics import pipeline_metrics
 from .colocalisation import main as coloc_main
 from ..tools import safe_merge_no_duplicates
 from ..chromatic_abberrations import correct_Spots_dataframe
-from Sequential_Fish import settings
+from .dashboards import main as launch_dashboards
 
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
@@ -62,7 +61,6 @@ def run(run_path,*args) :
 
     #Filter RNA
     if not analysis_parameters.FILTER_RNA is None :
-        print("Detection : ",Detection.columns)
         loc_map = Gene_map.loc[Gene_map["target"].isin(analysis_parameters.FILTER_RNA), ["cycle","color_id"]]
         filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
         Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
@@ -140,26 +138,24 @@ def run(run_path,*args) :
         )
         if not density_sucess :
             print("Error raised during density analysis. Please check log in ~analysis/density_analysis folder.")
-        
+
+#GENERAL DATA QUALITY DASHBOARDS
     any_pipeline_metrics = any((
         "pipeline" in args,
         "pipeline_metrics" in args,
         "pipeline metrics" in args,
     ))
     if any_pipeline_metrics or "all" in args:
-        drift_sucess = pipeline_metrics(
-            Acquisition=Acquisition,
-            Detection=Detection,
-            Gene_map= Gene_map,
-            Spots_with_washout=Spots_with_washout,
-            Unfiltered_spots=unfiltered_Spots,
-            Cell=Cell,
-            Drift=Drift,
-            run_path= run_path
+        sucess = launch_dashboards(
+            run_path,
+            Spots=Spots,
+            Cell=Cell
         )
-        if not drift_sucess :
-            print("Error raised during Drift analysis. Please check log in ~analysis/pipeline_metrics/ folder.")
+        if not sucess :
+            print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")
 
+
+# COLOCALIZATION
     any_paircoloc = any((
         'coloc' in args,
         'colocalisation' in args,
@@ -209,7 +205,7 @@ def _spots_merge_data(
     Acquisition,
     on= ['acquisition_id'],
     keys=['cycle','location', 'fish_reodered_shape']
-)
+    )
 
     Detection = safe_merge_no_duplicates(
         Detection,
