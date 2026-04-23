@@ -154,7 +154,8 @@ def main(run_path) :
         detection_number = len(selected_detection_id)
 
         #Launching threads on cell features
-        fov_list = [image[..., color] for color, image in product(sub_Detection['color_id'],image_stack)] # Ordered by ("color_id",cycle) --> 1,2,3,4,5,... ; end of color 1 ; 1,2,3,4,5 
+        fov_list = [image[..., color] for color, image in product(sub_Detection['color_id'].unique(),image_stack)] # Ordered by ("color_id",cycle) --> 1,2,3,4,5,... ; end of color 1 ; 1,2,3,4,5 
+        check_order = [(color,cycle) for color, cycle in product(sub_Detection['color_id'].unique(), range(len(image_stack)))]
 
         print("Starting individual cell metrics for {0} detections".format(len(sub_Detection)))
         with ProcessPool(max_workers= MAX_WORKERS) as executor :
@@ -168,7 +169,8 @@ def main(run_path) :
                 [cytoplasm_label] * detection_number,
                 [nucleus_label] * detection_number,
                 fov_list,
-                dapi_list
+                dapi_list,
+                check_order
             )
 
 
@@ -177,12 +179,22 @@ def main(run_path) :
                 ], axis=0) 
         Cell['location'] = location
 
+        _detection_view = pd.merge(
+            left=sub_Detection.loc[:,["detection_id","cycle","color_id"]],
+            right=Cell.loc[:,["_check_color_id","_check_cycle","detection_id"]].drop_duplicates(),
+            on="detection_id",
+        )
+        assert all(_detection_view["cycle"].eq(_detection_view["_check_cycle"])), f"missmatch in cycle assignement in cells\n{_detection_view[~_detection_view["cycle"].eq(_detection_view["_check_cycle"])]}"
+        assert all(_detection_view["color_id"].eq(_detection_view["_check_color_id"])), f"missmatch in color assignement in cells\n{_detection_view[~_detection_view["color_id"].eq(_detection_view["_check_color_id"])]}"
+        del _detection_view
 
         ## End of loop
         Cell_save = pd.concat([
             Cell_save,
             Cell
         ],axis=0)
+
+
 
 
     #Building cell_id (not unique identifier bc Cell actually has one line per detection)
