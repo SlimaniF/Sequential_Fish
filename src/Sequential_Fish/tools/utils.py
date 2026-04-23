@@ -3,6 +3,9 @@ import warnings
 from typing import cast, Optional, Tuple
 import datetime as dt
 
+import dask.array as da
+import dask.delayed
+
 import pandas as pd
 import numpy as np
 import tifffile
@@ -328,6 +331,12 @@ def open_cycle(
     image_stack = reorder_image_stack(cycle_stack, channel_map=stack_map)
 
     return image_stack
+
+@da
+def open_tiff_stack(fullpath, stack_shape, image_number, ) :
+    with tifffile.TiffFile(fullpath) as tif :
+        cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)
+    return cycle_stack
 
 def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[float], Optional[float], Optional[float]]]:
     """
