@@ -124,7 +124,7 @@ def main(run_path) :
                     found_cycle_number = fish_im.shape[fish_map['cycles']]
                     fish_reodered_shape = reorder_image_stack(fish_im, fish_map).shape
                 
-                assert found_cycle_number == cycle_number, f"Cycle file has {cycle_number} entries but only {found_cycle_number} were found in metadata."
+                assert found_cycle_number >= cycle_number, f"Cycle file has {cycle_number} entries but only {found_cycle_number} were found in metadata."
 
                 fish_reodered_shape = cast(tuple, fish_reodered_shape[1:])
 

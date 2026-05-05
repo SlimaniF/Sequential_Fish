@@ -149,7 +149,14 @@ def run(run_path,*args) :
         sucess = launch_dashboards(
             run_path,
             Spots=Spots,
-            Cell=Cell
+            Cell=Cell,
+            Acquisition=Acquisition,
+            Gene_map=Gene_map,
+            Drift=Drift,
+            Detection=Detection,
+            coloc_range=analysis_parameters.coloc_distance,
+            drift_checker= analysis_parameters.drift_checker,
+            chroma_checker=analysis_parameters.chroma_checker
         )
         if not sucess :
             print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")

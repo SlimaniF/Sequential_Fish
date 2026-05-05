@@ -17,3 +17,6 @@ Although different barcode are mixed in such a way it is possible to decode whic
 
 More complex pattern are applied to our experiments to achieve detection of up to 60 single molecules....
 """
+
+
+from .signal_correlation import main as signal_correlation

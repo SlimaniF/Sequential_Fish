@@ -88,6 +88,10 @@ class AnalysisParameters(BaseModel) :
     coloc_significance : float = Field(default=10e-3)
     foci_rnas : list[str] | None = Field(default=None)
 
+    #Dashboard
+    drift_checker : tuple[str,str] = Field(default=("",""))
+    chroma_checker : tuple[str,str] = Field(default=("",""))
+
     @classmethod
     def from_default_parameters(cls) :
         """Create an instance with default parameters"""

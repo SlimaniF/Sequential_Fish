@@ -1,3 +1,4 @@
+import os
 import tifffile
 
 import numpy as np
@@ -10,9 +11,16 @@ import pandas as pd
 import dask.delayed
 import dask.array as da
 from memory_profiler import profile
+from pebble import ProcessPool
+
+from dask.distributed import Client
+from dask.diagnostics import ProgressBar
+
+from itertools import cycle
 
 from Sequential_Fish.analysis.dashboards.signal_quality import compute_similarity_metrics 
 from Sequential_Fish.tools import reorder_image_stack
+from tqdm import tqdm
 
 import time as t
 
@@ -75,61 +83,92 @@ def compute_similarity_metrics_dask(
         max_intensity = np.iinfo(image1.dtype).max
 
     res = {
-        "spatial_correlation" : da.map_blocks(
-            lambda a, b: pearsonr(a.flatten(), b.flatten())[0],
-            image1, 
-            image2,
-            dtype=float,
-            ),
-        "structural_similarity" : da.map_blocks(
-            lambda a,b : ssim(a,b,full=True)[0],
-            image1, 
-            image2, 
-            dtype=float
-            ),
+        "spatial_correlation" : pearsonr(image1.flatten(), image2.flatten())[0],
+        "structural_similarity" : ssim(image1,image2,full=True, data_range= max_intensity)[0],
         "mean_squared_error" : mean_squared_error(image1, image2),
     }
     res["peak_snr"] = 10 * log10(max_intensity**2 / res["mean_squared_error"])
 
     return res
 
+
 @profile
 def main() :
-    RUN_PATH = "/home/floric/Documents/SeqfFish/2026-03-24 - HeLa_POLR2_Run17_tiff/"
+    RUN_PATH = "/media/SSD_floricslimani/Fish_seq/POLR2/2026-03-24 - HeLa_POLR2_Run17_tiff/"
 
     Acquisition = pd.read_feather(RUN_PATH + "/result_tables/Acquisition.feather")
     Acquisition["full_path"] = Acquisition["full_path"].str.replace("/media/SSD_floricslimani/Fish_seq/POLR2/2026-03-24 - HeLa_POLR2_Run17_tiff/",RUN_PATH)
     shape = tuple(Acquisition["fish_reodered_shape"].at[0])
 
+    init_clock = t.time()
+    list_dir = os.listdir(RUN_PATH + '/FISH_Z-stacks/')
+    measures = []
 
-    print("opening location")
-    loc1_stack = lazy_open_location(Acquisition,"Location-01")
-    loc1_stack = da.from_delayed(loc1_stack, shape=(16,)+ shape, dtype=int)
+    for location in tqdm(list_dir[:5]) :
+        loc1_stack = open_location(Acquisition,location)
+        # loc1_stack = da.from_delayed(loc1_stack, shape=(16,)+ shape, dtype=int)
 
-    print("selecting images")
-    print(loc1_stack.shape)
-    image1 = loc1_stack[0,...,0]
-    image2 = loc1_stack[-4,...,0]
+        image1 = loc1_stack[0,...,0]
+        image2 = loc1_stack[-4,...,0]
+        del loc1_stack
 
-    print("image1 : ",image1.shape)
-    print("image2 : ",image2.shape)
 
-    print("computing similarity metrics")
-    res = compute_similarity_metrics_dask(
-        image1 = image1,
-        image2 = image2
-        )
+        measures.append(compute_similarity_metrics_dask(
+            image1 = image1,
+            image2 = image2
+            ))
 
-    clock = t.time()
-    print(res['spatial_correlation'].compute())
-    print(f"spatial_correlation : {t.time()- clock}")
-    clock = t.time()
-    print(res['structural_similarity'].compute())
-    print(f"structural_similarity : {t.time()- clock}")
-    clock = t.time()
-    print(res['peak_snr'])
-    print(f"peak_snr : {t.time()- clock}")
 
-    print("done.")
+    print(measures)
+    print(f"done; Execution time : {t.time()-init_clock}")
+
+
+# def process_acquisition(
+#     Acquisition,
+#     im_shape,
+#     location,
+# ) : 
+#     print(f"computing : {location}")
+#     loc1_stack = lazy_open_location(Acquisition,location)
+#     loc1_stack = da.from_delayed(loc1_stack, shape=(16,)+ im_shape, dtype=int)
+
+#     image1 = loc1_stack[0,...,0]
+#     image2 = loc1_stack[-4,...,0]
+
+
+#     res = compute_similarity_metrics_dask(
+#         image1 = image1,
+#         image2 = image2
+#         )
+
+#     print(f"returning : {location}")
+#     return res
+
+# @profile
+# def main() :
+#     RUN_PATH = "/media/SSD_floricslimani/Fish_seq/POLR2/2026-03-24 - HeLa_POLR2_Run17_tiff/"
+
+#     Acquisition = pd.read_feather(RUN_PATH + "/result_tables/Acquisition.feather")
+#     Acquisition["full_path"] = Acquisition["full_path"].str.replace("/media/SSD_floricslimani/Fish_seq/POLR2/2026-03-24 - HeLa_POLR2_Run17_tiff/",RUN_PATH)
+#     shape = tuple(Acquisition["fish_reodered_shape"].at[0])
+
+#     init_clock = t.time()
+#     list_dir = os.listdir(RUN_PATH + '/FISH_Z-stacks/')[:5]
+
+#     client = Client(n_workers=4)
+#     futures = client.map(
+#         process_acquisition,
+#         [Acquisition]*len(list_dir),
+#         [shape]*len(list_dir),
+#         list_dir
+#     )
+
+#     measures = client.gather(futures)
+#     client.close()
+#     print(measures)
+
+#     print(f"done; Execution time : {t.time()-init_clock}")
+
+
 if __name__ == "__main__" :
     main()

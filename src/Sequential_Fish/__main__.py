@@ -3,6 +3,8 @@ import os
 import logging
 from typing import cast
 
+from napari.components.camera import R
+
 from Sequential_Fish.settings.settings import ALLOWED_SETTINGS, SETTINGS_NAMES
 
 from . import viewer, pipeline, analysis, chromatic_abberrations
@@ -11,6 +13,8 @@ from .pipeline import launch_script
 from .settings import PipelineParameters
 from .settings import write_settings
 from .settings import ALLOWED_SETTINGS
+
+from .extra_scripts import signal_correlation
 
 def main():
 
@@ -93,6 +97,9 @@ def main():
         else :
             raise ValueError(f"Incorrect setting name : {setting_name}, please use one from list : {ALLOWED_SETTINGS}.")
 
+
+    elif module in ["signal_correlation", "signal correlation"] :
+        sucess = signal_correlation(run_path=RUN_PATH)
 
     else:
         print(f"Unknown module: {module}")
