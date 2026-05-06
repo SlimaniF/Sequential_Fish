@@ -353,7 +353,8 @@ def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[float
                     for scale in scaling_distance :
                         res = [float(cast(str,scale.text)) * 1e9 for scale in scaling_distance] #m to nm
                     res.reverse()
-                    return tuple(res)
+                    res = cast(tuple[float,float,float], tuple(res))
+                    return res
                 else :
                     raise NoVoxelSizeFound("Couln't find voxel size on xml metadata")
 
@@ -362,9 +363,12 @@ def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[float
                 ij_meta = tif.imagej_metadata
                 page = tif.pages[0]  # first image page
                 # X/Y resolution as (numerator, denominator)
-                xres = page.tags['XResolution'].value
-                _ = page.tags['YResolution'].value
+                if hasattr(page,"tags") :
+                    xres = getattr(page,"tags")['XResolution'].value
+                else :
+                    raise AssertionError("no attribute tags in tif pages which is unexpected.")
                 # ResolutionUnit: must be 'nm' for this calculation
+                ij_meta = cast(dict,ij_meta)
                 res_unit = ij_meta.get("unit")
 
                 if res_unit and str(res_unit) != 'nm':
@@ -376,9 +380,9 @@ def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[float
 
                 # Z spacing from ImageJ metadata
                 if res_unit and str(res_unit) != 'nm':
-                    z_size = ij_meta.get('spacing', None) * 1e3 
+                    z_size = ij_meta.get('spacing', 1) * 1e3 
                 else :
-                    z_size = ij_meta.get('spacing', None)
+                    z_size = ij_meta.get('spacing', 1)
 
                 return (z_size,xy_size, xy_size )
     except NoVoxelSizeFound as e:
@@ -433,7 +437,7 @@ def nanometer_to_pixel(value, scale) :
     return list(np.array(value) / np.array(scale))
 
 def compute_anisotropy_coef(
-    voxel_size
+    voxel_size : tuple[int,int,int]
     ) :
     """
     voxel_size : tuple (z,y,x).
