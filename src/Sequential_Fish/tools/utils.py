@@ -3,9 +3,6 @@ import warnings
 from typing import cast, Optional, Tuple
 import datetime as dt
 
-import dask.array as da
-import dask.delayed
-
 import pandas as pd
 import numpy as np
 import tifffile
@@ -332,7 +329,6 @@ def open_cycle(
 
     return image_stack
 
-@da
 def open_tiff_stack(fullpath, stack_shape, image_number, ) :
     with tifffile.TiffFile(fullpath) as tif :
         cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)
@@ -436,7 +432,9 @@ def nanometer_to_pixel(value, scale) :
 
     return list(np.array(value) / np.array(scale))
 
-def compute_anisotropy_coef(voxel_size) :
+def compute_anisotropy_coef(
+    voxel_size
+    ) :
     """
     voxel_size : tuple (z,y,x).
     """
