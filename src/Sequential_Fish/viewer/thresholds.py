@@ -101,7 +101,7 @@ class ThresholdSelector(LoadWidget) :
             default_threshold = None
 
         @magicgui(
-            threshold = {"widget_type" : SpinBox, "min" : 0, "value" : default_threshold},
+            threshold = {"widget_type" : SpinBox, "min" : 0, "value" : default_threshold, "max" : 10e4},
             spot_radius = {"label" : "spot radius(zyx)", "value" : self.spot_radius},
         )
         def find_spots(
@@ -156,7 +156,7 @@ class ThresholdSelector(LoadWidget) :
                     shape = self.filtered_image.shape
                     threshold = cast(int, automated_threshold_setting(
                         self.filtered_image.reshape(shape[0]*shape[1],shape[2],shape[3]),
-                        mask_local_max=self.local_maxima
+                        mask_local_max=self.local_maxima.reshape(shape[0]*shape[1],shape[2],shape[3])
                     ))
 
                 else :
