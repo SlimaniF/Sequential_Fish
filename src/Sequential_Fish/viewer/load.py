@@ -140,7 +140,6 @@ class SpotsLoader(LoadWidget) :
 
         assert not any(data['target'].isna()), "Missing values for `target` in Spots. Merge is incomplete."
         self.data = data
-        data.groupby(["target","location"])["spot_id"].count().to_excel("/media/SSD_floricslimani/Fish_seq/test.xlsx")
         self.populations = ['all'] + list(data['population'].unique()) 
         self.target = list(data['target'].unique())
 

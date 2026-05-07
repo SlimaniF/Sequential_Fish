@@ -105,7 +105,8 @@ class SegmentationTester(SegmentationWidget) :
             use_gpu = {"widget_type" : "CheckBox", "enabled" : gpu_is_available},
             model = {"choices" : available_models},
             anisotropy = {"enabled" : False}, # computed from voxel size, just to show user
-            min_size = {"max" : 2**32}
+            min_size = {"max" : 2**32},
+            cellprob_threshold = {"min" : -6}
         )
         def segment_image(
             image : Image,
