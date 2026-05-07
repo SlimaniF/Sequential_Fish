@@ -7,7 +7,6 @@ from typing import cast
 from napari.types import LayerDataTuple
 from napari import Viewer
 
-
 def update_layer_from_LayerDataTuple(viewer : Viewer, layer_data_tuple : LayerDataTuple | list[LayerDataTuple]) :
     
     if not isinstance(layer_data_tuple, list) :

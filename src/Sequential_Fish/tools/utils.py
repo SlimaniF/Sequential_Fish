@@ -12,6 +12,7 @@ from bigfish.stack import read_image as _read_image
 
 from scipy.ndimage import distance_transform_edt
 from tqdm import tqdm
+import dask.delayed as delayed
 
 class MappingError(Exception) :
     """
@@ -249,7 +250,6 @@ def gaussian_kernel_size(object_size_nm, voxel_size, width= 'FWHM') :
     else : raise TypeError("object size and voxel_size parameters should be tuple or float like object and be coherent.")
 
 
-
 def open_location(
         Acquisition : pd.DataFrame,
         location : str,
@@ -322,17 +322,80 @@ def open_cycle(
     c = stack_map['c']
     image_number = stack_shape[z] * stack_shape[c]
 
-    with tifffile.TiffFile(fullpath) as tif :
-        cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)
-
+    cycle_stack = open_tiff_stack(fullpath, stack_shape=stack_shape, image_number=image_number)
     image_stack = reorder_image_stack(cycle_stack, channel_map=stack_map)
 
     return image_stack
 
-def open_tiff_stack(fullpath, stack_shape, image_number, ) :
+def open_tiff_stack(fullpath, stack_shape, image_number) :
     with tifffile.TiffFile(fullpath) as tif :
         cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)
     return cycle_stack
+
+@delayed
+def delayed_open_tiff_stack(fullpath, stack_shape, image_number, ) :
+    with tifffile.TiffFile(fullpath) as tif :
+        cycle_stack = tif.asarray(key=range(0, image_number)).reshape(*stack_shape)
+        #TODO reorder axis here
+    return cycle_stack
+
+
+def delayed_open_cycle(
+        Acquisition : pd.DataFrame,
+        location : str,
+        cycle : int,
+) :
+    """
+    Open specific cycle of a location and reorder stacks in order (z,y,x,channel)
+    """
+    if not ('location' in Acquisition.index.names and 'cycle' in Acquisition.index.names) :
+        Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True)
+
+    #Getting image informations
+    stack_map = Acquisition.at[(location,cycle), "fish_map"]
+    stack_shape = Acquisition.at[(location, cycle), "fish_shape"] 
+    fullpath = Acquisition.at[(location,cycle), "full_path"]
+    stack_map = correct_map(stack_map)
+    
+    #Preparing image shape
+    z = stack_map['z']
+    c = stack_map['c']
+    image_number = stack_shape[z] * stack_shape[c]
+
+    cycle_stack = delayed_open_tiff_stack(fullpath, stack_shape=stack_shape, image_number=image_number)
+    image_stack = reorder_image_stack(cycle_stack, channel_map=stack_map)
+
+    return image_stack
+
+def delayed_open_all_locations_one_cycle(
+    Acquisition : pd.DataFrame,
+    cycle: int,
+) :
+
+    if not ('location' in Acquisition.index.names and 'cycle' in Acquisition.index.names) :
+        Acquisition = Acquisition.set_index(['location','cycle'], verify_integrity=True)
+
+    location_list = list(Acquisition.index.get_level_values(0).unique())
+    location_list.sort()
+
+    max_shape_no_channel = np.max(Acquisition["fish_reodered_shape"].to_list(), axis=0)
+    # max_shape_no_channel = max_shape_no_channel[:-1]
+    location_stack = []
+
+    for location in tqdm(location_list, f"opening cycle {cycle}") :
+        location = delayed_open_cycle(Acquisition,location,cycle)
+
+        if not np.equal(location.shape, max_shape_no_channel).all() :
+            location = pad_to_shape(location, new_shape=max_shape_no_channel)
+        location_stack.append(location)
+
+    if len(location_stack) > 1 :
+        location_stack = np.stack(location_stack)
+    else :
+        location_stack = location_stack[0].reshape((1,) + location_stack[0].shape)
+    
+    return location_stack
+
 
 def get_voxel_size_from_metadata(filepath: str) -> Optional[Tuple[Optional[float], Optional[float], Optional[float]]]:
     """

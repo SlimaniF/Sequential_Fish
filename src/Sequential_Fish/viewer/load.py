@@ -13,7 +13,7 @@ from napari.types import LayerDataTuple
 from napari.qt.threading import thread_worker, create_worker
 from magicgui import magicgui
 
-from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
+from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates, delayed_open_all_locations_one_cycle
 from .utils import open_segmentation, update_layer_from_LayerDataTuple
 from .types import NapariWidget
 from ..customtypes import table_dict_type
@@ -446,7 +446,7 @@ class SignalLoader(LoadWidget) :
                 name += "_signal_drifted"
 
 
-            array = open_all_locations_one_cycle(
+            array = delayed_open_all_locations_one_cycle(
                 self.data.reset_index(drop=False),
                 cycle=cycle,
             )
