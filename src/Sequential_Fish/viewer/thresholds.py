@@ -270,13 +270,11 @@ class ThreholdsFileEditor(ThresholdsWidget) :
         return edit_thresholds
 
 
-
-
 def _apply_log_filter(
         image: np.ndarray,
-        voxel_size : tuple,
-        spot_radius : tuple,
-        log_kernel_size : tuple[float,float,float] | tuple[float,float],
+        voxel_size : tuple[int,int,int],
+        spot_radius : tuple[int,int,int],
+        log_kernel_size : tuple[float,float,float] | None,
 
 ) :
     """
