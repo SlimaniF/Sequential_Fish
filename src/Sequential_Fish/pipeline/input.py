@@ -124,7 +124,11 @@ def main(run_path) :
                     found_cycle_number = fish_im.shape[fish_map['cycles']]
                     fish_reodered_shape = reorder_image_stack(fish_im, fish_map).shape
                 
-                assert found_cycle_number == cycle_number, f"Cycle file has {cycle_number} entries but only {found_cycle_number} were found in metadata."
+                if found_cycle_number != cycle_number : raise UnevenCycleNumber(
+                    cycle_number, 
+                    found_cycle_number, 
+                    f"Cycle file has {cycle_number} entries but only {found_cycle_number} were found in metadata."
+                    )
 
                 fish_reodered_shape = cast(tuple, fish_reodered_shape[1:])
 
@@ -272,3 +276,11 @@ def get_ordered_shape_from_metadata(ome_metadata : OME) -> tuple | None :
         return None
 
     return tuple(shape)
+
+
+class UnevenCycleNumber(ValueError) :
+
+    def __init__(self, expected_cycle, found_cycle, *args: object) -> None:
+        super().__init__(*args)
+        self.expected_cycle = expected_cycle
+        self.found_cycle = found_cycle
