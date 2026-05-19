@@ -18,7 +18,6 @@ import numpy as np
 
 from ..settings import PipelineParameters
 from ..tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack
-from ..tools._folder_integrity import assert_run_folder_integrity
 from ..settings import get_settings
 
 def main(run_path) :
@@ -276,14 +275,28 @@ def get_ordered_shape_from_metadata(ome_metadata : OME) -> tuple | None :
 
     return tuple(shape)
 
+class InputIntegrityError(ValueError) :
+    """
+    Raised if files and metadata are not consistent between themself or with cycle mapping.
+    """
+    pass
 
-class UnevenCycleNumber(ValueError) :
+
+class UnevenCycleNumber(InputIntegrityError) :
+    """
+    Raised when metadata and expected file number are not consistent
+    """
 
     def __init__(self, expected_cycle, found_cycle, *args: object) -> None:
         super().__init__(*args)
         self.expected_cycle = expected_cycle
         self.found_cycle = found_cycle
 
+class UnevenFileNumber(InputIntegrityError) :
+    """
+    Raise when file number are not consistent amongst locations.
+    """
+    pass
 
 def _lvl1(RUN_PATH:str, nucleus_folder, fish_folder) :
     """
@@ -339,7 +352,8 @@ def _lvl3(RUN_PATH, locations, fish_folder, nucleus_folder) :
         for file in dirlist : 
             if not file.endswith(".ome.tif") or file.startswith("._") : file_dict[location].remove(file)
         file_number.append(len(file_dict[location]))
-    assert len(np.unique(file_number)) == 1, "Different file numbers found for fish Z-stacks amongst locations : {0}".format(np.unique(file_number))
+    if len(np.unique(file_number)) != 1 : 
+        raise UnevenFileNumber("Different file numbers found for fish Z-stacks amongst locations : {0}".format(np.unique(file_number)))
 
     return file_dict
 
