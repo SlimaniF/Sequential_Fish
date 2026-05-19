@@ -17,6 +17,7 @@ from .drift import main as run_drift
 from .quantification import main as run_quantification
 from .segmentation import main as run_segmentation
 from .washout import main as run_washout
+from .uniformize_tiff_files import main as sanitize_input
 
 script_folder = os.path.abspath(__file__)
 script_folder = os.path.dirname(script_folder)
@@ -43,6 +44,7 @@ def launch_script(script_name, run_path):
             case "alignement" : run_alignement(run_path)
             case "washout" : run_washout(run_path)
             case "quantification" : run_quantification(run_path)
+            case "sanitize_input" : sanitize_input(run_path)
             case _ : raise ValueError(f"Unsupported script name : {script_name}")
 
         script_end = datetime.now()

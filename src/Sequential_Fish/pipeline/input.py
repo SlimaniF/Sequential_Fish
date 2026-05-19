@@ -18,7 +18,6 @@ import numpy as np
 
 from ..settings import PipelineParameters
 from ..tools.utils import auto_map_channels, _find_one_or_NaN, reorder_image_stack
-from ..tools._folder_integrity import assert_run_folder_integrity
 from ..settings import get_settings
 
 def main(run_path) :
@@ -91,7 +90,6 @@ def main(run_path) :
         found_cycle_number = None
         if ".ome." in fish_path_list[0] :
             with tifffile.TiffFile(os.path.join(fish_path, fish_path_list[0])) as main_tif :
-
                 #Axes map
                 fish_map = map_from_metadata(main_tif.series[0].axes)
                 if fish_map is None : #Could not infer from metadata
@@ -124,7 +122,11 @@ def main(run_path) :
                     found_cycle_number = fish_im.shape[fish_map['cycles']]
                     fish_reodered_shape = reorder_image_stack(fish_im, fish_map).shape
                 
-                assert found_cycle_number >= cycle_number, f"Cycle file has {cycle_number} entries but only {found_cycle_number} were found in metadata."
+                if found_cycle_number != cycle_number : raise UnevenCycleNumber(
+                    cycle_number, 
+                    found_cycle_number, 
+                    f"Cycle file has {cycle_number} entries but only {found_cycle_number} were found in metadata."
+                    )
 
                 fish_reodered_shape = cast(tuple, fish_reodered_shape[1:])
 
@@ -272,3 +274,92 @@ def get_ordered_shape_from_metadata(ome_metadata : OME) -> tuple | None :
         return None
 
     return tuple(shape)
+
+class InputIntegrityError(ValueError) :
+    """
+    Raised if files and metadata are not consistent between themself or with cycle mapping.
+    """
+    pass
+
+
+class UnevenCycleNumber(InputIntegrityError) :
+    """
+    Raised when metadata and expected file number are not consistent
+    """
+
+    def __init__(self, expected_cycle, found_cycle, *args: object) -> None:
+        super().__init__(*args)
+        self.expected_cycle = expected_cycle
+        self.found_cycle = found_cycle
+
+class UnevenFileNumber(InputIntegrityError) :
+    """
+    Raise when file number are not consistent amongst locations.
+    """
+    pass
+
+def _lvl1(RUN_PATH:str, nucleus_folder, fish_folder) :
+    """
+    returns True if ok else raise FileNotFoundError
+    """
+
+    dirlist = os.listdir(RUN_PATH)
+    if not fish_folder in dirlist : raise FileNotFoundError("{0} folder not found in run folder.".format(fish_folder))
+    if not nucleus_folder in dirlist : raise FileNotFoundError("{0} folder not found in run folder.".format(nucleus_folder))
+
+    return True
+
+def _lvl2(RUN_PATH:str, nucleus_folder, fish_folder) :
+    """
+    returns locations list of ok else raise ValueError
+    """
+    Cy3_dirlist = os.listdir(RUN_PATH + "/{0}".format(fish_folder))
+    Dapi_dirlist = os.listdir(RUN_PATH + "/{0}".format(nucleus_folder))
+
+    locations_Cy3 = []
+    locations_Dapi = []
+
+    for file in Cy3_dirlist :
+        if 'Location-' in file : 
+            locations_Cy3.append(file)
+
+    for file in Dapi_dirlist :
+        if 'Location-' in file : 
+            locations_Dapi.append(file)
+
+    locations_Cy3.sort()
+    locations_Dapi.sort()
+
+    if locations_Cy3 != locations_Dapi :
+        raise ValueError("Missmatch between locations found in Cy3 folder and in Dapi folder")
+    else :
+        return locations_Cy3
+
+def _lvl3(RUN_PATH, locations, fish_folder, nucleus_folder) :
+
+    #Dapi
+    for location in locations :
+        dirlist = os.listdir(RUN_PATH + '/{0}/'.format(nucleus_folder) + location)
+        if len(dirlist) == 0 : raise FileNotFoundError("Dapi acquisition not found for location : {0}".format(location))
+    
+    #Cy3
+    file_number = []
+    file_dict = {}
+    for location in locations :
+        dirlist = os.listdir(RUN_PATH + '/{0}/'.format(fish_folder) + location)
+        file_dict[location] = dirlist.copy()
+        file_dict[location].sort()
+        for file in dirlist : 
+            if not file.endswith(".ome.tif") or file.startswith("._") : file_dict[location].remove(file)
+        file_number.append(len(file_dict[location]))
+    if len(np.unique(file_number)) != 1 : 
+        raise UnevenFileNumber("Different file numbers found for fish Z-stacks amongst locations : {0}".format(np.unique(file_number)))
+
+    return file_dict
+
+def assert_run_folder_integrity(run_path, fish_folder, nucleus_folder) :
+    _lvl1(run_path, fish_folder=fish_folder, nucleus_folder=nucleus_folder)
+    locations_list = _lvl2(run_path, fish_folder=fish_folder, nucleus_folder=nucleus_folder)
+    file_dict = _lvl3(run_path, locations_list, fish_folder=fish_folder, nucleus_folder=nucleus_folder)
+
+    return file_dict
