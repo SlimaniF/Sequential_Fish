@@ -27,7 +27,9 @@ def main(run_path) :
     PLOT_VISUALS = pipeline_parameters.PLOT_VISUALS
     MODEL_DICT = pipeline_parameters.MODEL_DICT
     OBJECT_SIZE_DICT = pipeline_parameters.OBJECT_SIZE_DICT
-    DO_3D_SEGMENTATION = pipeline_parameters.DO_3D_SEGMENTATION
+    DO_3D_SEGMENTATION_NUCLEUS = pipeline_parameters.DO_3D_SEGMENTATION_NUCLEUS
+    DO_3D_SEGMENTATION_CYTOPLASM = pipeline_parameters.DO_3D_SEGMENTATION_CYTOPLASM
+    FLOW_3D_SMOOTH = pipeline_parameters.FLOW_3D_SMOOTH
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     DAPI_CHANNEl = pipeline_parameters.DAPI_CHANNEl
     REFERENCE_CYCLE = pipeline_parameters.REFERENCE_CYCLE
@@ -36,7 +38,7 @@ def main(run_path) :
     MIN_SIZE = pipeline_parameters.MIN_SIZE
 
 
-    if DO_3D_SEGMENTATION :
+    if DO_3D_SEGMENTATION_NUCLEUS or DO_3D_SEGMENTATION_CYTOPLASM :
         if len(VOXEL_SIZE) < 3 :
             raise ValueError(f"For 3D segmentation expected 3 dimensions in voxelsize : {VOXEL_SIZE}") 
         anisotropy = float(VOXEL_SIZE[0] / VOXEL_SIZE[1])
@@ -66,36 +68,45 @@ def main(run_path) :
         image = reorder_image_stack(image, image_map)
         
         image = image[REFERENCE_CYCLE]
-        if not DO_3D_SEGMENTATION :
-            image = np.mean(image, axis=0)# mean on z
 
         #Nucleus_segmentation
-        nucleus_image = image[...,DAPI_CHANNEl]
+        if not DO_3D_SEGMENTATION_NUCLEUS :
+            nucleus_image = np.mean(image,axis=0)
+        else :
+            nucleus_image = image
+        nucleus_image = nucleus_image[...,DAPI_CHANNEl]
         nucleus_image_save = nucleus_image.copy()
         
         nucleus_label,*_ = nucleus_model.eval(
             nucleus_image, 
             diameter= OBJECT_SIZE_DICT['nucleus_size'], 
-            do_3D= DO_3D_SEGMENTATION, 
+            do_3D= DO_3D_SEGMENTATION_NUCLEUS,
+            z_axis=0,
+            flow3D_smooth=FLOW_3D_SMOOTH["nucleus"],
             anisotropy=anisotropy,
-            cellprob_threshold=CELLPROB_THRESHOLD,
-            flow_threshold=FLOW_THRESHOLD,
-            min_size=MIN_SIZE
+            cellprob_threshold=CELLPROB_THRESHOLD["nucleus"],
+            flow_threshold=FLOW_THRESHOLD["nucleus"],
+            min_size=MIN_SIZE["nucleus"]
             )
 
         #Cytoplasm segmentation
+        if not DO_3D_SEGMENTATION_NUCLEUS :
+            cytoplasm_image = np.mean(image,axis=0)
+        else :
+            cytoplasm_image = image
+
         if image.shape[-1] > 2 :
-            cytoplasm_image = np.mean(image[...,:DAPI_CHANNEl], axis=-1)
+            cytoplasm_image = np.mean(cytoplasm_image[...,:DAPI_CHANNEl], axis=-1)
         else :
             cytoplasm_image = image[...,DAPI_CHANNEl-1]
         cytoplasm_label, *_ = cytoplasm_model.eval(
             cytoplasm_image, 
             diameter= OBJECT_SIZE_DICT['cytoplasm_size'], 
-            do_3D= DO_3D_SEGMENTATION, 
+            do_3D= DO_3D_SEGMENTATION_CYTOPLASM, 
             anisotropy=anisotropy,
-            flow_threshold=FLOW_THRESHOLD, #not used for 3D
-            cellprob_threshold=CELLPROB_THRESHOLD,
-            min_size=MIN_SIZE
+            flow_threshold=FLOW_THRESHOLD["cytoplasm"], #not used for 3D
+            cellprob_threshold=CELLPROB_THRESHOLD["cytoplasm"],
+            min_size=MIN_SIZE["cytoplasm"]
             )
 
 

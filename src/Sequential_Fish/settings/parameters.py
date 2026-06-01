@@ -22,12 +22,14 @@ class PipelineParameters(BaseModel) :
     cycle_regex : str = Field(default=r"img(\d+)_000_000000_0000000000.ome.tif")
 
     #Segmentation parameters
+    DO_3D_SEGMENTATION_NUCLEUS : bool = Field(default=False)
+    DO_3D_SEGMENTATION_CYTOPLASM : bool = Field(default=False)
     MODEL_DICT : dict[str,str] = Field(default_factory=lambda : {'nucleus_model' : 'cpsam', 'cytoplasm_model' : 'cpsam'})
     OBJECT_SIZE_DICT : dict[str,int] = Field(default_factory=lambda : {'nucleus_size' : 60, 'cytoplasm_size' : 80})
-    DO_3D_SEGMENTATION : bool = Field(default=False)
-    FLOW_THRESHOLD  : float = Field(default=0.4) #Not used in 3D
-    CELLPROB_THRESHOLD : float = Field(default=0.0)
-    MIN_SIZE : int = Field(default=15)
+    FLOW_3D_SMOOTH : dict[str,int] = Field(default_factory=lambda : {'nucleus' : 0, 'cytoplasm' : 0})
+    FLOW_THRESHOLD  : dict[str,float] = Field(default_factory=lambda : {'nucleus' : 0.4, 'cytoplasm' : 0.4}) #Not used in 3D
+    CELLPROB_THRESHOLD : dict[str,float] = Field(default_factory=lambda : {'nucleus' : 0., 'cytoplasm' : 0.})
+    MIN_SIZE : dict[str,int] = Field(default_factory=lambda : {'nucleus' : 15, 'cytoplasm' : 15})
     PLOT_VISUALS : bool = Field(default=True)
     
     #Detection parameters

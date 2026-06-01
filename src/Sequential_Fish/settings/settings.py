@@ -37,7 +37,7 @@ def get_settings(
             except ValidationError as validation_error:
                 for error in validation_error.errors() :
                     print(f"{error["loc"]} :\n{error["msg"]}")
-                raise ValidationError(f"Uncorrect settings found in {settings_name}_settings.json") from validation_error
+                raise ValueError(f"Uncorrect settings found in {settings_name}_settings.json. If you recently updated pipeline this might mean the above mentionned parameters have evolved, delete parameters json file to refresh data structure.") from validation_error
 
             filled_settings = set(model.model_fields.keys()) - set(saved_settings.keys()) #True if any missing value were added by default
             if filled_settings :
