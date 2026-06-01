@@ -3,6 +3,7 @@ This script aims at performing segmentation and savings results as .npy format t
 Drift correction is applied in FishSeq_pipeline_drift.py
 """
 import os
+import logging
 from typing import cast
 
 import numpy as np
@@ -60,6 +61,7 @@ def main(run_path) :
 
 
     for location in tqdm(Acquisition['location'].unique()) :
+        logging.info(f"Starting location : {location}")
         sub_data = Acquisition.loc[Acquisition['location'] == location]
 
         image_path = sub_data['full_path'].iat[0] #First washout, also avoid opening all images together.
@@ -117,23 +119,30 @@ def main(run_path) :
             cytoplasm= cytoplasm_label,
             dapi_signal = nucleus_image_save,
         )
+        logging.info("Segmentation labels saved.")
 
-        if PLOT_VISUALS : 
-            plot.plot_segmentation_boundary(
-                image=cytoplasm_image,
-                cell_label=cytoplasm_label,
-                nuc_label=nucleus_label,
-                boundary_size=3,
-                contrast=True,
-                path_output=visual_path + "/{0}_segmentation_cyto_view.png".format(location),
-                show=False
-            )
-            plot.plot_segmentation_boundary(
-                image=nucleus_image,
-                cell_label=cytoplasm_label,
-                nuc_label=nucleus_label,
-                boundary_size=3,
-                contrast=True,
-                path_output=visual_path + "/{0}_segmentation_nuc_view.png".format(location),
-                show=False
-            )
+        if PLOT_VISUALS :
+            if DO_3D_SEGMENTATION_CYTOPLASM :
+                logging.warning("Cannot represent 3D segmentation in 2D png file. To check cytoplasm segmentation results use viewer module.") 
+            else :
+                plot.plot_segmentation_boundary(
+                    image=cytoplasm_image,
+                    cell_label=cytoplasm_label,
+                    nuc_label=nucleus_label,
+                    boundary_size=3,
+                    contrast=True,
+                    path_output=visual_path + "/{0}_segmentation_cyto_view.png".format(location),
+                    show=False
+                )
+            if DO_3D_SEGMENTATION_NUCLEUS :
+                logging.warning("Cannot represent 3D segmentation in 2D png file. To check nucleus segmentation results use viewer module.") 
+            else :
+                plot.plot_segmentation_boundary(
+                    image=nucleus_image,
+                    cell_label=cytoplasm_label,
+                    nuc_label=nucleus_label,
+                    boundary_size=3,
+                    contrast=True,
+                    path_output=visual_path + "/{0}_segmentation_nuc_view.png".format(location),
+                    show=False
+                )
