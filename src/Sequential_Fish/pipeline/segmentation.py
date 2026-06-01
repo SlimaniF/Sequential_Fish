@@ -123,7 +123,7 @@ def main(run_path) :
 
         if PLOT_VISUALS :
             if DO_3D_SEGMENTATION_CYTOPLASM :
-                logging.warning("Cannot represent 3D segmentation in 2D png file. To check cytoplasm segmentation results use viewer module.") 
+                logging.warning("Cannot represent 3D segmentation in 2D png file. To check segmentation results use viewer module.") 
             else :
                 plot.plot_segmentation_boundary(
                     image=cytoplasm_image,
@@ -134,9 +134,6 @@ def main(run_path) :
                     path_output=visual_path + "/{0}_segmentation_cyto_view.png".format(location),
                     show=False
                 )
-            if DO_3D_SEGMENTATION_NUCLEUS :
-                logging.warning("Cannot represent 3D segmentation in 2D png file. To check nucleus segmentation results use viewer module.") 
-            else :
                 plot.plot_segmentation_boundary(
                     image=nucleus_image,
                     cell_label=cytoplasm_label,
