@@ -22,6 +22,26 @@ def update_layer_from_LayerDataTuple(viewer : Viewer, layer_data_tuple : LayerDa
                 return None
         viewer._add_layer_from_data(*datalayer)
 
+def pad_to_shape(array : np.ndarray, new_shape) :
+    shape = array.shape
+
+    if len(array.shape) != len(new_shape) : raise ValueError("dimensions of array and new_shape don't match")
+
+    pad_width_list = []
+
+    for axis, axis_size in enumerate(shape) :
+        target_size = new_shape[axis]
+        
+        pad_width = int(target_size - axis_size)
+        if pad_width >= 0 :
+            pad_width_list.append([0,pad_width])
+        else :
+            raise ValueError("Can't pad to new size {0} on axis {1} because current size {2} is bigger.".format(target_size, axis, axis_size))
+    
+    array = np.pad(array, pad_width_list)
+
+    return array
+
 def open_segmentation(
         segmentation_folder_fullpath: str, 
         locations : 'list[str]', 
@@ -45,6 +65,14 @@ def open_segmentation(
                 repeats= z_repeat,
                 axis=0
             )
+
+        elif type(z_repeat) != type(None) and new_mask.ndim == 3 :
+            new_shape = (z_repeat,) + tuple(new_mask.shape[1:])
+            new_mask = pad_to_shape(
+                new_mask,
+                new_shape
+                )
+
         masks.append(new_mask)
 
     masks = np.stack(masks)

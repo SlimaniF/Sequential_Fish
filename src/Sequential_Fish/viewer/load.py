@@ -530,6 +530,7 @@ class SegmentationLoader(LoadWidget) :
             z_size = shape[0]
             name = "{0}_mask".format(target)
             locations = list(self.data.sort_values('location')['location'].unique())
+            
             masks = open_segmentation(
                 self.segmentation_fullpath, 
                 locations, 
