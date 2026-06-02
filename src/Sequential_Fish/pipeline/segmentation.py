@@ -83,7 +83,7 @@ def main(run_path) :
             nucleus_image, 
             diameter= OBJECT_SIZE_DICT['nucleus_size'], 
             do_3D= DO_3D_SEGMENTATION_NUCLEUS,
-            z_axis=0,
+            z_axis=0 if DO_3D_SEGMENTATION_NUCLEUS else None,
             flow3D_smooth=FLOW_3D_SMOOTH["nucleus"],
             anisotropy=anisotropy,
             cellprob_threshold=CELLPROB_THRESHOLD["nucleus"],
@@ -105,6 +105,8 @@ def main(run_path) :
             cytoplasm_image, 
             diameter= OBJECT_SIZE_DICT['cytoplasm_size'], 
             do_3D= DO_3D_SEGMENTATION_CYTOPLASM, 
+            z_axis=0 if DO_3D_SEGMENTATION_CYTOPLASM else None,
+            flow3D_smooth=FLOW_3D_SMOOTH["cytoplasm"],
             anisotropy=anisotropy,
             flow_threshold=FLOW_THRESHOLD["cytoplasm"], #not used for 3D
             cellprob_threshold=CELLPROB_THRESHOLD["cytoplasm"],
