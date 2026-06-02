@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import warnings
 from typing import Literal, cast
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from pydantic import ValidationError
 
 from .parameters import PipelineParameters, AnalysisParameters

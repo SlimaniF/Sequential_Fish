@@ -1,67 +1,113 @@
 
-from typing import List, Dict
 from pydantic import BaseModel, Field
+import warnings
 
+from pydantic.config import JsonDict
+from pydantic.fields import FieldInfo
 
-class PipelineParameters(BaseModel) :
-    
-    #PATH to run folder, images and location to save
-    FISH_FOLDER : str = Field(default= "FISH_Z-stacks")
-    
-    #Microscope parameters
-    VOXEL_SIZE : tuple[int,int,int] = Field(default=(200,97,97))
-    BEAD_CHANNEl : int | None = Field(default=None)
-    DAPI_CHANNEl : int  = Field(default=-1) #Default to last channel
-    WAVELENGTH_LIST : list[int] | None = Field(default=None)
-
-    #Folder organization
-    WASHOUT_KEY_WORD : str = Field(default="Washout")
-    MAP_FILENAME : str = Field(default="cycle_file.xlsx")
-    GENES_NAMES_KEY : list[str] = Field(default_factory= lambda : ["Gene0", ])
-    CYCLE_KEY : str = Field(default="Cycle n.")
-    cycle_regex : str = Field(default=r"img(\d+)_000_000000_0000000000.ome.tif")
-
-    #Segmentation parameters
-    DO_3D_SEGMENTATION_NUCLEUS : bool = Field(default=False)
-    DO_3D_SEGMENTATION_CYTOPLASM : bool = Field(default=False)
-    MODEL_DICT : dict[str,str] = Field(default_factory=lambda : {'nucleus_model' : 'cpsam', 'cytoplasm_model' : 'cpsam'})
-    OBJECT_SIZE_DICT : dict[str,int] = Field(default_factory=lambda : {'nucleus_size' : 60, 'cytoplasm_size' : 80})
-    FLOW_3D_SMOOTH : dict[str,int] = Field(default_factory=lambda : {'nucleus' : 0, 'cytoplasm' : 0})
-    FLOW_THRESHOLD  : dict[str,float] = Field(default_factory=lambda : {'nucleus' : 0.4, 'cytoplasm' : 0.4}) #Not used in 3D
-    CELLPROB_THRESHOLD : dict[str,float] = Field(default_factory=lambda : {'nucleus' : 0., 'cytoplasm' : 0.})
-    MIN_SIZE : dict[str,int] = Field(default_factory=lambda : {'nucleus' : 15, 'cytoplasm' : 15})
-    PLOT_VISUALS : bool = Field(default=True)
-    
-    #Detection parameters
-    detection_MAX_WORKERS : int = Field(default= 4)
-    SPOT_SIZE : tuple[int,int,int] = Field(default= (300,140,140))
-    ALPHA : float = Field(default=0.5)
-    BETA : float = Field(default=1)
-    GAMMA : int = Field(default=2)
-    CLUSTER_SIZE : int = Field(default=400)
-    MIN_SPOT_PER_CLUSTER : int = Field(default=5)
-    ARTIFACT_RADIUS : int = Field(default=1400)
-    DETECTION_SLICE_TO_REMOVE : list[int | None] = Field(default_factory=lambda: [5,None])
-    
-    #Drift parameters
-    BEAD_SIZE : tuple[int,int,int] = Field(default= (200,200,200))
-    DRIFT_SLICE_TO_REMOVE : list[int | None] = Field(default_factory=lambda:[5,5])
-    REFERENCE_CYCLE : int = Field(default=0)
-    DO_HIGHPASS_FILTER : bool = Field(default= False)
-    
-    #Quantification parameters
-    COLOC_DISTANCE : int = Field(default=200)
-    quantif_MAX_WORKERS : int = Field(default=10)
+class ParametersModel(BaseModel) :
+    """
+    Subclass this class to create Pydantic data model enforcing type when file is loaded and to be used for dynamic QForm GUI allowing user to modify paramters.
+    Subclasses need to define each class variable with default value to Field with default argument or default_factory set.
+    In Field info pass json_schema_extra with a dict containing 'tab' key to organize parameters in different tabs in GUI.
+    """
 
     @classmethod
     def from_default_parameters(cls) :
         """Create an instance with default parameters"""
         return cls()
+    
+    @classmethod
+    def get_tab_names(cls) -> set[str]:
+        """Return all names found in json_schema_extra with key 'tab'."""
 
-    def get_filename(self) :
+        tab_names = set()
+        for field_name, field_info in cls.model_fields.items() :
+            json_schema_extra = field_info.json_schema_extra
+            if json_schema_extra is None :
+                warnings.warn(f"{field_name} was not assigned to a tab in Field description. Pass a 'json_schema_extra' with 'tab' to assign it to a tab. Ignore this warning to assign to 'other' tab.")
+                tab_names.add("other")
+            elif isinstance(json_schema_extra, dict) :
+                tab_names.add(json_schema_extra.get("tab","other"))
+            else :
+                raise AssertionError("json_schema_extra not None nor dict")
+        
+        return tab_names
+
+    @classmethod
+    def get_parameters_from_tab(cls, tab_name : str) -> dict[str, FieldInfo]:
+
+        tab_parameters = {}
+        for field_name, field_info in cls.model_fields.items() :
+            json_schema_extra = field_info.json_schema_extra
+            if json_schema_extra is None :
+                found_tab_name = "other"
+            elif isinstance(json_schema_extra, dict) :
+                found_tab_name = json_schema_extra.get("tab","other")
+            else :
+                raise AssertionError("json_schema_extra not None nor dict")
+
+            if tab_name == found_tab_name :
+                tab_parameters[field_name] = field_info
+
+        return tab_parameters
+
+
+class PipelineParameters(ParametersModel) :
+    
+    #PATH to run folder, images and location to save
+    FISH_FOLDER : str = Field(default= "FISH_Z-stacks", json_schema_extra={"tab" : "general"})
+    
+    #Microscope parameters
+    VOXEL_SIZE : tuple[int,int,int] = Field(default=(200,97,97), json_schema_extra={"tab" : "general"})
+    BEAD_CHANNEl : int | None = Field(default=None, json_schema_extra={"tab" : "general"})
+    DAPI_CHANNEl : int  = Field(default=-1, json_schema_extra={"tab" : "general"}) #Default to last channel
+    WAVELENGTH_LIST : list[int] | None = Field(default=None, json_schema_extra={"tab" : "general"})
+
+    #Folder organization
+    WASHOUT_KEY_WORD : str = Field(default="Washout", json_schema_extra={"tab" : "general"})
+    MAP_FILENAME : str = Field(default="cycle_file.xlsx", json_schema_extra={"tab" : "general"})
+    GENES_NAMES_KEY : list[str] = Field(default_factory= lambda : ["Gene0", ], json_schema_extra={"tab" : "general"})
+    CYCLE_KEY : str = Field(default="Cycle n.", json_schema_extra={"tab" : "general"})
+    cycle_regex : str = Field(default=r"img(\d+)_000_000000_0000000000.ome.tif", json_schema_extra={"tab" : "general"})
+
+    #Segmentation parameters
+    DO_3D_SEGMENTATION_NUCLEUS : bool = Field(default=False, json_schema_extra={"tab" : "segmentation"})
+    DO_3D_SEGMENTATION_CYTOPLASM : bool = Field(default=False, json_schema_extra={"tab" : "segmentation"})
+    MODEL_DICT : dict[str,str] = Field(default_factory=lambda : {'nucleus_model' : 'cpsam', 'cytoplasm_model' : 'cpsam'}, json_schema_extra={"tab" : "segmentation"})
+    OBJECT_SIZE_DICT : dict[str,int] = Field(default_factory=lambda : {'nucleus_size' : 60, 'cytoplasm_size' : 80}, json_schema_extra={"tab" : "segmentation"})
+    FLOW_3D_SMOOTH : dict[str,int] = Field(default_factory=lambda : {'nucleus' : 0, 'cytoplasm' : 0}, json_schema_extra={"tab" : "segmentation"})
+    FLOW_THRESHOLD  : dict[str,float] = Field(default_factory=lambda : {'nucleus' : 0.4, 'cytoplasm' : 0.4}, json_schema_extra={"tab" : "segmentation"}) #Not used in 3D
+    CELLPROB_THRESHOLD : dict[str,float] = Field(default_factory=lambda : {'nucleus' : 0., 'cytoplasm' : 0.}, json_schema_extra={"tab" : "segmentation"})
+    MIN_SIZE : dict[str,int] = Field(default_factory=lambda : {'nucleus' : 15, 'cytoplasm' : 15}, json_schema_extra={"tab" : "segmentation"})
+    PLOT_VISUALS : bool = Field(default=True, json_schema_extra={"tab" : "segmentation"})
+    
+    #Detection parameters
+    detection_MAX_WORKERS : int = Field(default= 4, json_schema_extra={"tab" : "detection"})
+    SPOT_SIZE : tuple[int,int,int] = Field(default= (300,140,140), json_schema_extra={"tab" : "detection"})
+    ALPHA : float = Field(default=0.5, json_schema_extra={"tab" : "detection"})
+    BETA : float = Field(default=1, json_schema_extra={"tab" : "detection"})
+    GAMMA : int = Field(default=2, json_schema_extra={"tab" : "detection"})
+    CLUSTER_SIZE : int = Field(default=400, json_schema_extra={"tab" : "detection"})
+    MIN_SPOT_PER_CLUSTER : int = Field(default=5, json_schema_extra={"tab" : "detection"})
+    ARTIFACT_RADIUS : int = Field(default=1400, json_schema_extra={"tab" : "detection"})
+    DETECTION_SLICE_TO_REMOVE : list[int | None] = Field(default_factory=lambda: [5,None], json_schema_extra={"tab" : "detection"})
+    
+    #Drift parameters
+    BEAD_SIZE : tuple[int,int,int] = Field(default= (200,200,200), json_schema_extra={"tab" : "drift"})
+    DRIFT_SLICE_TO_REMOVE : list[int | None] = Field(default_factory=lambda:[5,5], json_schema_extra={"tab" : "drift"})
+    REFERENCE_CYCLE : int = Field(default=0, json_schema_extra={"tab" : "drift"})
+    DO_HIGHPASS_FILTER : bool = Field(default= False, json_schema_extra={"tab" : "drift"})
+    
+    #Quantification parameters
+    COLOC_DISTANCE : int = Field(default=200, json_schema_extra={"tab" : "quantification"})
+    quantif_MAX_WORKERS : int = Field(default=10, json_schema_extra={"tab" : "quantification"})
+
+    @classmethod
+    def get_filename(cls) :
         return "pipeline_settings.json"
 
-class AnalysisParameters(BaseModel) :
+class AnalysisParameters(ParametersModel) :
     """
     Fixed structure of data : type is inforced through pydantic BaseModel class.
     """
@@ -95,9 +141,5 @@ class AnalysisParameters(BaseModel) :
     chroma_checker : tuple[str,str] = Field(default=("",""))
 
     @classmethod
-    def from_default_parameters(cls) :
-        """Create an instance with default parameters"""
-        return cls()
-
-    def get_filename(self) :
+    def get_filename(cls) :
         return "analysis_settings.json"

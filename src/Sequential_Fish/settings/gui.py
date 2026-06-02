@@ -2,137 +2,181 @@
 Submodule handling data opening and merging for viewer
 """
 from types import NoneType, UnionType
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QLabel,
-    QDialog, QFormLayout, QLineEdit, QSpinBox, QDoubleSpinBox,QCheckBox, QWidget, QPlainTextEdit
+    QDialog, QFormLayout, 
+    QLineEdit, QSpinBox, QDoubleSpinBox,QCheckBox, QVBoxLayout, QWidget, QPlainTextEdit, 
+    QScrollArea, QTabWidget,QSizePolicy
 )
-from typing import Dict, Any,get_args, get_origin, Type
-from pydantic import BaseModel
 
+
+from typing import Dict, Any,get_args, get_origin, Type
+from .parameters import PipelineParameters , AnalysisParameters
+
+class TabButton(QWidget) :
+    def __init__(self, tab_name : str) :
+        super(TabButton,self).__init__()
+        self.setObjectName(tab_name)
 
 class ParametersModifier(QDialog):
-    def __init__(self, data_model : Type[BaseModel], parent: QWidget | None = None, **parameters: Any):
+    def __init__(self, data_model : Type[PipelineParameters] | Type[AnalysisParameters], parent: QWidget | None = None, **parameters: Any):
         super().__init__(parent)
-        self.setWindowTitle("Parameter Modification")
+        self.setWindowTitle(data_model.get_filename())
         self._data_model = data_model
         self._param_types = data_model.model_fields
         self._default_value = parameters
         self._widgets: Dict[str, Any] = {}
 
-        form = QFormLayout()
-       # Dynamically create widgets with default.types
-        for name, default in self._param_types.items():
-            att_type = default.annotation
-            type_origin = get_origin(att_type)
-            att_args = []
+        #Window
+        self.resize(800, 600)
+        self.main_layout = QVBoxLayout(self)
+        self.setLayout(self.main_layout)
 
-            widget = None
-            add_none_option = False
-            if type_origin is UnionType :
-                allowed_types = list(get_args(default.annotation))
-                if NoneType in allowed_types :
-                    add_none_option = True
-                    allowed_types.remove(NoneType)
-                assert len(allowed_types) == 1, allowed_types
-                att_type = allowed_types[0]
+        #Tab loop
+        self.tabs_master = QTabWidget()
+        self.main_layout.addWidget(self.tabs_master)
+        tab_names = data_model.get_tab_names()
+        self.tab_ref = {}
+        for tab_name in tab_names :
+            self.tab_ref[tab_name] = TabButton(tab_name)
+            self.tabs_master.addTab(
+                self.tab_ref[tab_name],
+                tab_name
+            )
+
+            self.tab_ref[tab_name].setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
+
+            scroll_area = QScrollArea(self.tab_ref[tab_name])
+            scroll_area.setObjectName("scroll_area_" + tab_name)
+            scroll_area.setWidgetResizable(True)
+            scroll_area_content = QWidget()
+            scroll_area.setWidget(scroll_area_content)
+            scroll_area.setWidgetResizable(True)
+            scroll_area.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
+            scroll_area_vertical_layout = QVBoxLayout(scroll_area_content)
+            scroll_area_vertical_layout.setContentsMargins(0, 0, 0, 0)
+            form = QFormLayout()
+            form.setContentsMargins(0, 0, 0, 0)
+            scroll_area_vertical_layout.addLayout(form)
+
+            # Dynamically create widgets with default.types in tab
+            tab_parameters = data_model.get_parameters_from_tab(tab_name)
+            for name, default in tab_parameters.items():
+                att_type = default.annotation
                 type_origin = get_origin(att_type)
-            
-            if type_origin is None : #Simple types
-                pass
-            else : #types with args (tuples, list...)
-                att_args = get_args(att_type)
-                att_type = type_origin
+                att_args = []
 
-            if att_type is int :
-                sb = QSpinBox()
-                sb.setRange(-1_000_000, 1_000_000)
-                value = self._default_value[name]
-                sb.setValue(value if not value is None else 0)
-                widget = sb
+                widget = None
+                add_none_option = False
+                if type_origin is UnionType :
+                    allowed_types = list(get_args(default.annotation))
+                    if NoneType in allowed_types :
+                        add_none_option = True
+                        allowed_types.remove(NoneType)
+                    assert len(allowed_types) == 1, allowed_types
+                    att_type = allowed_types[0]
+                    type_origin = get_origin(att_type)
 
-            # Float self._default_value[name]
-            elif att_type is float:
-                sb = QDoubleSpinBox()
-                sb.setRange(-1e6, 1e6)
-                sb.setDecimals(6)
-                value = self._default_value[name]
-                sb.setValue(value if not value is None else 0)
-                widget = sb
+                if type_origin is None : #Simple types
+                    pass
+                else : #types with args (tuples, list...)
+                    att_args = get_args(att_type)
+                    att_type = type_origin
 
-            # String self._default_value[name]
-            elif att_type is str:
-                le = QLineEdit()
-                value = self._default_value[name]
-                le.setText(value if not value is None else "")
-                widget = le
+                if att_type is int :
+                    sb = QSpinBox()
+                    sb.setRange(-1_000_000, 1_000_000)
+                    value = self._default_value[name]
+                    sb.setValue(value if not value is None else 0)
+                    widget = sb
 
-            # Bool self._default_value[name]
-            elif att_type is bool :
-                cb = QCheckBox()
-                cb.setChecked(self._default_value[name])
-                widget = cb
+                # Float self._default_value[name]
+                elif att_type is float:
+                    sb = QDoubleSpinBox()
+                    sb.setRange(-1e6, 1e6)
+                    sb.setDecimals(6)
+                    value = self._default_value[name]
+                    sb.setValue(value if not value is None else 0)
+                    widget = sb
 
-            # Tuple of ints
-            elif att_type is tuple :
-                if all(x is int for x in att_args):
-                    spinboxes = []
+                # String self._default_value[name]
+                elif att_type is str:
+                    le = QLineEdit()
+                    value = self._default_value[name]
+                    le.setText(value if not value is None else "")
+                    widget = le
+
+                # Bool self._default_value[name]
+                elif att_type is bool :
+                    cb = QCheckBox()
+                    cb.setChecked(self._default_value[name])
+                    widget = cb
+
+                # Tuple of ints
+                elif att_type is tuple :
+                    if all(x is int for x in att_args):
+                        spinboxes = []
+                        sub_layout = QHBoxLayout()
+                        for val in self._default_value[name]:
+                            sb = QSpinBox()
+                            sb.setRange(-1_000_000, 1_000_000)
+                            sb.setValue(val if not val is None else 0)
+                            sub_layout.addWidget(sb)
+                            spinboxes.append(sb)
+                        widget = sub_layout
+                        self._widgets[name + "__tuple__"] = spinboxes
+
+                    elif all(x is str for x in att_args):
+                        line_edits = []
+                        sub_layout = QHBoxLayout()
+                        for val in self._default_value[name]:
+                            le = QLineEdit()
+                            le.setText(val)
+                            sub_layout.addWidget(le)
+                            line_edits.append(le)
+                        widget = sub_layout
+                        self._widgets[name + "__tuple__"] = line_edits
+                    else :
+                        raise NotImplementedError()
+
+                # List of simple types
+                elif att_type is list :
+                    le = QLineEdit()
+                    # join list to comma-separated string
+                    le.setText(
+                        ','.join(str(x) if not x is None else '' for x in self._default_value[name]) if not self._default_value[name] is None else ""
+                    )
+                    widget = le
+
+                # Dict[str, simple]
+                elif att_type is dict :
+                    pt = QPlainTextEdit()
+                    # key:value per line
+                    default_value = {} if self._default_value[name] is None else self._default_value[name]
+                    lines = [f"{k}:{v}" for k, v in default_value.items()]
+                    pt.setPlainText("\n".join(lines)); pt.setFixedHeight(80)
+                    widget = pt
+
+                # Fallback: show as string
+                else:
+                    raise NotImplementedError(f"not gui implementation for type {name}; {att_type} --> {type_origin} from {default.annotation}. {att_args}")
+
+                if add_none_option :
                     sub_layout = QHBoxLayout()
-                    for val in self._default_value[name]:
-                        sb = QSpinBox()
-                        sb.setRange(-1_000_000, 1_000_000)
-                        sb.setValue(val if not val is None else 0)
-                        sub_layout.addWidget(sb)
-                        spinboxes.append(sb)
-                    widget = sub_layout
-                    self._widgets[name + "__tuple__"] = spinboxes
-            
-                elif all(x is str for x in att_args):
-                    line_edits = []
-                    sub_layout = QHBoxLayout()
-                    for val in self._default_value[name]:
-                        le = QLineEdit()
-                        le.setText(val)
-                        sub_layout.addWidget(le)
-                        line_edits.append(le)
-                    widget = sub_layout
-                    self._widgets[name + "__tuple__"] = line_edits
+                    cb = QCheckBox()
+                    cb.setChecked(not self._default_value[name] is None)
+                    
+                    sub_layout.addWidget(cb)
+                    sub_layout.addWidget(widget, stretch=1)
+                    
+                    self._widgets[name+"__tuple__"] = [widget, cb]
+                    form.addRow(QLabel(name.replace('_', ' ').capitalize()), sub_layout)
+
                 else :
-                    raise NotImplementedError()
-
-            # List of simple types
-            elif att_type is list :
-                le = QLineEdit()
-                # join list to comma-separated string
-                le.setText(
-                    ','.join(str(x) if not x is None else '' for x in self._default_value[name]) if not self._default_value[name] is None else ""
-                )
-                widget = le
-            
-            # Dict[str, simple]
-            elif att_type is dict :
-                pt = QPlainTextEdit()
-                # key:value per line
-                default_value = {} if self._default_value[name] is None else self._default_value[name]
-                lines = [f"{k}:{v}" for k, v in default_value.items()]
-                pt.setPlainText("\n".join(lines)); pt.setFixedHeight(80)
-                widget = pt
-
-            # Fallback: show as string
-            else:
-                raise NotImplementedError(f"not gui implementation for type {name}; {att_type} --> {type_origin} from {default.annotation}. {att_args}")
-
-            if add_none_option :
-                sub_layout = QHBoxLayout()
-                sub_layout.addWidget(widget)
-                cb = QCheckBox()
-                cb.setChecked(not self._default_value[name] is None)
-                sub_layout.addWidget(cb)
-                self._widgets[name+"__tuple__"] = [widget, cb]
-                form.addRow(QLabel(name.replace('_', ' ').capitalize()), sub_layout)
-    
-            else :
-                form.addRow(QLabel(name.replace('_', ' ').capitalize()), widget)
-            self._widgets[name] = widget
+                    form.addRow(QLabel(name.replace('_', ' ').capitalize()), widget)
+                self._widgets[name] = widget
 
         # Buttons
         btn_layout = QHBoxLayout()
@@ -142,9 +186,7 @@ class ParametersModifier(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(ok_btn)
         btn_layout.addWidget(cancel_btn)
-
-        form.addRow(btn_layout)
-        self.setLayout(form)
+        self.main_layout.addLayout(btn_layout)
 
     
     def get_parameters(self) -> Dict[str,Any] :
