@@ -22,7 +22,7 @@ dependencies = [
 "czifile",
 "magicgui",
 "matplotlib",
-"napari[all]",
+"napari[PySide]",
 "numpy",
 "pandas",
 "smfishtools>=0.1.0",
@@ -33,7 +33,7 @@ dependencies = [
 "smfishtools",
 "pebble",
 "openpyxl",
-"ome_types,
+"ome_types",
 "lxml"
 ]
 
