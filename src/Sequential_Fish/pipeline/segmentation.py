@@ -67,7 +67,7 @@ def main(run_path) :
 
         image_path = sub_data['full_path'].iat[0] #First washout, also avoid opening all images together.
         image_map = sub_data['fish_map'].iat[0] #First washout, also avoid opening all images together.
-        with tifffile.TiffFile(path) as tif :
+        with tifffile.TiffFile(image_path) as tif :
             image = tif.asarray() 
         image = reorder_image_stack(image, image_map)
         
