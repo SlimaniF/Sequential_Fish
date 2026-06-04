@@ -5,7 +5,6 @@ Aims at finding drift value for each field of view and store it into a dataframe
 import os
 import multiprocessing
 from typing import cast
-from itertools import cycle
 
 import pandas as pd
 import numpy as np
@@ -13,9 +12,10 @@ import smfishtools.preprocessing.alignement as prepro
 from tqdm import tqdm
 from pebble import ProcessPool
 from multiprocessing.shared_memory import SharedMemory
+import tifffile
 
 from ..settings import PipelineParameters
-from ..tools import open_image, reorder_image_stack
+from ..tools import reorder_image_stack
 from ..settings import get_settings
 
 def main(run_path) :
@@ -107,7 +107,8 @@ def process_location(
     path = sub_acq['full_path'].iat[0]
     image_map = sub_acq['fish_map'].iat[0]
 
-    image = open_image(path)
+    with tifffile.TiffFile(path) as tif :
+        image = tif.asarray() 
     image = reorder_image_stack(image, image_map)
     if len(image.shape) != 5 : raise DimensionError(f"Expected 5 dimensions for image stack got {image.ndim}")
     image = image[:,DRIFT_SLICE_TO_REMOVE[0]:DRIFT_SLICE_TO_REMOVE[1]]
