@@ -126,7 +126,7 @@ def main(run_path) :
         logging.info("Segmentation labels saved.")
 
         if PLOT_VISUALS :
-            if DO_3D_SEGMENTATION_CYTOPLASM :
+            if DO_3D_SEGMENTATION_CYTOPLASM or DO_3D_SEGMENTATION_NUCLEUS :
                 logging.warning("Cannot represent 3D segmentation in 2D png file. To check segmentation results use viewer module.") 
             else :
                 plot.plot_segmentation_boundary(

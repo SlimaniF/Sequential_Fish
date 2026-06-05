@@ -76,6 +76,11 @@ def main(run_path) :
             Drift
         ], axis=0)
 
+        print("Drift_save\n", Drift_save)
+
+        Drift_save.to_feather(run_path + '/result_tables/Drift_test.feather')
+        Drift_save.to_excel(run_path + '/result_tables/Drift_test.xlsx')
+
 
     print("All locations computed. Saving results...")
     Drift_save['voxel_size'] = [VOXEL_SIZE] * len(Drift_save)
