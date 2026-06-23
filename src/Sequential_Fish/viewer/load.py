@@ -32,7 +32,10 @@ class LoadWidget(NapariWidget) :
         super().__init__()
         self.viewer = viewer
         self._wrap_with_threading()
-        self.color_table = self._create_color_table(table_dict)
+        if not table_dict is None :
+            self.color_table = self._create_color_table(table_dict)
+        else :
+            self.color_table = pd.DataFrame()
 
     def _wrap_with_threading(self):
         """

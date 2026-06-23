@@ -74,7 +74,7 @@ class ThresholdSelector(LoadWidget) :
         self.layer_name = ""
         self.do_update = False
         
-        super().__init__(viewer=viewer)
+        super().__init__(viewer=viewer,table_dict=None)
 
     def _update_filtered_image(self) :
 
