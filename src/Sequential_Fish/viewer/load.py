@@ -10,11 +10,12 @@ import numpy as np
 import pandas as pd
 
 from napari.types import LayerDataTuple
-from napari.qt.threading import thread_worker, create_worker
+from napari.qt.threading import create_worker
 from magicgui import magicgui
 
 from ..tools.utils import open_all_locations_one_cycle, safe_merge_no_duplicates
 from .utils import open_segmentation, update_layer_from_LayerDataTuple
+from .utils import get_colors_list, _get_blue_colors, _get_green_colors, _get_orange_colors, _get_red_colors, _get_yellow_colors, _get_pink_colors, _get_purple_colors
 from .types import NapariWidget
 from ..customtypes import table_dict_type
 
@@ -27,10 +28,11 @@ class LoadWidget(NapariWidget) :
     Subclass of NapariWidget aimed for widgets returning a LayerDataTuple, it wraps the loading process into a worker thread to not pause the main GUI thread.
     """
 
-    def __init__(self, *, viewer : Viewer):
+    def __init__(self, *, viewer : Viewer, table_dict):
         super().__init__()
         self.viewer = viewer
         self._wrap_with_threading()
+        self.color_table = self._create_color_table(table_dict)
 
     def _wrap_with_threading(self):
         """
@@ -46,6 +48,33 @@ class LoadWidget(NapariWidget) :
                 return worker
             # Replace the widget's function with the threaded version
             self.widget._function = threaded_func
+
+    def _create_color_table(self, tables_dict) :
+        color_table = tables_dict['Gene_map'].loc[:,['map_id','target']]
+        target_number = len(color_table)
+        colors = get_colors_list(target_number, remove_black=True, remove_grey=True, remove_brown=True)
+        color_table['color'] = colors
+
+        colormaps_dict = {
+            "blue" : _get_blue_colors (),
+            "red" : _get_red_colors(),
+            "bop orange" : _get_orange_colors(),
+            "magenta" : _get_pink_colors(),
+            "green" : _get_green_colors(),
+            "yellow" : _get_yellow_colors(),
+            "bop purple" : _get_purple_colors() 
+        }
+
+        colormaps = []
+        for color in color_table['color'] :
+            for colormap, color_list in colormaps_dict.items() :
+                if color in color_list : 
+                    colormaps.append(colormap)
+                    break
+                
+        color_table['colormaps'] = colormaps
+
+        return color_table
 
 _LOAD_WIDGETS : 'list[NapariWidget]' = []
 def register_load_widget(cls) :
@@ -83,7 +112,6 @@ class SpotsLoader(LoadWidget) :
         self, 
         table_dict : table_dict_type,
         voxel_size :tuple, 
-        color_table,
         viewer : Viewer,
         **_
     ) :
@@ -111,8 +139,7 @@ class SpotsLoader(LoadWidget) :
         self.update(list(self.Acquisition['location'].unique()))
 
         self.voxel_size = voxel_size
-        self.color_table = color_table
-        super().__init__(viewer=viewer)
+        super().__init__(viewer=viewer, table_dict=table_dict)
 
     def update(self, locations) :
 
@@ -231,7 +258,6 @@ class ClustersLoader(LoadWidget) :
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple, 
-            color_table,
             viewer : Viewer,
             **_
             ):
@@ -261,8 +287,7 @@ class ClustersLoader(LoadWidget) :
         self.update(list(self.Acquisition['location'].unique()))
 
         self.voxel_size = voxel_size
-        self.color_table = color_table
-        super().__init__(viewer=viewer)
+        super().__init__(viewer=viewer, table_dict=table_dict)
 
     def update(self, locations) :
 
@@ -367,7 +392,6 @@ class SignalLoader(LoadWidget) :
             self, 
             table_dict : table_dict_type,
             voxel_size :tuple, 
-            color_table : pd.DataFrame,
             viewer : Viewer,
             **_
             ):
@@ -387,10 +411,10 @@ class SignalLoader(LoadWidget) :
         
         self.update(list(self.Acquisition.index.get_level_values(0).unique()))
 
-        self.color_table = color_table.set_index("target",verify_integrity=True)
         self.voxel_size = voxel_size
         self.has_beads = not cast(bool,self.Acquisition['bead_channel'].isna().all())
-        super().__init__(viewer=viewer)
+        super().__init__(viewer=viewer, table_dict=table_dict)
+        self.color_table = self.color_table.set_index("target",verify_integrity=True)
 
     def update(self, locations) :
 
@@ -504,7 +528,7 @@ class SegmentationLoader(LoadWidget) :
             self.enabled=False
 
         self.voxel_size = voxel_size
-        super().__init__(viewer=viewer)
+        super().__init__(viewer=viewer, table_dict=table_dict)
 
     def update(self,locations) :
 

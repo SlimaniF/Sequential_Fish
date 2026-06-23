@@ -207,7 +207,9 @@ def _get_coloc_rates_for_checkers(
 
     table_path = os.path.join(run_path,"analysis","co_localization","datasheet","coloc_rates_mean.csv")
     if not os.path.isfile(table_path) : raise FileNotFoundError("Couldn't find coloc rates table, run first co-localization analysis")
-    coloc_table = pd.read_csv(table_path).set_index("target")
+    coloc_table = pd.read_csv(table_path, sep=";")
+    coloc_table.info()
+    coloc_table = coloc_table.set_index("target")
 
     coloc_rates = {key : float(coloc_table.at[pair[0],pair[1]]) for key,pair in checkers.items()}
 
@@ -296,6 +298,8 @@ def process_similarity_metrics(
     run_path : str,
     ) :
 
+    print(Gene_map)
+    print(Gene_map['target'])
     Gene_map = Gene_map.set_index("target", verify_integrity=True)
     drift_initcycle = Gene_map.at[drift_namepair[0],"cycle"], Gene_map.at[drift_namepair[0],"color_id"]
     drift_endcycle = Gene_map.at[drift_namepair[1],"cycle"], Gene_map.at[drift_namepair[1],"color_id"]

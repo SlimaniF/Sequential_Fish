@@ -123,9 +123,17 @@ def plot_spot_is_found_heatmap(
     ) ->Axes :
 
     linkage_matrix = linkage(spot_is_found_per_cell)
-    dn = dendrogram(linkage_matrix, no_plot=True)
-    target_order = dn["leaves"]
-    del dn
+    try :
+        dn = dendrogram(linkage_matrix, no_plot=True)
+    except RecursionError as e :
+        if str(e) == "maximum recursion depth exceeded" :
+            target_order = np.arange(len(spot_is_found_per_cell))
+        else :
+            raise e
+    else :
+        target_order = dn["leaves"]
+        del dn
+    
     spot_is_found_per_cell = spot_is_found_per_cell.iloc[target_order]
  
     sns.heatmap(

@@ -18,7 +18,7 @@ class ParametersModel(BaseModel) :
         return cls()
     
     @classmethod
-    def get_tab_names(cls) -> set[str]:
+    def get_tab_names(cls) -> list[str]:
         """Return all names found in json_schema_extra with key 'tab'."""
 
         tab_names = set()
@@ -32,7 +32,7 @@ class ParametersModel(BaseModel) :
             else :
                 raise AssertionError("json_schema_extra not None nor dict")
         
-        return tab_names
+        return sorted(tab_names)
 
     @classmethod
     def get_parameters_from_tab(cls, tab_name : str) -> dict[str, FieldInfo]:
@@ -113,32 +113,32 @@ class AnalysisParameters(ParametersModel) :
     """
 
     #Plots
-    frameon : bool = Field(default=True)
+    frameon : bool = Field(default=True, json_schema_extra={"tab" : "General"})
     
     #Preprocessing
-    FILTER_RNA : list[str] | None = Field(default=None)
-    FILTER_CYCLE : dict[str,list[int]] | None = Field(default=None)
-    RENAME_RULE : dict[str,str] | None = Field(default=None)
+    FILTER_RNA : list[str] | None = Field(default=None, json_schema_extra={"tab" : "General"})
+    FILTER_CYCLE : dict[str,list[int]] | None = Field(default=None, json_schema_extra={"tab" : "General"})
+    RENAME_RULE : dict[str,str] | None = Field(default=None, json_schema_extra={"tab" : "General"})
 
     #Distributions
-    distribution_measures : list[str] | None = Field(default=None)
+    distribution_measures : list[str] | None = Field(default=None, json_schema_extra={"tab" : "Distribution"})
 
     #Chromatic abberration
-    reference_wavelength : int | None = Field(default=555) #None to ignore chromatic abberations correction
+    reference_wavelength : int | None = Field(default=555, json_schema_extra={"tab" : "ChromaticAbberations"}) #None to ignore chromatic abberations correction
 
     #Density analysis
-    min_diversity : int = Field(default=2)
-    min_spots_number : int = Field(default=2)
-    cluster_radius : int = Field(default=0)
+    min_diversity : int = Field(default=2, json_schema_extra={"tab" : "Density"})
+    min_spots_number : int = Field(default=2, json_schema_extra={"tab" : "Density"})
+    cluster_radius : int = Field(default=0, json_schema_extra={"tab" : "Density"})
 
     #Co-localization analysis
-    coloc_distance : int = Field(default=0)
-    coloc_significance : float = Field(default=10e-3)
-    foci_rnas : list[str] | None = Field(default=None)
+    coloc_distance : int = Field(default=0, json_schema_extra={"tab" : "Colocalization"})
+    coloc_significance : float = Field(default=10e-3, json_schema_extra={"tab" : "Colocalization"})
+    foci_rnas : list[str] | None = Field(default=None, json_schema_extra={"tab" : "Colocalization"})
 
     #Dashboard
-    drift_checker : tuple[str,str] = Field(default=("",""))
-    chroma_checker : tuple[str,str] = Field(default=("",""))
+    drift_checker : tuple[str,str] = Field(default=("",""), json_schema_extra={"tab" : "General"})
+    chroma_checker : tuple[str,str] = Field(default=("",""), json_schema_extra={"tab" : "General"})
 
     @classmethod
     def get_filename(cls) :

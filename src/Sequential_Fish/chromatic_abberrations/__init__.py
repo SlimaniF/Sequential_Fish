@@ -12,6 +12,6 @@ from .correction import correct_Spots_dataframe
 
 from .constant import CALIBRATION_FOLDER
 
-def run(*args) :
+def run(run_path, *args) :
     from .launch_calibration import main
-    main()
+    main(run_path)

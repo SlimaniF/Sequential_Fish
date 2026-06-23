@@ -86,7 +86,7 @@ def main():
         print("Done.")
 
     elif module in ["chromatic_abberations", "calibration", "calib"] :
-        chromatic_abberrations.run()
+        chromatic_abberrations.run(RUN_PATH)
     
     elif module == "settings" :
         if len(submodules) != 1 : raise ValueError(f"To set settings please enter one setting name from {ALLOWED_SETTINGS}")

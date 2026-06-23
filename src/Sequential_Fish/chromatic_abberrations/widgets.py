@@ -244,11 +244,17 @@ class ChromaticAberrationCorector(NapariWidget) :
         ) ->  Image :
             
             voxel_size = spatial_reference.scale
-            self.voxel_size = tuple([int(v) for v in voxel_size]) # save as reference if user save calibration
-            
             #Convert pixel coordinates to nm to account for anisotropy
-            coords1 = spatial_reference.data * voxel_size
-            coords2 = spatial_reference_shifted.data * voxel_size
+            if len(voxel_size) == 4 :
+                voxel_size = voxel_size[1:]
+            if image_abberation.data.ndim == 4 :
+                coords1 = spatial_reference.data[:,1:] * voxel_size
+                coords2 = spatial_reference_shifted.data[:,1:] * voxel_size
+
+            else :
+                coords1 = spatial_reference.data * voxel_size
+                coords2 = spatial_reference_shifted.data * voxel_size
+            self.voxel_size = tuple([int(v) for v in voxel_size]) # save as reference if user save calibration
 
             beads, dist = match_beads(
                 coords1= coords1,
@@ -267,16 +273,23 @@ class ChromaticAberrationCorector(NapariWidget) :
                                                 beads,
                                                 degree=degree
                                                 )
-            
+
+            if image_abberation.data.ndim == 3 :
+                image_abberation_data = np.array(image_abberation.data)
+            else :
+                image_abberation_data = np.array(image_abberation.data[0])
+
+            print("image_abberation_data ndim: ",image_abberation_data.ndim)
 
             image_corrected = apply_polynomial_transform_to_signal(
-                image_abberation.data,
+                image_abberation_data,
                 poly=self.polynomial_features,
                 model_x=self.model_x,
                 model_y=self.model_y,
                 model_z=self.model_z,
                 voxel_size=voxel_size
             )
+            if image_corrected.ndim == 3 : image_corrected = image_corrected.reshape((1,) + tuple(image_corrected.shape))
 
             return Image(
                 data= image_corrected,

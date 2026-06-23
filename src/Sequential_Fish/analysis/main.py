@@ -108,8 +108,6 @@ def run(run_path,*args) :
         Cell=Cell
     )
 
-
-
     if "distributions" in args or "all" in args :
         if not analysis_parameters.distribution_measures is None and len(analysis_parameters.distribution_measures) > 0:
             distribution_sucess = distributions_analysis(
@@ -139,30 +137,8 @@ def run(run_path,*args) :
         if not density_sucess :
             print("Error raised during density analysis. Please check log in ~analysis/density_analysis folder.")
 
-#GENERAL DATA QUALITY DASHBOARDS
-    any_pipeline_metrics = any((
-        "pipeline" in args,
-        "pipeline_metrics" in args,
-        "pipeline metrics" in args,
-    ))
-    if any_pipeline_metrics or "all" in args:
-        sucess = launch_dashboards(
-            run_path,
-            Spots=Spots,
-            Cell=Cell,
-            Acquisition=Acquisition,
-            Gene_map=Gene_map,
-            Drift=Drift,
-            Detection=Detection,
-            coloc_range=analysis_parameters.coloc_distance,
-            drift_checker= analysis_parameters.drift_checker,
-            chroma_checker=analysis_parameters.chroma_checker
-        )
-        if not sucess :
-            print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")
 
-
-# COLOCALIZATION
+    # COLOCALIZATION
     any_paircoloc = any((
         'coloc' in args,
         'colocalisation' in args,
@@ -194,6 +170,28 @@ def run(run_path,*args) :
 
         if not coloc_sucess :
             print(f"Error raised during coloc analysis. Please check log in ~analysis/co_localization/")
+
+    #GENERAL DATA QUALITY DASHBOARDS
+    any_pipeline_metrics = any((
+        "pipeline" in args,
+        "pipeline_metrics" in args,
+        "pipeline metrics" in args,
+    ))
+    if any_pipeline_metrics or "all" in args:
+        sucess = launch_dashboards(
+            run_path,
+            Spots=Spots,
+            Cell=Cell,
+            Acquisition=Acquisition,
+            Gene_map=Gene_map,
+            Drift=Drift,
+            Detection=Detection,
+            coloc_range=analysis_parameters.coloc_distance,
+            drift_checker= analysis_parameters.drift_checker,
+            chroma_checker=analysis_parameters.chroma_checker
+        )
+        if not sucess :
+            print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")
 
 
 def _spots_merge_data(
