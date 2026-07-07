@@ -3,8 +3,6 @@ import os
 import logging
 from typing import cast
 
-from napari.components.camera import R
-
 from Sequential_Fish.settings.settings import ALLOWED_SETTINGS, SETTINGS_NAMES
 
 from . import viewer, pipeline, analysis, chromatic_abberrations

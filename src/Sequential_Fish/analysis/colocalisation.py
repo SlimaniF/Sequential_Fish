@@ -466,7 +466,7 @@ def get_combinations_abundancies() :
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, AsinhNorm, LinearSegmentedColormap, TwoSlopeNorm
 from scipy.cluster.hierarchy import linkage, dendrogram
-from matplotlib.cm import get_cmap
+from matplotlib import colormaps
 from itertools import product
 import matplotlib
 
@@ -519,10 +519,10 @@ def _plot_heatmap(
     
     
     if cmap is None : 
-        cmap = get_cmap('inferno')
+        cmap = colormaps['inferno']
         cmap.set_bad('gray')
     elif isinstance(cmap, str) :
-        cmap = get_cmap(cmap)
+        cmap = colormaps[cmap]
         cmap.set_bad('gray')
     
     if norm is None :
