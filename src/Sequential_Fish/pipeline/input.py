@@ -34,6 +34,7 @@ def main(run_path) :
     DAPI_CHANNEL = pipeline_parameters.DAPI_CHANNEl
     BEAD_CHANNEL = pipeline_parameters.BEAD_CHANNEl
     FISH_FOLDER = pipeline_parameters.FISH_FOLDER
+    LOCATION_KEYWORD = pipeline_parameters.LOCATION_KEYWORD
     has_bead_channel = not BEAD_CHANNEL is None
     WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
     
@@ -45,7 +46,7 @@ def main(run_path) :
     file_dict = assert_run_folder_integrity(
         run_path=run_path,
         fish_folder=FISH_FOLDER,
-        nucleus_folder=FISH_FOLDER
+        location_key_word=LOCATION_KEYWORD
         )
     location_list = list(file_dict.keys())
     location_list.sort()

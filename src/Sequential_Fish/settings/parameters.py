@@ -57,6 +57,7 @@ class PipelineParameters(ParametersModel) :
     
     #PATH to run folder, images and location to save
     FISH_FOLDER : str = Field(default= "FISH_Z-stacks", json_schema_extra={"tab" : "general"})
+    LOCATION_KEYWORD : str = Field(default="Location-", json_schema_extra={"tab" : "general"})
     
     #Microscope parameters
     VOXEL_SIZE : tuple[int,int,int] = Field(default=(200,97,97), json_schema_extra={"tab" : "general"})
