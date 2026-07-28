@@ -2,6 +2,7 @@
 Main script to call for analysis pipeline.
 """
 import os
+import logging
 import pandas as pd
 from typing import cast
 import numpy as np
@@ -9,12 +10,10 @@ import numpy as np
 from ..settings import get_settings
 from ..settings import AnalysisParameters
 
-from .post_processing import Spots_filtering
+from .post_processing import Spots_post_processing, apply_user_configuration
 from .density import density_analysis
 from .distributions import distributions_analysis
 from .colocalisation import main as coloc_main
-from ..tools import safe_merge_no_duplicates
-from ..chromatic_abberrations import correct_Spots_dataframe
 from .dashboards import main as launch_dashboards
 
 
@@ -25,17 +24,23 @@ def run(run_path,*args) :
     if '-h' in args or '--help' in args :    
         print(f"Avalaible modules are {ANALYSIS_MODULES}")
         return True
-    
-    if run_path is None : quit()
-    else : print(run_path)
 
+    #Init
     analysis_parameters = cast(AnalysisParameters, get_settings(run_path, settings_name="analysis"))
-    
     REQUIRED_TABLES = ["Acquisition", "Detection", "Spots", "Clusters", "Drift", "Gene_map", "Cell"]
     truth_table = np.array([os.path.isfile(os.path.join(run_path, "result_tables", table +".feather")) for table in REQUIRED_TABLES], dtype=bool)
     if not all(truth_table) :
         raise FileNotFoundError(f"All data tables could not be found in result directory. Missing {np.array(REQUIRED_TABLES)[~truth_table]}.")
 
+    log_path = os.path.join(run_path,"analysis","analysis_log.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    logging.basicConfig(
+        filename=log_path,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+    )
+
+    #Loading tables
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
     Detection = pd.read_feather(run_path + "/result_tables/Detection.feather")
     Spots = pd.read_feather(run_path + "/result_tables/Spots.feather")
@@ -43,71 +48,27 @@ def run(run_path,*args) :
     Gene_map = pd.read_feather(run_path + "/result_tables/Gene_map.feather")
     Cell = pd.read_feather(run_path + "/result_tables/Cell.feather")
 
-    #Post-processing
-    if not analysis_parameters.reference_wavelength is None :
-        print("Correcting chromatic abberations :")
-        print(f"reference wavelength : {analysis_parameters.reference_wavelength}")
-        print(f"found wavelengths : {list(Detection["wavelength"].unique())}")
-        Spots = correct_Spots_dataframe(#Chromatic abberation correction
-            Detection=Detection,
-            Spots=Spots,
-            reference_wavelength= analysis_parameters.reference_wavelength
-        ) 
-    unfiltered_Spots = Spots.copy()
-    
-    #Rename target
-    if not analysis_parameters.RENAME_RULE is None :
-        Gene_map["target"] = Gene_map['target'].replace(analysis_parameters.RENAME_RULE)
-
-    #Filter RNA
-    if not analysis_parameters.FILTER_RNA is None :
-        loc_map = Gene_map.loc[Gene_map["target"].isin(analysis_parameters.FILTER_RNA), ["cycle","color_id"]]
-        filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
-        Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
-
-    #Filter cycles :
-    if not analysis_parameters.FILTER_CYCLE is None :
-        for target, cycles in analysis_parameters.FILTER_CYCLE.items() :
-            loc_map = Gene_map.loc[
-                (Gene_map["target"] == target) & (Gene_map["cycle"].isin(cycles)) ,
-                ["cycle","color_id"]
-                ]
-            filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
-            Spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
-
-    
-    Spots = Spots_filtering(
-        Spots,
-        filter_washout=True,
-        segmentation_filter=True,
-        Cell=Cell,
-        Detection=Detection
-    )
-    
-    Spots_with_washout = Spots_filtering(
-        unfiltered_Spots,
-        filter_washout=False,
-        segmentation_filter=True,
-        Cell=Cell,
-        Detection=Detection
-    )
-
-    Spots = _spots_merge_data(
+    #User defined filters
+    Gene_map, Detection, Spots = apply_user_configuration(
+        Gene_map=Gene_map,
+        Detection=Detection,
         Spots=Spots,
-        Acquisition=Acquisition,
-        Detection=Detection,
-        Gene_map=Gene_map,
-        Cell=Cell
+        rename_rule=analysis_parameters.RENAME_RULE,
+        filter_cycle=analysis_parameters.FILTER_CYCLE,
+        filter_rna=analysis_parameters.FILTER_RNA
     )
 
-    Spots_with_washout = _spots_merge_data(
-        Spots=Spots_with_washout,
-        Acquisition=Acquisition,
+    #Post-processing
+    Spots = Spots_post_processing(
+        Spots=Spots,
+        Cell=Cell,
         Detection=Detection,
+        Acquisition=Acquisition,
         Gene_map=Gene_map,
-        Cell=Cell
+        reference_wavelength = analysis_parameters.reference_wavelength
     )
 
+    # Call to analysis submodules
     if "distributions" in args or "all" in args :
         if not analysis_parameters.distribution_measures is None and len(analysis_parameters.distribution_measures) > 0:
             distribution_sucess = distributions_analysis(
@@ -123,7 +84,6 @@ def run(run_path,*args) :
                 print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
     
     if "density" in args  or "all" in args:
-        
         density_sucess = density_analysis(
             Acquisition=Acquisition,
             Detection=Detection,
@@ -136,7 +96,6 @@ def run(run_path,*args) :
         )
         if not density_sucess :
             print("Error raised during density analysis. Please check log in ~analysis/density_analysis folder.")
-
 
     # COLOCALIZATION
     any_paircoloc = any((
@@ -193,48 +152,6 @@ def run(run_path,*args) :
         if not sucess :
             print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")
 
-
-def _spots_merge_data(
-    Spots : pd.DataFrame,
-    Acquisition : pd.DataFrame,
-    Detection : pd.DataFrame,
-    Gene_map : pd.DataFrame,
-    Cell : pd.DataFrame,
-    ) :
-    """
-    Merge required information into Spots df
-    """
-    
-    Detection = safe_merge_no_duplicates(
-    Detection,
-    Acquisition,
-    on= ['acquisition_id'],
-    keys=['cycle','location', 'fish_reodered_shape']
-    )
-
-    Detection = safe_merge_no_duplicates(
-        Detection,
-        Gene_map,
-        on= ['cycle','color_id'],
-        keys=['target']
-    )
-
-    Spots =safe_merge_no_duplicates(
-        Spots,
-        Detection,
-        on= 'detection_id',
-        keys= ['location','target', 'voxel_size', 'fish_reodered_shape']
-    )
-
-    Spots = safe_merge_no_duplicates(
-        Spots,
-        Cell.rename(columns={'label' : 'cell_label'}),
-        on=['acquisition_id','detection_id','cell_label'],
-        keys=['cell_id']
-    )
-
-
-    return Spots
 
 def add_foci_to_analysis(
     Spots : pd.DataFrame, 

@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 
 from ..tools import safe_merge_no_duplicates
 from .utils import distribution_super_plot, merge_data
-from .post_processing import RNA_filtering
 from .utils import get_xlabels
 
 def distributions_analysis(
@@ -14,7 +13,7 @@ def distributions_analysis(
     Cell : pd.DataFrame,
     Spots : pd.DataFrame,
     Gene_map : pd.DataFrame,
-    disibutions_measures : 'list[str]',
+    distributions_measures : 'list[str]',
     run_path :str,
 ) :
     
@@ -30,9 +29,7 @@ def distributions_analysis(
 )
     
     try :
-        print("Starting distribution analysis...")
-        logging.info(f"New density analysis")
-        logging.info(f"Distribution_measures :\n{disibutions_measures}")
+        logging.info(f"Starting distributions plotting for following metrics : {distributions_measures}") 
         
         Detection, Cell, Spots = merge_data(
             Acquisition=Acquisition,
@@ -50,7 +47,7 @@ def distributions_analysis(
         )
         Cell = Cell.loc[~Cell['target'].str.contains('Washout')]
 
-        for measure in disibutions_measures :
+        for measure in distributions_measures :
         
             data = Cell.groupby('target')[measure].apply(list)
 
@@ -83,13 +80,13 @@ def distributions_analysis(
             plt.close()
     
     except Exception as e :
-        logging.error(f"analysis failed :\n{traceback.format_exc()}")
+        logging.error(f"\nDistributions plotting failed :\n{traceback.format_exc()}\n")
         
         
         return False
         
     else :
-        logging.info(f"analysis succeed")
+        logging.info(f"\nDistribution plotting success\n")
         
         return True
         
