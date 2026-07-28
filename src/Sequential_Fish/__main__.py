@@ -4,6 +4,7 @@ import logging
 from typing import cast
 
 from Sequential_Fish.settings.settings import ALLOWED_SETTINGS, SETTINGS_NAMES
+from Sequential_Fish import __version__
 
 from . import viewer, pipeline, analysis, chromatic_abberrations
 from . import settings as settings_module
@@ -48,7 +49,7 @@ def main():
             format='%(asctime)s - %(levelname)s - %(message)s',
         )
 
-        logging.info("\n\nSequential Fish is starting\n")
+        logging.info(f"\n\nSequential Fish is starting\n --- v{__version__}")
 
 
         if not os.path.isfile(RUN_PATH + "/pipeline_settings.json") :
