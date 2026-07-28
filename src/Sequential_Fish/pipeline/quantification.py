@@ -22,6 +22,7 @@ def main(run_path) :
     pipeline_parameters = get_settings(run_path)
     pipeline_parameters = cast(PipelineParameters, pipeline_parameters)
     MAX_WORKERS = max(pipeline_parameters.quantif_MAX_WORKERS, multiprocessing.cpu_count())
+    SEGMENT_ONLY_NUCLEI = pipeline_parameters.SEGMENT_ONLY_NUCLEI
     
     Acquisition = pd.read_feather(run_path + '/result_tables/Acquisition.feather')
     Drift = pd.read_feather(run_path + '/result_tables/Drift.feather')
@@ -76,7 +77,10 @@ def main(run_path) :
         dapi_list = [image_stack[i,...,dapi_channel] for i in range(len(image_stack))] * color_number #Ordered by ("color_id",cycle) --> 1,2,3,4,5,... ; end of color 1 ; 1,2,3,4,5 
         assert dapi_list[0].ndim == 2, f"{dapi_list[0].shape}"
 
-        nucleus_label, cytoplasm_label = match_nuc_cell(nucleus_label, cytoplasm_label, single_nuc=True, cell_alone=False)
+        if SEGMENT_ONLY_NUCLEI :
+            cytoplasm_label = nucleus_label
+        else :
+            nucleus_label, cytoplasm_label = match_nuc_cell(nucleus_label, cytoplasm_label, single_nuc=True, cell_alone=False)
 
         #Getting Detection ids for this fov
 

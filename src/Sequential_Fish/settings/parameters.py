@@ -75,6 +75,7 @@ class PipelineParameters(ParametersModel) :
     #Segmentation parameters
     DO_3D_SEGMENTATION_NUCLEUS : bool = Field(default=False, json_schema_extra={"tab" : "segmentation"})
     DO_3D_SEGMENTATION_CYTOPLASM : bool = Field(default=False, json_schema_extra={"tab" : "segmentation"})
+    SEGMENT_ONLY_NUCLEI : bool = Field(default=False, json_schema_extra={"tab" : "segmentation"})
     MODEL_DICT : dict[str,str] = Field(default_factory=lambda : {'nucleus_model' : 'cpsam', 'cytoplasm_model' : 'cpsam'}, json_schema_extra={"tab" : "segmentation"})
     OBJECT_SIZE_DICT : dict[str,int] = Field(default_factory=lambda : {'nucleus_size' : 60, 'cytoplasm_size' : 80}, json_schema_extra={"tab" : "segmentation"})
     FLOW_3D_SMOOTH : dict[str,int] = Field(default_factory=lambda : {'nucleus' : 0, 'cytoplasm' : 0}, json_schema_extra={"tab" : "segmentation"})

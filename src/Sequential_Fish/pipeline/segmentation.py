@@ -31,6 +31,7 @@ def main(run_path) :
     OBJECT_SIZE_DICT = pipeline_parameters.OBJECT_SIZE_DICT
     DO_3D_SEGMENTATION_NUCLEUS = pipeline_parameters.DO_3D_SEGMENTATION_NUCLEUS
     DO_3D_SEGMENTATION_CYTOPLASM = pipeline_parameters.DO_3D_SEGMENTATION_CYTOPLASM
+    SEGMENT_ONLY_NUCLEI = pipeline_parameters.SEGMENT_ONLY_NUCLEI
     FLOW_3D_SMOOTH = pipeline_parameters.FLOW_3D_SMOOTH
     VOXEL_SIZE = pipeline_parameters.VOXEL_SIZE
     DAPI_CHANNEl = pipeline_parameters.DAPI_CHANNEl
@@ -94,26 +95,30 @@ def main(run_path) :
             )
 
         #Cytoplasm segmentation
-        if not DO_3D_SEGMENTATION_NUCLEUS :
-            cytoplasm_image = np.mean(image,axis=0)
+        if SEGMENT_ONLY_NUCLEI :
+            cytoplasm_label = np.empty_like(nucleus_label)
         else :
-            cytoplasm_image = image
 
-        if image.shape[-1] > 2 :
-            cytoplasm_image = np.mean(cytoplasm_image[...,:DAPI_CHANNEl], axis=-1)
-        else :
-            cytoplasm_image = image[...,DAPI_CHANNEl-1]
-        cytoplasm_label, *_ = cytoplasm_model.eval(
-            cytoplasm_image, 
-            diameter= OBJECT_SIZE_DICT['cytoplasm_size'], 
-            do_3D= DO_3D_SEGMENTATION_CYTOPLASM, 
-            z_axis=0 if DO_3D_SEGMENTATION_CYTOPLASM else None,
-            flow3D_smooth=FLOW_3D_SMOOTH["cytoplasm"],
-            anisotropy=anisotropy,
-            flow_threshold=FLOW_THRESHOLD["cytoplasm"], #not used for 3D
-            cellprob_threshold=CELLPROB_THRESHOLD["cytoplasm"],
-            min_size=MIN_SIZE["cytoplasm"]
-            )
+            if not DO_3D_SEGMENTATION_NUCLEUS :
+                cytoplasm_image = np.mean(image,axis=0)
+            else :
+                cytoplasm_image = image
+
+            if image.shape[-1] > 2 :
+                cytoplasm_image = np.mean(cytoplasm_image[...,:DAPI_CHANNEl], axis=-1)
+            else :
+                cytoplasm_image = image[...,DAPI_CHANNEl-1]
+            cytoplasm_label, *_ = cytoplasm_model.eval(
+                cytoplasm_image, 
+                diameter= OBJECT_SIZE_DICT['cytoplasm_size'], 
+                do_3D= DO_3D_SEGMENTATION_CYTOPLASM, 
+                z_axis=0 if DO_3D_SEGMENTATION_CYTOPLASM else None,
+                flow3D_smooth=FLOW_3D_SMOOTH["cytoplasm"],
+                anisotropy=anisotropy,
+                flow_threshold=FLOW_THRESHOLD["cytoplasm"], #not used for 3D
+                cellprob_threshold=CELLPROB_THRESHOLD["cytoplasm"],
+                min_size=MIN_SIZE["cytoplasm"]
+                )
 
 
         #Saving labels
