@@ -20,14 +20,6 @@ def distributions_analysis(
     output_path = run_path + "/analysis/distribution_analysis/"
     os.makedirs(output_path, exist_ok=True)
     
-    log_file = output_path + "/distribution_analysis_log.log"
-    logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    force= True
-)
-    
     try :
         logging.info(f"Starting distributions plotting for following metrics : {distributions_measures}") 
         
@@ -51,33 +43,11 @@ def distributions_analysis(
         
             data = Cell.groupby('target')[measure].apply(list)
 
-            fig = plt.figure(figsize=(16,8))
-            ax = fig.gca()
-            ax = distribution_super_plot(
-                data,
-                ax,
-                ylabel=measure,
-                title= f"Distribution of {measure} per cell",
+            generate_distribution_graph(
+                data=data,
+                measure=measure,
+                output_path=output_path
             )
-
-            if 'index' in measure :
-                min_x,max_x,min_y,max_y = plt.axis()
-                ax.plot([min_x, max_x], [1,1], '--b')
-            
-            xlabels = get_xlabels(ax)
-            cycles = Cell.groupby('target')['cycle'].first()
-            cell_numbers = Cell.groupby('target')['cell_id'].count()
-            for i, label_data in enumerate(zip(xlabels.copy(), cycles, cell_numbers)) :
-                label, cycle, cell_number = label_data
-                xlabels[i] = f"{label}\n({cycle})\n[{cell_number}]"
-            
-            if len(xlabels) > 15 :
-                ax.set_xticklabels(xlabels, rotation=30)
-            else :
-                ax.set_xticklabels(xlabels, rotation=0)
-
-            plt.savefig(output_path + f"/{measure}.svg")
-            plt.close()
     
     except Exception as e :
         logging.error(f"\nDistributions plotting failed :\n{traceback.format_exc()}\n")
@@ -89,4 +59,39 @@ def distributions_analysis(
         logging.info(f"\nDistribution plotting success\n")
         
         return True
-        
+
+
+def generate_distribution_graph(
+        data : pd.Series,
+        measure : str,
+        Cell : pd.DataFrame,
+        output_path : str
+) :
+
+    fig = plt.figure(figsize=(16,8))
+    ax = fig.gca()
+    ax = distribution_super_plot(
+        data,
+        ax,
+        ylabel=measure,
+        title= f"Distribution of {measure} per cell",
+    )
+
+    if 'index' in measure :
+        min_x,max_x,min_y,max_y = plt.axis()
+        ax.plot([min_x, max_x], [1,1], '--b')
+    
+    xlabels = get_xlabels(ax)
+    cycles = Cell.groupby('target')['cycle'].first()
+    cell_numbers = Cell.groupby('target')['cell_id'].count()
+    for i, label_data in enumerate(zip(xlabels.copy(), cycles, cell_numbers)) :
+        label, cycle, cell_number = label_data
+        xlabels[i] = f"{label}\n({cycle})\n[{cell_number}]"
+    
+    if len(xlabels) > 15 :
+        ax.set_xticklabels(xlabels, rotation=30)
+    else :
+        ax.set_xticklabels(xlabels, rotation=0)
+
+    plt.savefig(output_path + f"/{measure}.svg")
+    plt.close()

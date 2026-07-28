@@ -648,13 +648,6 @@ def main(
     output_path = run_path + "/analysis/co_localization/"
     os.makedirs(output_path, exist_ok=True)
     
-    log_file = output_path + "/error_log.log"
-    logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    force= True
-    )
     error_count = 0
 
     try :

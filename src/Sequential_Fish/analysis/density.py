@@ -356,14 +356,6 @@ def density_analysis(
     output_path = run_path + "/analysis/density_analysis/"
     os.makedirs(output_path, exist_ok=True)
     
-    log_file = output_path + "/density_analysis_log.log"
-    logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    force= True
-)
-    
     try : 
         print("Starting density analysis...")
         logging.info(f"New density analysis")

@@ -196,6 +196,9 @@ def _remove_cycles(
         Detection : pd.DataFrame,
         Spots : pd.DataFrame,        
 ) :
+
+    if filter_cycles is None :
+        return Detection, Spots
     
     for target, cycles in filter_cycles.items() :
         loc_map = Gene_map.loc[
