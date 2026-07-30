@@ -163,6 +163,10 @@ def main(run_path) :
     Acquisition['dapi_channel'] = DAPI_CHANNEL
     Acquisition['bead_channel'] = BEAD_CHANNEL
 
+    threshold_columns = Acquisition.columns[Acquisition.columns.str.contains("Threshold")]
+    if Acquisition.loc[:, threshold_columns].isna().any().any() :
+        raise ValueError("Found empty values in thresholds.")
+
     map_dict ={"cycle" : list(cycle_map[CYCLE_KEY])}
     map_dict.update({
         "{0}".format(gene_number) : list(cycle_map[gene_key]) for gene_number, gene_key in enumerate(GENES_NAMES_KEY)

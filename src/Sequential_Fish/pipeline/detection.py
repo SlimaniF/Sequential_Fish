@@ -9,6 +9,7 @@ import os
 import multiprocessing
 import logging
 from typing import cast
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -38,6 +39,11 @@ def main(run_path) :
     DETECTION_SLICE_TO_REMOVE = pipeline_parameters.DETECTION_SLICE_TO_REMOVE
     WAVELENGTH_LIST = pipeline_parameters.WAVELENGTH_LIST
     MAX_WORKERS = min(multiprocessing.cpu_count(), pipeline_parameters.detection_MAX_WORKERS)
+
+    warnings.filterwarnings(
+        "ignore",
+        message="Problem occurs during the computation of a reference spot. Not enough (uncropped) spots have been detected."
+    )
 
     #Loading data
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -117,7 +123,6 @@ def main(run_path) :
         if threshold_col_mask.any() :
             threshold_col = Acquisition.columns[threshold_col_mask]
             Detection_line_number = len(Detection)
-            Acquisition.loc[:,threshold_col] = Acquisition.loc[:,threshold_col].fillna('').replace('',None)
             Detection = pd.merge(
                 left= Detection,
                 right= Acquisition.loc[:,['acquisition_id'] + list(Acquisition.columns[threshold_col_mask])],

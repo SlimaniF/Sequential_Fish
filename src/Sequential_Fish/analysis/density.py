@@ -359,7 +359,7 @@ def density_analysis(
     try : 
         print("Starting density analysis...")
         logging.info(f"New density analysis")
-        logging.info(f"min_number_spots :\n{min_number_spots}\min_diversity :\n{min_diversity}\cluster_radius :\n{cluster_radius}\n")
+        logging.info(f"min_number_spots :{min_number_spots}\nmin_diversity :{min_diversity}\ncluster_radius :{cluster_radius}\n")
         
         #Data processing
         Spots = merge_data_in_Spots(
