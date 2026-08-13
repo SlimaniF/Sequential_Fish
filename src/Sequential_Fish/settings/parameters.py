@@ -2,7 +2,6 @@
 from pydantic import BaseModel, Field
 import warnings
 
-from pydantic.config import JsonDict
 from pydantic.fields import FieldInfo
 
 class ParametersModel(BaseModel) :
@@ -141,6 +140,9 @@ class AnalysisParameters(ParametersModel) :
     #Dashboard
     drift_checker : tuple[str,str] = Field(default=("",""), json_schema_extra={"tab" : "General"})
     chroma_checker : tuple[str,str] = Field(default=("",""), json_schema_extra={"tab" : "General"})
+
+    #Multivariate_exploratory
+    control_genes : list[str] | None = Field(default=None, json_schema_extra={"tab" : "Multivariate"})
 
     @classmethod
     def get_filename(cls) :
