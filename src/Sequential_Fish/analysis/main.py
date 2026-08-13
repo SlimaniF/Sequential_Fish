@@ -15,6 +15,7 @@ from .density import density_analysis
 from .distributions import distributions_analysis
 from .colocalisation import main as coloc_main
 from .dashboards import main as launch_dashboards
+from .exploratory_analysis import main as launch_multivariate_analysis
 
 
 ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
@@ -39,6 +40,8 @@ def run(run_path,*args) :
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
     )
+
+    logging.info(f"Starting analysis with args : {args}")
 
     #Loading tables
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -79,7 +82,7 @@ def run(run_path,*args) :
                 Spots=Spots,
                 Gene_map=Gene_map,
                 run_path=run_path,
-                disibutions_measures= analysis_parameters.distribution_measures
+                distributions_measures= analysis_parameters.distribution_measures
             )
             if not distribution_sucess :
                 print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
@@ -106,12 +109,13 @@ def run(run_path,*args) :
         'pair' in args,
         'pair-colocalisation' in args,
         'pair-colocalization' in args,
+        'all' in args,
         
     ))
     if any_paircoloc or "all" in args:
 
         if not analysis_parameters.foci_rnas is None :
-            Spots = add_foci_to_analysis(
+            Spots = _add_foci_to_analysis(
                 Spots,
                 foci_rnas=analysis_parameters.foci_rnas
             )
@@ -129,7 +133,21 @@ def run(run_path,*args) :
         )
 
         if not coloc_sucess :
-            print(f"Error raised during coloc analysis. Please check log in ~analysis/co_localization/")
+            print("Error raised during coloc analysis. Please check log in ~analysis/")
+
+    # Exploratory analysis
+    exploration_kw = ["multivariate","data", "structure", "all"]
+    if any((kw in args for kw in exploration_kw)) :
+
+        exploration_sucess = launch_multivariate_analysis(
+            run_path=run_path,
+            Spots=Spots,
+            colocalisation_distance=analysis_parameters.coloc_distance,
+            control_genes=analysis_parameters.control_genes
+        )
+
+        if not exploration_sucess :
+            print("Error raised during multivariate exploratory analysis. Please check log in ~analysis/")
 
     #GENERAL DATA QUALITY DASHBOARDS
     any_pipeline_metrics = any((
@@ -154,7 +172,7 @@ def run(run_path,*args) :
             print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")
 
 
-def add_foci_to_analysis(
+def _add_foci_to_analysis(
     Spots : pd.DataFrame, 
     foci_rnas : list[str]
     ) :

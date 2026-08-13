@@ -27,7 +27,7 @@ def Spots_post_processing(
         Cell=Cell,
         Detection=Detection,
     )
-    
+
     Spots = _spots_merge_data(
         Spots=Spots,
         Acquisition=Acquisition,
@@ -36,9 +36,10 @@ def Spots_post_processing(
         Cell=Cell
     )
 
+
     if not reference_wavelength is None :
             logging.info(
-                f"Correcting chromatic abberations :\nreference wavelength : {reference_wavelength}\nfound wavelengths : {list(Detection["wavelength"].unique())}"
+                f"Correcting chromatic abberations :\n\t -> reference wavelength : {reference_wavelength}\n\t -> found wavelengths : {list(Detection["wavelength"].unique())}"
                 )
     
             Spots = correct_Spots_dataframe(
@@ -103,10 +104,10 @@ def _spots_merge_data(
     """
     
     Detection = safe_merge_no_duplicates(
-    Detection,
-    Acquisition,
-    on= ['acquisition_id'],
-    keys=['cycle','location', 'fish_reodered_shape']
+        Detection,
+        Acquisition,
+        on= ['acquisition_id'],
+        keys=['cycle','location', 'fish_reodered_shape']
     )
 
     Detection = safe_merge_no_duplicates(
@@ -173,6 +174,7 @@ def _rename_targets(
 ) :
     if not rule is None :
         Gene_map["target"] = Gene_map['target'].replace(rule)
+
     return Gene_map
 
 def _remove_rna(
@@ -184,9 +186,9 @@ def _remove_rna(
     if filter_rna is None :
         return Detection, Spots
 
-    loc_map = Gene_map.loc[Gene_map["target"].isin(filter_rna), ["cycle","color_id"]]
-    filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"])),["detection_id"]]
-    filtered_spots = Spots.loc[~Spots["detection_id"].isin(filtered_detection.squeeze())]
+    loc_map = Gene_map.loc[~Gene_map["target"].isin(filter_rna), ["cycle","color_id"]]
+    filtered_detection  = Detection.loc[(Detection["cycle"].isin(loc_map["cycle"])) & (Detection["color_id"].isin(loc_map["color_id"]))]
+    filtered_spots = Spots.loc[Spots["detection_id"].isin(filtered_detection["detection_id"])]
 
     return filtered_detection, filtered_spots
 
