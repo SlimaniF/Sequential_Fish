@@ -151,14 +151,10 @@ def _compute_colocalisation_truth_df(
 
 def colocalisation_truth_df(
     Spots : pd.DataFrame,
-    Acquisition : pd.DataFrame,
-    Detection : pd.DataFrame,
-    Gene_map : pd.DataFrame,
-    Cell : pd.DataFrame,
     population_1 : Literal['all','clustered','free'] = 'all',
     population_2 : Literal['all','clustered','free']= 'all',
     colocalisation_distance : int = 400,
-    ) :
+    ) -> pd.DataFrame:
     """
     
     Create a dataframe where each line corresponds to one spot
@@ -732,10 +728,6 @@ def pairwise_colocalization_analysis(
     # Coloc measurements
     colocalisation_truth = colocalisation_truth_df(
         Spots=filtered_Spots,
-        Acquisition=Acquisition,
-        Detection=Detection,
-        Gene_map=Gene_map,
-        Cell=Cell,
         colocalisation_distance=colocalisation_distance
     )
 
