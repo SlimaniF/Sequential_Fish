@@ -760,7 +760,7 @@ def pairwise_colocalization_analysis(
     pvalue_frame = compute_pvalue_frame(
         zscore_frame=zscore_frame
     )
-    pvalue_frame.to_csv(output_path + "/datasheet/pvalue_frame.csv")
+    pvalue_frame.to_csv(output_path + "/datasheet/pvalue_frame.csv", sep=";")
     pvalue_mask = pvalue_frame <= significance
     
     #Create graph
