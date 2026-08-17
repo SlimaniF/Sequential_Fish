@@ -55,7 +55,7 @@ def main(
         if not os.path.isfile(zscore_path) : 
             raise FileNotFoundError("Couldn't find colocalization zscore table. Run first co-localization analysis.")
 
-        zscores = pd.read_csv(zscore_path,sep=";").iloc[1:]
+        zscores = pd.read_csv(zscore_path,sep=";")
         zscores = zscores.set_index(zscores.columns[0])
 
 
