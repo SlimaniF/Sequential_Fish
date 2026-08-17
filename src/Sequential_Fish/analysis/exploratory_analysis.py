@@ -324,6 +324,9 @@ def _network_analysis(
         partition=partition,
         )
 
+    network_graph_ax.set_ylabel(f"Edges thresholds : zcore={threshold_zscore}, coloc_rate={threshold_value*100} %")
+    network_graph_ax.set_xlabel("Network with directed Louvain communities.")
+
     return network_graph_ax
 
 def _construct_network(
@@ -394,6 +397,7 @@ def _make_network_plot(
         edgelist=edges["zscores"]["pairs"], 
         width= edges["zscores"]["width"],
         edge_color='red',
+        ax=ax
         )
     nx.draw_networkx_edge_labels(
         G,pos,
@@ -402,7 +406,8 @@ def _make_network_plot(
             edges["value"]["coloc_rate"]
             )),
 
-        verticalalignment="bottom"
+        verticalalignment="bottom",
+        ax=ax
     )
 
     
@@ -412,7 +417,8 @@ def _make_network_plot(
             width= edges["value"]["width"],
             edge_color=["black" if val > .5 else "gray" for val in edges["value"]["width"]],
             alpha=.3,
-            style=':'
+            style=':',
+            ax=ax
             )
 
 
@@ -423,9 +429,11 @@ def _make_network_plot(
         node_color=colors if partition is None else colors_com, cmap=None if partition is None else cmap,
         node_size= [np.sum(data[node]) / max_pop *2000 for node in G.nodes], 
         edgecolors="black", alpha=.5,
+        ax=ax
         )
     nx.draw_networkx_labels(
         G, pos,
+        ax=ax
         )
 
     return ax
