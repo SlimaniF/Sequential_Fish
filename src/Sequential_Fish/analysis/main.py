@@ -18,7 +18,7 @@ from .dashboards import main as launch_dashboards
 from .exploratory_analysis import main as launch_multivariate_analysis
 
 
-ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization']
+ANALYSIS_MODULES = ['all','distributions' ,'density', 'pipeline_metrics', 'pair-colocalization', 'colocalization', 'multivariate']
 
 def run(run_path,*args) :
     
@@ -152,12 +152,8 @@ def run(run_path,*args) :
             print("Error raised during multivariate exploratory analysis. Please check log in ~analysis/")
 
     #GENERAL DATA QUALITY DASHBOARDS
-    any_pipeline_metrics = any((
-        "pipeline" in args,
-        "pipeline_metrics" in args,
-        "pipeline metrics" in args,
-    ))
-    if any_pipeline_metrics or "all" in args:
+    any_pipeline_kw = ["pipeline","pipeline_metrics","pipeline metrics",'all',]   
+    if any((kw in args for kw in any_pipeline_kw)) :
         sucess = launch_dashboards(
             run_path,
             Spots=Spots,

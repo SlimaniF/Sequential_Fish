@@ -252,9 +252,9 @@ def _make_scree_plot(
     )
 
     ax.set_xticks(inertia_contribution["index"],  inertia_contribution["index"])
-    ax.set_ylabel("Contribution to intertia (fraction)")
+    ax.set_ylabel("Contribution to intertia (fraction)", fontdict={"size" : 15})
     ax.set_xlabel("Dimension")
-    ax.set_title("Multiple component analysis")
+    ax.set_title("Multiple correspondance analysis", fontdict={"size" : 18, "weight":"bold"})
     sns.despine(ax=ax)
 
     return ax
@@ -302,6 +302,7 @@ def _make_contribution_plot(
     ax.set_xticks(ax.get_xticks(), RNA, rotation=30, ha="left")
     for label, color in zip(ax.get_xticklabels(), colors) :
         label.set_color(color)
+    ax.set_title("Unitary vector coordinates (loadings)", fontdict={"size" : 10})
     
     return ax
 
@@ -324,8 +325,8 @@ def _network_analysis(
         partition=partition,
         )
 
-    network_graph_ax.set_ylabel(f"Edges thresholds : zcore={threshold_zscore}, coloc_rate={threshold_value*100} %")
-    network_graph_ax.set_xlabel("Network with directed Louvain communities.")
+    network_graph_ax.set_ylabel(f"Edges thresholds : zcore={threshold_zscore}, coloc_rate={threshold_value*100} %", fontdict={"size" : 15})
+    network_graph_ax.set_xlabel("Network with directed Louvain communities.", fontdict={"size" : 15})
 
     return network_graph_ax
 
@@ -483,8 +484,7 @@ def _make_dendogram(
 
     dendrogram(Z, labels=data.columns, leaf_rotation=0, orientation="left", ax=ax)
     sns.despine(ax=ax, left=True, right=False)
-    plt.title("Hierarchical Clustering")
-    plt.xlabel("Jaccard distance")
+    plt.xlabel("Hierarchical Clustering\n(Jaccard distance)", fontdict={"size":"15"})
 
     return ax
 
