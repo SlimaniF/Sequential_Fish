@@ -143,7 +143,9 @@ def run(run_path,*args) :
             run_path=run_path,
             Spots=Spots,
             colocalisation_distance=analysis_parameters.coloc_distance,
-            control_genes=analysis_parameters.control_genes
+            control_genes=analysis_parameters.control_genes,
+            threshold_coloc_zscore=analysis_parameters.threshold_coloc_zscore,
+            thresold_coloc_value=analysis_parameters.threshold_coloc_value
         )
 
         if not exploration_sucess :

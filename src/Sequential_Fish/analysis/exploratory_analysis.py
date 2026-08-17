@@ -10,6 +10,7 @@ import traceback
 import logging
 from itertools import cycle
 from itertools import combinations
+from itertools import permutations
 from typing import Literal
 
 import pandas as pd
@@ -24,7 +25,8 @@ from matplotlib.patches import Patch
 import prince
 import pingouin as pg
 import networkx as nx
-import community as community_louvain
+import igraph as ig
+import leidenalg as la
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import chi2
 from scipy.cluster.hierarchy import linkage, dendrogram
@@ -39,7 +41,9 @@ def main(
         run_path : str,
         Spots : pd.DataFrame,
         colocalisation_distance : int,
-        control_genes : list[str] | None
+        control_genes : list[str] | None,
+        thresold_coloc_value : float,
+        threshold_coloc_zscore : float,
 ) :
 
     exploration_path = os.path.join(run_path,"analysis","multivariate","exploration")
@@ -47,7 +51,22 @@ def main(
 
     try :
         logging.info("Starting colocalization exploratory analysis.")
-        colocalization_figure = colocalization_exploration(Spots, colocalisation_distance, run_path)
+        zscore_path = os.path.join(run_path,"analysis","co_localization","datasheet","zscore.csv")
+        if not os.path.isfile(zscore_path) : 
+            raise FileNotFoundError("Couldn't find colocalization zscore table. Run first co-localization analysis.")
+
+        zscores = pd.read_csv(zscore_path,sep=";").iloc[1:]
+        zscores = zscores.set_index(zscores.columns[0])
+
+
+        colocalization_figure = colocalization_exploration(
+            Spots, 
+            colocalisation_distance, 
+            run_path,
+            zscores=zscores,
+            threshold_coloc_rate=thresold_coloc_value,
+            threshold_zscore=threshold_coloc_zscore
+            )
         colocalization_figure.savefig(os.path.join(exploration_path,"colocalization.svg"))
 
     except Exception :
@@ -76,6 +95,9 @@ def colocalization_exploration(
         Spots : pd.DataFrame,
         colocalisation_distance : int,
         run_path : str,
+        zscores : pd.DataFrame,
+        threshold_coloc_rate : float,
+        threshold_zscore : float,
         na_policy : Literal["fill","drop"] = "fill",
 ) :
     """
@@ -98,7 +120,7 @@ def colocalization_exploration(
     if "target" not in Spots.columns : 
         raise KeyError("'target' not found in Spots columns. Did you run Spots_post_processing ?")
 
-    data_path = os.path.join(run_path,"result_tables","coloc_truth_table.csv")
+    data_path = os.path.join(run_path,"analysis","coloc_truth_table.csv")
     if os.path.isfile(data_path) :
         print(f"Using cached data at {data_path}. If you modified user parameters delete cached data.")
         logging.info(f"Using cached data at  : {data_path}")
@@ -120,7 +142,7 @@ def colocalization_exploration(
     fig = plt.figure(figsize=(18,18))
     grid = gridspec.GridSpec(5,5)
     scree_ax = fig.add_subplot(grid[0,:])
-    mca_intertia_ax = fig.add_subplot(grid[0,:3])
+    mca_intertia_ax = fig.add_subplot(grid[1,:3])
     network_graph_ax = fig.add_subplot(grid[2:,:3])
     dendogram_ax = fig.add_subplot(grid[1:,3:])
 
@@ -132,7 +154,13 @@ def colocalization_exploration(
     )
 
     #2. Network_plots
-    network_graph_ax = _network_analysis(data, network_graph_ax)
+    network_graph_ax = _network_analysis(
+        data, 
+        zscores=zscores,
+        network_graph_ax=network_graph_ax,
+        threshold_value=threshold_coloc_rate,
+        threshold_zscore=threshold_zscore
+        )
 
 
     #3. Hierarchical clustering
@@ -171,8 +199,6 @@ def _multiple_component_analsis(
 
     scree_ax = _make_scree_plot(inertia_contribution, scree_ax)
     mca_intertia_ax = _make_contribution_plot(mca, inertia_contribution, mca_intertia_ax)
-
-
 
     return scree_ax, mca_intertia_ax
 
@@ -282,47 +308,79 @@ def _make_contribution_plot(
 #2.
 def _network_analysis(
         data : pd.DataFrame,
+        zscores : pd.DataFrame,
         network_graph_ax : Axes,
+        threshold_zscore : float = 1,
+        threshold_value : float =.1,
 ) :
 
-    G = _construct_network(data)
-    partition = community_louvain.best_partition(G, resolution=1.0)
-    network_graph_ax = _make_network_plot(G,partition,network_graph_ax)
+    G, edges = _construct_network(data, zscores, threshold_zscore=threshold_zscore, threshold_value=threshold_value)
+    partition = _find_communities(G)
+    network_graph_ax = _make_network_plot(
+        G,
+        edges,
+        network_graph_ax,
+        data,
+        partition=partition,
+        )
 
     return network_graph_ax
 
-def _construct_network(data : pd.DataFrame) :
-    # Initialize an empty graph
-    G = nx.Graph()
+def _construct_network(
+        data : pd.DataFrame, 
+        zscores:pd.DataFrame,
+        threshold_zscore : float = 1,
+        threshold_value: float = .1 ,
+        ) :
+    G = nx.DiGraph()
+    edges = {
+        "zscores" : {"pairs" : [], "width" : []},
+        "value" : {"pairs" : [], "width" : [], "coloc_rate" : []},
+    }
 
     # Add nodes (RNAs)
     for rna in data.columns:
         G.add_node(rna)
 
-    # Add edges: connect RNAs that co-localize in at least one spot
-    for _, row in data.iterrows():
-        # Get RNAs that co-localize in this spot (value = 1)
-        co_localized = row[row == 1].index.tolist()
-        # Add edges for all pairs in this spot
-        for i in range(len(co_localized)):
-            for j in range(i + 1, len(co_localized)):
-                # Add edge if it doesn't already exist (or increment weight)
-                if G.has_edge(co_localized[i], co_localized[j]):
-                    G[co_localized[i]][co_localized[j]]['weight'] += 1
-                else:
-                    G.add_edge(co_localized[i], co_localized[j], weight=1)
+    for rna1, rna2 in permutations(data.columns.to_list(),r=2) :
 
-    return G
+        if rna1 == rna2 : continue
+        zscore = zscores.at[rna1,rna2]
+
+        if abs(zscore)>=threshold_zscore  : 
+            edges['zscores']["pairs"].append((rna1,rna2))
+            edges['zscores']["width"].append(zscore / 50 *20)
+
+        coloc_number = np.sum(([data[rna1] & data[rna2]]))
+        population_size = np.sum(data[rna1])
+
+        coloc_rate = coloc_number/population_size
+        if coloc_rate >= threshold_value : 
+            edges["value"]["pairs"].append((rna1,rna2))
+            edges["value"]["width"].append(max(.5,coloc_rate*10))
+            edges["value"]["coloc_rate"].append(str(round(coloc_rate*100, 2)) + " %" if coloc_rate >0.01 else "")
+
+        if coloc_rate >= threshold_value or abs(zscore)>=threshold_zscore :
+            G.add_edge(rna1,rna2, weight=coloc_rate)
+
+    return G, edges
 
 def _make_network_plot(
         G : nx.Graph,
-        partition : dict,
-        ax : Axes
+        edges : dict[Literal["zscores", "value"], tuple],
+        ax : Axes,
+        data : pd.DataFrame,
+        partition : dict | None = None,
 ) :
 
     # Assign colors to communities
-    colors_com = [partition[node] / len(G.nodes()) for node in G.nodes()]
-    pos = nx.spring_layout(G, seed=42)
+    if not partition is None :
+        colors_com = [partition[node] / len(G.nodes()) for node in G.nodes()]
+    else : 
+        colors_com = None
+
+
+    pos = nx.spring_layout(G, seed=1)
     colors = cycle(['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f'])
     colors = [next(colors) for i in range(len(G.nodes))]
 
@@ -331,19 +389,61 @@ def _make_network_plot(
         list(zip(np.linspace(0,1,len(colors)),colors))
         )
 
-    nx.draw(
-        G,
-        pos,
-        with_labels=True,
-        node_color=colors_com,
-        cmap=cmap,
-        edge_color='gray',
-        node_size=1000,
-        ax=ax
+    nx.draw_networkx_edges(
+        G,pos=pos, 
+        edgelist=edges["zscores"]["pairs"], 
+        width= edges["zscores"]["width"],
+        edge_color='red',
+        )
+    nx.draw_networkx_edge_labels(
+        G,pos,
+        edge_labels= dict(zip(
+            edges["value"]["pairs"],
+            edges["value"]["coloc_rate"]
+            )),
+
+        verticalalignment="bottom"
     )
-    ax.set_ylabel("Co-localization Network with Communities")
+
+    
+    nx.draw_networkx_edges(
+            G,pos=pos, 
+            edgelist=edges["value"]["pairs"], 
+            width= edges["value"]["width"],
+            edge_color=["black" if val > .5 else "gray" for val in edges["value"]["width"]],
+            alpha=.3,
+            style=':'
+            )
+
+
+    max_pop = data.sum(axis=0).max()
+
+    nx.draw_networkx_nodes(
+        G, pos, 
+        node_color=colors if partition is None else colors_com, cmap=None if partition is None else cmap,
+        node_size= [np.sum(data[node]) / max_pop *2000 for node in G.nodes], 
+        edgecolors="black", alpha=.5,
+        )
+    nx.draw_networkx_labels(
+        G, pos,
+        )
 
     return ax
+
+
+def _find_communities(G : nx.DiGraph) :
+    edges = [(u, v, d.get("weight", 1.0)) for u, v, d in G.edges(data=True)]
+    igG = ig.Graph.TupleList(edges, directed=True, edge_attrs=["weight"])
+
+    part = la.find_partition(
+        igG,
+        la.ModularityVertexPartition,        # or RBConfigurationVertexPartition
+        weights="weight",
+        n_iterations=-1,
+    )
+    partition = {igG.vs[i]["name"]: part.membership[i] for i in range(igG.vcount())}
+
+    return partition
 
 #3.
 def _hierarchical_clustering_analysis(
