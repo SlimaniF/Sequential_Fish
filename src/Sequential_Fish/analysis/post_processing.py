@@ -43,15 +43,15 @@ def Spots_post_processing(
 
 
     if not reference_wavelength is None :
-            logging.info(
-                f"Correcting chromatic abberations :\n\t -> reference wavelength : {reference_wavelength}\n\t -> found wavelengths : {list(Detection["wavelength"].unique())}"
-                )
+        logging.info(
+            f"Correcting chromatic abberations :\n\t -> reference wavelength : {reference_wavelength}\n\t -> found wavelengths : {list(Detection["wavelength"].unique())}"
+            )
     
-            Spots = correct_Spots_dataframe(
-                Detection=Detection,
-                Spots=Spots,
-                reference_wavelength= reference_wavelength
-            ) 
+        Spots = correct_Spots_dataframe(
+            Detection=Detection,
+            Spots=Spots,
+            reference_wavelength= reference_wavelength
+        ) 
 
     return Spots
 
@@ -303,9 +303,13 @@ def _create_cache_colocalization_truth_table(
         reference_wavelength=reference_wv
     )
 
+    Spots.info()
+
     coloc_truth_df= colocalisation_truth_df(
         Spots=Spots,
         colocalisation_distance=colocalization_distance
     )
+
+    coloc_truth_df.info()
 
     return coloc_truth_df
