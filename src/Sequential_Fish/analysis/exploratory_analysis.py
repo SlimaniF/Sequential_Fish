@@ -51,7 +51,7 @@ def main(
 
     try :
         logging.info("Starting colocalization exploratory analysis.")
-        zscore_path = os.path.join(run_path,"analysis","co_localization","datasheet","zscore.csv")
+        zscore_path = os.path.join(run_path,"analysis","data","zscore.csv")
         if not os.path.isfile(zscore_path) : 
             raise FileNotFoundError("Couldn't find colocalization zscore table. Run first co-localization analysis.")
 
@@ -120,7 +120,7 @@ def colocalization_exploration(
     if "target" not in Spots.columns : 
         raise KeyError("'target' not found in Spots columns. Did you run Spots_post_processing ?")
 
-    data_path = os.path.join(run_path,"analysis","coloc_truth_table.csv")
+    data_path = os.path.join(run_path,"analysis","data","coloc_truth_table.csv")
     if os.path.isfile(data_path) :
         print(f"Using cached data at {data_path}. If you modified user parameters delete cached data.")
         logging.info(f"Using cached data at  : {data_path}")
@@ -498,7 +498,7 @@ def expression_exploration(
     Perform exploratory analysis to identify structures in RNAs expression data.
     """
 
-    data_path = os.path.join(run_path,"result_tables","expression.csv")
+    data_path = os.path.join(run_path,"analysis","data","expression.csv")
     if os.path.isfile(data_path) :
         print(f"Using cached data at {data_path}. If you modified user parameters delete cached data.")
         logging.info(f"Using cached data at  : {data_path}")

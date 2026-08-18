@@ -40,7 +40,8 @@ def main(
         drift_checker=drift_checker,
         chroma_checker=chroma_checker
     )
-    signal_figure.savefig(os.path.join(save_folder,"signal_dashboard.svg"))
+    if not signal_figure is None :
+        signal_figure.savefig(os.path.join(save_folder,"signal_dashboard.svg"))
     close(signal_figure)
 
     return True

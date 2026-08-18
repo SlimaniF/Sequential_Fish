@@ -641,7 +641,7 @@ def main(
         significance : float = 1e-4,
         frameon = True, 
 ) :
-    output_path = run_path + "/analysis/co_localization/"
+    output_path = run_path + "/analysis/"
     os.makedirs(output_path, exist_ok=True)
     
     error_count = 0
@@ -752,15 +752,15 @@ def pairwise_colocalization_analysis(
     #Save datasheet
     os.makedirs(output_path + "/datasheet/",exist_ok=True)
     mean_coloc_rates = coloc_rates.groupby('target',level=0,dropna=True).mean()
-    mean_coloc_rates.to_csv(output_path + "/datasheet/coloc_rates_mean.csv", sep=";")
+    mean_coloc_rates.to_csv(output_path + "/data/coloc_rates_mean.csv", sep=";")
     median_zscore = zscore_frame.groupby('target',level=0).median()
-    median_zscore.to_csv(output_path + "/datasheet/zscore.csv", sep=";")
+    median_zscore.to_csv(output_path + "/data/zscore.csv", sep=";")
     
     #p-values computation
     pvalue_frame = compute_pvalue_frame(
         zscore_frame=zscore_frame
     )
-    pvalue_frame.to_csv(output_path + "/datasheet/pvalue_frame.csv", sep=";")
+    pvalue_frame.to_csv(output_path + "/data/pvalue_frame.csv", sep=";")
     pvalue_mask = pvalue_frame <= significance
     
     #Create graph

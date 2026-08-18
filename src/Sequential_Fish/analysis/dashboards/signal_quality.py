@@ -8,9 +8,9 @@ from typing import Literal, TypedDict, cast
 from cycler import K
 import numpy as np
 import pandas as pd
+import warnings
+import logging
 
-from seaborn.utils import axlabel
-from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import mean_squared_error
 from scipy.stats import pearsonr
 from pebble import ProcessPool, ThreadPool
@@ -205,10 +205,9 @@ def _get_coloc_rates_for_checkers(
     **checkers : tuple[str,str]
     ) :
 
-    table_path = os.path.join(run_path,"analysis","co_localization","datasheet","coloc_rates_mean.csv")
+    table_path = os.path.join(run_path,"analysis","data","coloc_rates_mean.csv")
     if not os.path.isfile(table_path) : raise FileNotFoundError("Couldn't find coloc rates table, run first co-localization analysis")
     coloc_table = pd.read_csv(table_path, sep=";")
-    coloc_table.info()
     coloc_table = coloc_table.set_index("target")
 
     coloc_rates = {key : float(coloc_table.at[pair[0],pair[1]]) for key,pair in checkers.items()}
@@ -265,7 +264,6 @@ def _process_location(
     abb_initcycle : tuple[int,int],
     abb_endcycle : tuple[int,int],
     ) :
-    pass
 
     location_stack = open_location(Acquisition, location)
     location_stack = location_stack.max(axis=1)
@@ -323,8 +321,8 @@ def process_similarity_metrics(
     res = pd.concat(res,axis=0)
 
     print("saving similarity metrics...")
-    os.makedirs(os.path.join(run_path,"result_tables"), exist_ok=True)
-    res.to_csv(os.path.join(run_path,"result_tables","similarity.csv"), sep=';')
+    os.makedirs(os.path.join(run_path,"data"), exist_ok=True)
+    res.to_csv(os.path.join(run_path,"data","similarity.csv"), sep=';')
     print("done")
     
 
@@ -355,11 +353,16 @@ def signal_quality_dashboard(
         on=["cycle","color_id"],
         keys=["target"]
     )
-    Cell = safe_merge_no_duplicates(
+
+    if any((not checker in Detection["target"].unique().tolist() for checker in drift_checker + chroma_checker)) :
+        warnings.warn(f"Couldn't find one of {drift_checker +chroma_checker} in detection. Available columns are {Detection["target"].unique()}. \nEnsure correct spelling or that it was not filtered out for signal quality dashboard.")
+        logging.error(f"Couldn't find one of {drift_checker +chroma_checker} in detection. Available columns are {Detection["target"].unique()}. \nEnsure correct spelling or that it was not filtered out for signal quality dashboard.")
+        return None
+
+    Cell = pd.merge(
         Cell,
-        Detection,
+        Detection.loc[:,["detection_id", "target","cycle","color_id","wavelength"]],
         on="detection_id",
-        keys=["target","cycle","color_id","wavelength"]
     )
 
     #1.
@@ -373,7 +376,7 @@ def signal_quality_dashboard(
     )
 
     #3. Similarity measurements
-    similarity_path = os.path.join(run_path,"result_tables","similarity.csv")
+    similarity_path = os.path.join(run_path,"data","similarity.csv")
     if not os.path.isfile(similarity_path) :
         similarity_df = process_similarity_metrics(
             Gene_map=Gene_map,
