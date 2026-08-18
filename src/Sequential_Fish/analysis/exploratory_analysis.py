@@ -118,11 +118,11 @@ def colocalization_exploration(
 
     target_list = Spots["target"].unique().tolist()
 
-    data_path = os.path.join(run_path,"analysis","data","truth_table.csv")
+    data_path = os.path.join(run_path,"result_tables","coloc_truth_table.feather")
     if os.path.isfile(data_path) :
         print(f"Using cached data at {data_path}. If you modified cycle filtering relaunch co-localization analysis first.")
         logging.info(f"Using cached data at  : {data_path} if you modified cycle filtering remember to relaunch co-localization analysis first.")
-        data = pd.read_csv(data_path, sep=";").loc[:,target_list]
+        data = pd.read_feather(data_path).loc[:,target_list]
         for rna in target_list :
             data.loc[data["target"] == rna, rna] = True
     else :
@@ -481,13 +481,8 @@ def expression_exploration(
     """
 
     data_path = os.path.join(run_path,"analysis","data","expression.csv")
-    if os.path.isfile(data_path) :
-        print(f"Using cached data at {data_path}. If you modified user parameters delete cached data.")
-        logging.info(f"Using cached data at  : {data_path}")
-        data = pd.read_csv(data_path, sep=";").iloc[:,1:]
-    else :
-        data = _make_data_table_expression(Spots)
-        data.to_csv(data_path,sep=";")
+    data = _make_data_table_expression(Spots)
+    data.to_csv(data_path,sep=";")
 
     if na_policy == "fill" : # Na values when a distribution was not detected in cell
         data = data.fillna(0) 

@@ -49,9 +49,9 @@ from scipy.ndimage import distance_transform_edt
 
 pd.set_option('future.no_silent_downcasting', True)
 
-"""
-1. Data co-localization pariwise rates : Compute actual co-colocalization pairwise rates.
-"""
+# 
+# 1. Data co-localization pariwise rates : Compute actual co-colocalization pairwise rates.
+# 
 
 def _get_population_index(
     Spots : pd.DataFrame, 
@@ -116,26 +116,26 @@ def _compute_colocalisation_truth_df(
     
     population1_index = _get_population_index(Spots, population_key=population_1)
     RNAs = list(spots_coordinates_df.index.get_level_values(1).unique())
-    colocalisation_truth_df = pd.DataFrame(index=population1_index, columns= RNAs, dtype=bool)
-    colocalisation_truth_df = colocalisation_truth_df.join(Spots.loc[:,['spot_id','location','target', 'z','y','x','voxel_size']])
+    coloc_truth_df = pd.DataFrame(index=population1_index, columns= RNAs, dtype=bool)
+    coloc_truth_df = coloc_truth_df.join(Spots.loc[:,['spot_id','location','target', 'z','y','x','voxel_size']])
 
     #converting coordinates to nanometers
-    colocalisation_truth_df['voxel_size_z'], colocalisation_truth_df['voxel_size_y'], colocalisation_truth_df['voxel_size_x'] = list(zip(*colocalisation_truth_df['voxel_size']))
-    colocalisation_truth_df['z'] *= colocalisation_truth_df['voxel_size_z'] 
-    colocalisation_truth_df['y'] *= colocalisation_truth_df['voxel_size_y'] 
-    colocalisation_truth_df['x'] *= colocalisation_truth_df['voxel_size_x'] 
-    colocalisation_truth_df['coordinates'] = list(zip(colocalisation_truth_df['z'], colocalisation_truth_df['y'], colocalisation_truth_df['x']))
+    coloc_truth_df['voxel_size_z'], coloc_truth_df['voxel_size_y'], coloc_truth_df['voxel_size_x'] = list(zip(*coloc_truth_df['voxel_size']))
+    coloc_truth_df['z'] *= coloc_truth_df['voxel_size_z'] 
+    coloc_truth_df['y'] *= coloc_truth_df['voxel_size_y'] 
+    coloc_truth_df['x'] *= coloc_truth_df['voxel_size_x'] 
+    coloc_truth_df['coordinates'] = list(zip(coloc_truth_df['z'], coloc_truth_df['y'], coloc_truth_df['x']))
 
-    colocalisation_truth_df = colocalisation_truth_df.drop(columns=['z','y','x','voxel_size','voxel_size_z','voxel_size_y','voxel_size_x'])
+    coloc_truth_df = coloc_truth_df.drop(columns=['z','y','x','voxel_size','voxel_size_z','voxel_size_y','voxel_size_x'])
     
-    for location in colocalisation_truth_df['location'].unique() :
-        target_idx = colocalisation_truth_df[colocalisation_truth_df['location'] == location].index
+    for location in coloc_truth_df['location'].unique() :
+        target_idx = coloc_truth_df[coloc_truth_df['location'] == location].index
         for rna in RNAs :
             if not (location,rna) in neighbor_models_dict : 
                 warnings.warn(f"No spots detected at {location} for target {rna}.")
                 continue
             model : NearestNeighbors = neighbor_models_dict[(location, rna)]
-            coordinates = list(colocalisation_truth_df.loc[target_idx]['coordinates'].apply(np.array,dtype=int))
+            coordinates = list(coloc_truth_df.loc[target_idx]['coordinates'].apply(np.array,dtype=int))
             coordinates = np.array(coordinates, dtype=int)
 
             query = model.radius_neighbors(coordinates, return_distance=False)
@@ -144,9 +144,9 @@ def _compute_colocalisation_truth_df(
             else :
                 query = pd.Series(query, index=target_idx).apply(len).apply(bool) #if count is 0 no colocalisation -> False else True
 
-            colocalisation_truth_df.loc[target_idx,[rna]] = query
+            coloc_truth_df.loc[target_idx,[rna]] = query
     
-    return colocalisation_truth_df
+    return coloc_truth_df
 
 
 def colocalisation_truth_df(
@@ -189,7 +189,7 @@ def colocalisation_truth_df(
         colocalisation_distance=colocalisation_distance
         )
     
-    colocalisation_truth_df = _compute_colocalisation_truth_df(
+    coloc_truth_df = _compute_colocalisation_truth_df(
         real_spots_coordinates_df, 
         Spots.loc[population_1_index], 
         neighbor_models_dict,
@@ -206,14 +206,14 @@ def colocalisation_truth_df(
         ).set_index('spot_id', drop=False, verify_integrity=True)
     
     for rna in list(Spots['target'].unique()) :
-        target_spots_index = colocalisation_truth_df.loc[colocalisation_truth_df['target'] == rna].index
-        colocalisation_truth_df.loc[target_spots_index, [rna]] = self_colocalization.loc[target_spots_index, [rna]]
+        target_spots_index = coloc_truth_df.loc[coloc_truth_df['target'] == rna].index
+        coloc_truth_df.loc[target_spots_index, [rna]] = self_colocalization.loc[target_spots_index, [rna]]
     
-    return colocalisation_truth_df.reset_index(drop=True)
+    return coloc_truth_df.reset_index(drop=True)
 
 def create_cell_coloc_rates_df(
     Spots : pd.DataFrame, 
-    colocalisation_truth_df : pd.DataFrame,
+    coloc_truth_df : pd.DataFrame,
     ) -> pd.DataFrame:
     """
     Create dataframe where each index and columns correspond to `(target, cell_id)` values (i.e one line per distributions, cell_id couple)
@@ -226,14 +226,14 @@ def create_cell_coloc_rates_df(
     RNA_list = list(Spots['target'].unique())
     RNA_list.sort()
     
-    colocalisation_truth_df= safe_merge_no_duplicates(
-        colocalisation_truth_df,
+    coloc_truth_df= safe_merge_no_duplicates(
+        coloc_truth_df,
         Spots,
         on='spot_id',
         keys='cell_id'
     )
 
-    cell_coloc_rates = colocalisation_truth_df.groupby(['target','cell_id'])[RNA_list].mean() #Normalisation needs to happen after this
+    cell_coloc_rates = coloc_truth_df.groupby(['target','cell_id'])[RNA_list].mean() #Normalisation needs to happen after this
 
 
     return cell_coloc_rates
@@ -251,11 +251,11 @@ def compute_coloc_rates_mean(
     return coloc_rates
     
 
-"""
-2. Co-localization normalisation : Computes co-localization scores from modelisation
+# 
+# 2. Co-localization normalisation : Computes co-localization scores from modelisation
 
-Aim : normalize cell_coloc_rates from part 1. with modelisation expectancy.
-"""
+# Aim : normalize cell_coloc_rates from part 1. with modelisation expectancy.
+# 
 
 def _compute_corrected_positions_number(
     voxel_size : 'tuple[int]',
@@ -408,15 +408,15 @@ def compute_z_score_frame(
     z_score_df = z_score_df/expected_standard_deviation
 
     return z_score_df
-    
-"""
-3. Statistical test (p-value) VS Null-model
 
-We already created function for mean computation in a distribution -> `_compute_coloc_rate_expectancy`. But we want the equivalent with standard deviation.
+#    
+#
+# 3. Statistical test (p-value) VS Null-model
+#
+# We already created function for mean computation in a distribution -> `_compute_coloc_rate_expectancy`. But we want the equivalent with standard deviation.
+#
 
-"""
 
-from scipy.stats import shapiro #normality test
 from scipy.stats import wilcoxon
 
 def compute_wilcoxon_signed_rank(zscore_distribution)->pd.Series :
@@ -426,7 +426,7 @@ def compute_wilcoxon_signed_rank(zscore_distribution)->pd.Series :
     else :
         name =  None
 
-    statistic, pvalue = wilcoxon(zscore_distribution, nan_policy="omit") # Safe to disacard nan; cell with no spots in this distributions or expected std is 0
+    _, pvalue = wilcoxon(zscore_distribution.dropna()) # Safe to disacard nan; cell with no spots in this distributions or expected std is 0
 
     if isinstance(pvalue, (int, float)) : pvalue = [pvalue]
     if isinstance(zscore_distribution, pd.DataFrame) :
@@ -438,13 +438,13 @@ def compute_wilcoxon_signed_rank(zscore_distribution)->pd.Series :
 def compute_pvalue_frame(
         zscore_frame : pd.DataFrame,
 ) : 
-    pvalue_frame = zscore_frame.groupby(level=0).apply(lambda x: compute_wilcoxon_signed_rank(x)).droplevel(axis=0, level=1)
+    pvalue_frame = zscore_frame.groupby(level=0).apply(compute_wilcoxon_signed_rank).droplevel(axis=0, level=1)
 
     return pvalue_frame    
 
-"""
-4. Higher dimension co-localization tests
-"""
+#
+# 4. Higher dimension co-localization tests
+#
 
 def get_significative_combination() :
     pass
@@ -455,12 +455,12 @@ def get_next_combinations() :
 def get_combinations_abundancies() :
     pass
 
-"""
-5. Plots
-"""
+#
+# 5. Plots
+#
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm, AsinhNorm, LinearSegmentedColormap, TwoSlopeNorm
+from matplotlib.colors import LogNorm, LinearSegmentedColormap, TwoSlopeNorm
 from scipy.cluster.hierarchy import linkage, dendrogram
 from matplotlib import colormaps
 from itertools import product
@@ -623,11 +623,11 @@ def create_pair_colocalisation_figure(
     return fig
 
 
-"""
-
-6. Main functions
-
-"""
+#
+#  
+#  6. Main functions
+#  
+# 
 import os, logging, traceback
 
 def main(
@@ -641,38 +641,38 @@ def main(
 ) :
     output_path = run_path + "/analysis/"
     os.makedirs(output_path, exist_ok=True)
-    
-    error_count = 0
 
     try :
 
         print("Starting pairwise co-localization analysis...")
-        logging.info(f"Pairwise co-localization analysis start")
+        logging.info("Pairwise co-localization analysis start")
+
+        coloc_truth_df = pd.read_feather(
+                os.path.join(run_path,"result_tables","coloc_truth_table.feather"),
+            ).loc[:,filtered_Spots["target"].unique().tolist() + ['spot_id','location','target','coordinates']]
+
         pairwise_colocalization_analysis(
             filtered_Spots=filtered_Spots,
             Cell=Cell,
             Detection=Detection,
+            coloc_truth_df=coloc_truth_df,
             colocalisation_distance=colocalisation_distance,
             output_path=output_path,
             significance=significance,
             frameon=frameon
         )
 
-    except Exception as e :
+    except Exception :
         logging.error(f"Pairwise co-localization analysis failed :\n{traceback.format_exc()}")
-        error_count += 1
     else :
         logging.info("Pairwise co-localization sucess")
 
-    if error_count == 0 : 
-        return True
-    else :
-        return False
 
 def pairwise_colocalization_analysis(
         filtered_Spots : pd.DataFrame,
         Cell : pd.DataFrame,
         Detection : pd.DataFrame,
+        coloc_truth_df : pd.DataFrame,
         colocalisation_distance : int,
         output_path : str,
         significance : float = 1e-4,
@@ -706,34 +706,34 @@ def pairwise_colocalization_analysis(
 
     ## Filling
     for rna in RNA_list :
-        product = coloc_rates.multiply(abundancies[rna],axis=0)
+        prod = coloc_rates.multiply(abundancies[rna],axis=0)
         product_index = pd.MultiIndex.from_product([[rna], cell_ids])
 
         ###Expectancy
-        expected_event_count.loc[product_index, :] = product.values # E = n*p
+        expected_event_count.loc[product_index, :] = prod.values # E = n*p
         expected_event_count.loc[rna,[rna]] = (selfcoloc_rates[rna] * abundancies[rna]).values # Correction for selfcoloc
 
         ###Std
-        product = coloc_rates.multiply(abundancies[rna],axis=0).multiply((1-coloc_rates),axis=0) #std = sqrt(np(1-p))
-        product = product.apply(np.sqrt)
+        prod = coloc_rates.multiply(abundancies[rna],axis=0).multiply((1-coloc_rates),axis=0) #std = sqrt(np(1-p))
+        prod = prod.apply(np.sqrt)
         product_index = pd.MultiIndex.from_product([[rna], cell_ids])
-        expected_event_count_std.loc[product_index, :] = product.values
+        expected_event_count_std.loc[product_index, :] = prod.values
+
+
+    filtered_Spots.info()
+    coloc_truth_df.info()
+    print(filtered_Spots["spot_id"])
+    print(coloc_truth_df["spot_id"])
     
     # Coloc measurements
-
-    colocalisation_truth = pd.read_csv(
-        os.path.join(output_path,"analysis","data","truth_table.csv"),
-        sep=";"
-    ).loc[:,RNA_list + ['spot_id','location','target','coordinates']]
-
-    colocalisation_truth = safe_merge_no_duplicates(
-        colocalisation_truth,
+    coloc_truth_df = safe_merge_no_duplicates(
+        coloc_truth_df,
         filtered_Spots,
         on='spot_id',
         keys='cell_id'
     )
 
-    measure_coloc_events = colocalisation_truth.groupby(['target','cell_id'])[RNA_list].sum()
+    measure_coloc_events = coloc_truth_df.groupby(['target','cell_id'])[RNA_list].sum()
     assert not measure_coloc_events.isna().any().any(), "Analysis shouldn't yield nan at this point. Make sure that that previously nan values are safe to discard and discard them prior to this point." #Then safe to ignore nan values as nan values comes from 0 abundancies, ie cell without spot which should be discarded when comptuting co-localization statistic.
     coloc_rates = measure_coloc_events.divide(abundancies).replace(np.inf,np.nan).replace(-np.inf,np.nan)
     

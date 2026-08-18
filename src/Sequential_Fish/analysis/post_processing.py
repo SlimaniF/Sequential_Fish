@@ -240,11 +240,11 @@ def _cache_colocalization_data(
     run_coloc_truth_table = False
 
     cached_data_path = os.path.join(run_path,"result_tables", "coloc_truth_table.feather")
+    cache_attr = ["coloc_distance", "FILTER_CYCLE", "RENAME_RULE"] # cached data contains all run RNAs on purpose they are filtered when loading the table and using it for figures.
     if os.path.isfile(cached_data_path) : 
         df = pd.read_feather(cached_data_path, columns=["spot_id"])
         attrs : dict = df.attrs
 
-        cache_attr = ["coloc_distance", "FILTER_CYCLE", "RENAME_RULE"] # cached data contains all run RNAs on purpose they are filtered when loading the table and using it for figures.
         for key in cache_attr : 
             assert key in attrs.keys(), f"{key} was not found in cache metadata."
             if attrs[key] != getattr(analysis_parameters,key) : run_coloc_truth_table = True
@@ -254,6 +254,7 @@ def _cache_colocalization_data(
 
     if run_coloc_truth_table :
         logging.info("Update in parameters, computing co-localization truth df.")
+        logging.disable(logging.INFO)
         df = _create_cache_colocalization_truth_table(
             run_path, 
             colocalization_distance=analysis_parameters.coloc_distance, 
@@ -265,6 +266,8 @@ def _cache_colocalization_data(
         for key in cache_attr :
             df.attrs[key] = getattr(analysis_parameters,key)
         df.to_feather(cached_data_path)
+        logging.disable(logging.NOTSET)
+        logging.info("cache update completed.")
         
 
 def _create_cache_colocalization_truth_table(
@@ -275,7 +278,7 @@ def _create_cache_colocalization_truth_table(
         reference_wv : int
 ) -> pd.DataFrame :
 
-    result_path = os.path.join(run_path,"result_table")
+    result_path = os.path.join(run_path,"result_tables")
     Acquisition = pd.read_feather(os.path.join(result_path,"Acquisition.feather"))
     Detection = pd.read_feather(os.path.join(result_path,"Detection.feather"))
     Gene_map = pd.read_feather(os.path.join(result_path,"Gene_map.feather"))
