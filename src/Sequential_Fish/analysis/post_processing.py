@@ -1,11 +1,16 @@
 """
-Submodule for data post processing, eg Filtering...
+Submodule for data post processing : cycle/rna filtering, data merging, preparing cached data...
 """
 
-import pandas as pd
+import os
 import logging
+
+import pandas as pd
 from ..tools import safe_merge_no_duplicates
 from ..chromatic_abberrations import correct_Spots_dataframe
+from ..settings import AnalysisParameters
+from .colocalisation import colocalisation_truth_df
+
 
 def Spots_post_processing(
         Spots : pd.DataFrame,
@@ -142,6 +147,13 @@ def apply_user_configuration(
         filter_rna,
         filter_cycle
 ) :
+    """
+    Apply user configuration : renaming targets, rna filter, cycle filter.
+
+    # Returns
+        Gene_map, Detection, Spots
+
+    """
 
     logging.info(f"Renaming targets using rule : {rename_rule}")
     Gene_map = _rename_targets(
@@ -212,3 +224,85 @@ def _remove_cycles(
 
     return filtered_detection, filtered_spots
 
+
+def update_cache(
+        run_path : str,
+        analysis_parameters : AnalysisParameters
+) :
+
+    _cache_colocalization_data(run_path, analysis_parameters)
+
+def _cache_colocalization_data(
+        run_path : str, 
+        analysis_parameters :  AnalysisParameters
+        ) :
+
+    run_coloc_truth_table = False
+
+    cached_data_path = os.path.join(run_path,"result_tables", "coloc_truth_table.feather")
+    if os.path.isfile(cached_data_path) : 
+        df = pd.read_feather(cached_data_path, columns=["spot_id"])
+        attrs : dict = df.attrs
+
+        cache_attr = ["coloc_distance", "FILTER_CYCLE", "RENAME_RULE"] # cached data contains all run RNAs on purpose they are filtered when loading the table and using it for figures.
+        for key in cache_attr : 
+            assert key in attrs.keys(), f"{key} was not found in cache metadata."
+            if attrs[key] != getattr(analysis_parameters,key) : run_coloc_truth_table = True
+
+    else :
+        run_coloc_truth_table = True
+
+    if run_coloc_truth_table :
+        logging.info("Update in parameters, computing co-localization truth df.")
+        df = _create_cache_colocalization_truth_table(
+            run_path, 
+            colocalization_distance=analysis_parameters.coloc_distance, 
+            cycle_filter_rule=analysis_parameters.FILTER_CYCLE,
+            rename_rule=analysis_parameters.RENAME_RULE,
+            reference_wv=analysis_parameters.reference_wavelength
+            )
+
+        for key in cache_attr :
+            df.attrs[key] = getattr(analysis_parameters,key)
+        df.to_feather(cached_data_path)
+        
+
+def _create_cache_colocalization_truth_table(
+        run_path : str, 
+        colocalization_distance : int, 
+        cycle_filter_rule : dict,
+        rename_rule : dict,
+        reference_wv : int
+) -> pd.DataFrame :
+
+    result_path = os.path.join(run_path,"result_table")
+    Acquisition = pd.read_feather(os.path.join(result_path,"Acquisition.feather"))
+    Detection = pd.read_feather(os.path.join(result_path,"Detection.feather"))
+    Gene_map = pd.read_feather(os.path.join(result_path,"Gene_map.feather"))
+    Spots = pd.read_feather(os.path.join(result_path,"Spots.feather"))
+    Cell = pd.read_feather(os.path.join(result_path,"Cell.feather"))
+
+    Gene_map, Detection, Spots = apply_user_configuration(
+        Gene_map=Gene_map,
+        Detection=Detection,
+        Spots=Spots,
+        rename_rule=rename_rule,
+        filter_cycle=cycle_filter_rule,
+        filter_rna=None
+    )
+
+    Spots = Spots_post_processing(
+        Spots=Spots,
+        Cell=Cell,
+        Detection=Detection,
+        Acquisition=Acquisition,
+        Gene_map=Gene_map,
+        reference_wavelength=reference_wv
+    )
+
+    coloc_truth_df= colocalisation_truth_df(
+        Spots=Spots,
+        colocalisation_distance=colocalization_distance
+    )
+
+    return coloc_truth_df

@@ -10,7 +10,7 @@ import numpy as np
 from ..settings import get_settings
 from ..settings import AnalysisParameters
 
-from .post_processing import Spots_post_processing, apply_user_configuration
+from .post_processing import Spots_post_processing, apply_user_configuration, update_cache
 from .density import density_analysis
 from .distributions import distributions_analysis
 from .colocalisation import main as coloc_main
@@ -42,6 +42,9 @@ def run(run_path,*args) :
     )
 
     logging.info(f"Starting analysis with args : {args}")
+
+    #update cache
+    update_cache(run_path, analysis_parameters)
 
     #Loading tables
     Acquisition = pd.read_feather(run_path + "/result_tables/Acquisition.feather")
@@ -123,9 +126,7 @@ def run(run_path,*args) :
         coloc_sucess = coloc_main(
             filtered_Spots=Spots,
             Cell=Cell,
-            Acquisition=Acquisition,
             Detection=Detection,
-            Gene_map=Gene_map,
             colocalisation_distance=analysis_parameters.coloc_distance,
             run_path=run_path,
             significance= analysis_parameters.coloc_significance,
@@ -142,7 +143,6 @@ def run(run_path,*args) :
         exploration_sucess = launch_multivariate_analysis(
             run_path=run_path,
             Spots=Spots,
-            colocalisation_distance=analysis_parameters.coloc_distance,
             control_genes=analysis_parameters.control_genes,
             threshold_coloc_zscore=analysis_parameters.threshold_coloc_zscore,
             thresold_coloc_value=analysis_parameters.threshold_coloc_value
@@ -191,3 +191,5 @@ def _add_foci_to_analysis(
     assert save_len == len(Spots.dropna())
 
     return Spots
+
+

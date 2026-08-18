@@ -633,9 +633,7 @@ import os, logging, traceback
 def main(
         filtered_Spots : pd.DataFrame,
         Cell : pd.DataFrame,
-        Acquisition : pd.DataFrame,
         Detection : pd.DataFrame,
-        Gene_map : pd.DataFrame,
         colocalisation_distance : int,
         run_path : str,
         significance : float = 1e-4,
@@ -650,18 +648,15 @@ def main(
 
         print("Starting pairwise co-localization analysis...")
         logging.info(f"Pairwise co-localization analysis start")
-        sucess = pairwise_colocalization_analysis(
+        pairwise_colocalization_analysis(
             filtered_Spots=filtered_Spots,
             Cell=Cell,
-            Acquisition=Acquisition,
             Detection=Detection,
-            Gene_map=Gene_map,
             colocalisation_distance=colocalisation_distance,
             output_path=output_path,
             significance=significance,
             frameon=frameon
         )
-
 
     except Exception as e :
         logging.error(f"Pairwise co-localization analysis failed :\n{traceback.format_exc()}")
@@ -677,9 +672,7 @@ def main(
 def pairwise_colocalization_analysis(
         filtered_Spots : pd.DataFrame,
         Cell : pd.DataFrame,
-        Acquisition : pd.DataFrame,
         Detection : pd.DataFrame,
-        Gene_map : pd.DataFrame,
         colocalisation_distance : int,
         output_path : str,
         significance : float = 1e-4,
@@ -687,6 +680,7 @@ def pairwise_colocalization_analysis(
 ) :
 
     voxel_size = Detection['voxel_size'].at[0]
+    os.makedirs(output_path + "/datasheet/",exist_ok=True)
 
     RNA_list = list(filtered_Spots['target'].unique())
     RNA_list.sort()
@@ -726,10 +720,11 @@ def pairwise_colocalization_analysis(
         expected_event_count_std.loc[product_index, :] = product.values
     
     # Coloc measurements
-    colocalisation_truth = colocalisation_truth_df(
-        Spots=filtered_Spots,
-        colocalisation_distance=colocalisation_distance
-    )
+
+    colocalisation_truth = pd.read_csv(
+        os.path.join(output_path,"analysis","data","truth_table.csv"),
+        sep=";"
+    ).loc[:,RNA_list + ['spot_id','location','target','coordinates']]
 
     colocalisation_truth = safe_merge_no_duplicates(
         colocalisation_truth,
@@ -750,7 +745,6 @@ def pairwise_colocalization_analysis(
     )
 
     #Save datasheet
-    os.makedirs(output_path + "/datasheet/",exist_ok=True)
     mean_coloc_rates = coloc_rates.groupby('target',level=0,dropna=True).mean()
     mean_coloc_rates.to_csv(output_path + "/data/coloc_rates_mean.csv", sep=";")
     median_zscore = zscore_frame.groupby('target',level=0).median()

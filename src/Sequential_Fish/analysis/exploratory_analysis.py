@@ -35,12 +35,10 @@ from sklearn.preprocessing import scale
 
 
 
-from .colocalisation import colocalisation_truth_df
 
 def main(
         run_path : str,
         Spots : pd.DataFrame,
-        colocalisation_distance : int,
         control_genes : list[str] | None,
         thresold_coloc_value : float,
         threshold_coloc_zscore : float,
@@ -61,7 +59,6 @@ def main(
 
         colocalization_figure = colocalization_exploration(
             Spots, 
-            colocalisation_distance, 
             run_path,
             zscores=zscores,
             threshold_coloc_rate=thresold_coloc_value,
@@ -93,7 +90,6 @@ def main(
 
 def colocalization_exploration(
         Spots : pd.DataFrame,
-        colocalisation_distance : int,
         run_path : str,
         zscores : pd.DataFrame,
         threshold_coloc_rate : float,
@@ -120,14 +116,17 @@ def colocalization_exploration(
     if "target" not in Spots.columns : 
         raise KeyError("'target' not found in Spots columns. Did you run Spots_post_processing ?")
 
-    data_path = os.path.join(run_path,"analysis","data","coloc_truth_table.csv")
+    target_list = Spots["target"].unique().tolist()
+
+    data_path = os.path.join(run_path,"analysis","data","truth_table.csv")
     if os.path.isfile(data_path) :
-        print(f"Using cached data at {data_path}. If you modified user parameters delete cached data.")
-        logging.info(f"Using cached data at  : {data_path}")
-        data = pd.read_csv(data_path, sep=";").iloc[:,1:]
+        print(f"Using cached data at {data_path}. If you modified cycle filtering relaunch co-localization analysis first.")
+        logging.info(f"Using cached data at  : {data_path} if you modified cycle filtering remember to relaunch co-localization analysis first.")
+        data = pd.read_csv(data_path, sep=";").loc[:,target_list]
+        for rna in target_list :
+            data.loc[data["target"] == rna, rna] = True
     else :
-        data = _make_data_table_colocalization(Spots, colocalisation_distance)
-        data.to_csv(data_path,sep=";")
+        raise FileNotFoundError("Couldn't find coloc truth table. Did you run colocalization analysis first ?")
 
     if na_policy == "fill" : # Na values when a distribution was not detected in cell
         data = data.fillna(False) 
@@ -167,23 +166,6 @@ def colocalization_exploration(
     dendogram_ax = _hierarchical_clustering_analysis(data,dendogram_ax)
 
     return fig
-
-def _make_data_table_colocalization(
-        Spots : pd.DataFrame,
-        colocalisation_distance : int,
-) :
-    data = colocalisation_truth_df(
-            Spots=Spots,
-            colocalisation_distance=colocalisation_distance
-        )
-
-    data = data.drop(columns=data.columns[data.columns.str.contains("endcycle")])
-    rnas_col = data.columns.tolist()[:-4]
-
-    for rna in rnas_col :
-        data.loc[data["target"] == rna, rna] = True # Enforce self co-localization to always be True, this is critical to identify structure during exploratory analysis. Self co-localization or tendency to form monodistribution cluster must be studied elsewhere.
-
-    return data.iloc[:,:-4]
 
 #1.
 def _multiple_component_analsis(
