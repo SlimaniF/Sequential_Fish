@@ -657,7 +657,7 @@ def main(
             Detection=Detection,
             coloc_truth_df=coloc_truth_df,
             colocalisation_distance=colocalisation_distance,
-            output_path=output_path,
+            run_path=run_path,
             significance=significance,
             frameon=frameon
         )
@@ -674,13 +674,15 @@ def pairwise_colocalization_analysis(
         Detection : pd.DataFrame,
         coloc_truth_df : pd.DataFrame,
         colocalisation_distance : int,
-        output_path : str,
+        run_path : str,
         significance : float = 1e-4,
         frameon = True,
 ) :
 
     voxel_size = Detection['voxel_size'].at[0]
-    os.makedirs(output_path + "/datasheet/",exist_ok=True)
+    output_path = os.path.join(run_path,"analysis")
+    os.makedirs(output_path + "/data/",exist_ok=True)
+    os.makedirs(output_path + "/graph/",exist_ok=True)
 
     RNA_list = list(filtered_Spots['target'].unique())
     RNA_list.sort()
@@ -719,18 +721,11 @@ def pairwise_colocalization_analysis(
         product_index = pd.MultiIndex.from_product([[rna], cell_ids])
         expected_event_count_std.loc[product_index, :] = prod.values
 
-
-    filtered_Spots.info()
-    coloc_truth_df.info()
-    print(filtered_Spots["spot_id"])
-    print(coloc_truth_df["spot_id"])
-    
     # Coloc measurements
-    coloc_truth_df = safe_merge_no_duplicates(
+    coloc_truth_df = pd.merge(
         coloc_truth_df,
-        filtered_Spots,
+        filtered_Spots.loc[:,["spot_id","cell_id"]],
         on='spot_id',
-        keys='cell_id'
     )
 
     measure_coloc_events = coloc_truth_df.groupby(['target','cell_id'])[RNA_list].sum()
@@ -767,7 +762,7 @@ def pairwise_colocalization_analysis(
     )
 
     #Save graph
-    pairwise_coloc_fig.savefig(output_path + f"/pairwise_colocalisation_heatmap_{colocalisation_distance}nm.svg")
+    pairwise_coloc_fig.savefig(output_path + f"/graph/pairwise_colocalisation_heatmap_{colocalisation_distance}nm.svg")
     plt.close()
 
     return True

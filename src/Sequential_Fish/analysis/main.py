@@ -61,7 +61,7 @@ def run(run_path,*args) :
         Spots=Spots,
         rename_rule=analysis_parameters.RENAME_RULE,
         filter_cycle=analysis_parameters.FILTER_CYCLE,
-        filter_rna=analysis_parameters.FILTER_RNA
+        filter_rna= analysis_parameters.FILTER_RNA
     )
 
     #Post-processing
@@ -75,7 +75,6 @@ def run(run_path,*args) :
     )
 
     # Call to analysis submodules
-
     if "distributions" in args or "all" in args :
         if not analysis_parameters.distribution_measures is None and len(analysis_parameters.distribution_measures) > 0:
             distribution_sucess = distributions_analysis(
@@ -122,8 +121,8 @@ def run(run_path,*args) :
                 Spots,
                 foci_rnas=analysis_parameters.foci_rnas
             )
-        
-        coloc_sucess = coloc_main(
+
+        coloc_main(
             filtered_Spots=Spots,
             Cell=Cell,
             Detection=Detection,
@@ -132,9 +131,6 @@ def run(run_path,*args) :
             significance= analysis_parameters.coloc_significance,
             frameon=analysis_parameters.frameon
         )
-
-        if not coloc_sucess :
-            print("Error raised during coloc analysis. Please check log in ~analysis/")
 
     # Exploratory analysis
     exploration_kw = ["multivariate","data", "structure", "all"]
