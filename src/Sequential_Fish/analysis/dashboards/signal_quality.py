@@ -113,8 +113,8 @@ def plot_endcycle_coloc_rates(
     drift_txt = ax.text(0, data.iloc[0].at["colocalization rate"] /2, f"{round(data.iloc[0].at["colocalization rate"],1)} %")
     abb_txt = ax.text(1, data.iloc[1].at["colocalization rate"] /2, f"{(round(data.iloc[1].at["colocalization rate"],1))} %")
 
-    plt.setp([drift_txt,abb_txt], size=10, fontweight="bold", color="white", rotation = 15, va="center", ha="center")
-    ax.set_ylabel(f"{coloc_range} nm")
+    plt.setp([drift_txt,abb_txt], size=10, fontweight="bold", color="black", rotation = 15, va="center", ha="center")
+    ax.set_ylabel(f"Colocalization rate \n (co-localization distance {coloc_range} nm)", size=10)
 
     return ax
 
@@ -162,6 +162,7 @@ def plot_similarity_metrics(
     )
 
     sns.despine(ax=ax, bottom=False, left=True)
+    ax.set_ylabel("Mean squared error", size=10)
 
     return ax
 
@@ -171,13 +172,8 @@ def plot_drift_heatmap(
     ) :
 
     Drift = Drift.loc[Drift["cycle"] != 0] #No drift at cycle 0 ? Replace with reference cycle?
-    Drift.loc[:,["found"]] = (Drift["drift_z"] != 0) | (Drift["drift_y"] != 0) | (Drift["drift_x"] != 0)
+    Drift.loc[:,["found"]] = (Drift["drift_z"] != 0) | (Drift["drift_y"] != 0) | (Drift["drift_x"] != 12)
     Drift = Drift.pivot(index="location",columns = "cycle", values="found",)
-
-    print("INFO ON DRIFT")
-    # Drift.iat[2,3] = False
-    print(Drift)
-    Drift.info()
 
     sns.heatmap(
         Drift.transpose(), 

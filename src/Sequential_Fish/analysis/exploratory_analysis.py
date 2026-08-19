@@ -125,6 +125,7 @@ def colocalization_exploration(
         data = data.drop(columns="target")
     else :
         raise FileNotFoundError("Couldn't find coloc truth table. Did you run colocalization analysis first ?")
+    data.info(())
 
     if na_policy == "fill" : # Na values when a distribution was not detected in cell
         data = data.fillna(False) 

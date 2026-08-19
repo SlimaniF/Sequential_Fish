@@ -6,6 +6,7 @@ import os
 import logging
 
 import pandas as pd
+import numpy as np
 from ..tools import safe_merge_no_duplicates
 from ..chromatic_abberrations import correct_Spots_dataframe
 from ..settings import AnalysisParameters
@@ -16,8 +17,6 @@ def Spots_post_processing(
         Spots : pd.DataFrame,
         Cell : pd.DataFrame,
         Detection : pd.DataFrame,
-        Acquisition : pd.DataFrame,
-        Gene_map : pd.DataFrame,
         reference_wavelength : int | None = None
 ) :
     """
@@ -32,15 +31,6 @@ def Spots_post_processing(
         Cell=Cell,
         Detection=Detection,
     )
-
-    Spots = _spots_merge_data(
-        Spots=Spots,
-        Acquisition=Acquisition,
-        Detection=Detection,
-        Gene_map=Gene_map,
-        Cell=Cell
-    )
-
 
     if not reference_wavelength is None :
         logging.info(
@@ -143,9 +133,12 @@ def apply_user_configuration(
         Gene_map : pd.DataFrame,
         Detection : pd.DataFrame,
         Spots : pd.DataFrame,
+        Cell : pd.DataFrame,
+        Acquisition : pd.DataFrame,
         rename_rule,
         filter_rna,
-        filter_cycle
+        filter_cycle,
+        foci_rnas,
 ) :
     """
     Apply user configuration : renaming targets, rna filter, cycle filter.
@@ -159,6 +152,14 @@ def apply_user_configuration(
     Gene_map = _rename_targets(
         Gene_map,
         rule=rename_rule
+        )
+
+    if not foci_rnas is None :
+        logging.info(f"Adding free and clustered populations for rnas : {foci_rnas}")
+
+        Spots = _add_foci_to_analysis(
+            Spots,
+            foci_rnas=foci_rnas
         )
 
     logging.info(f"Removing RNAs from analysis : {filter_rna}")
@@ -176,6 +177,15 @@ def apply_user_configuration(
         Detection=Detection,
         Spots=Spots
     )
+
+    Spots = _spots_merge_data(
+        Spots=Spots,
+        Acquisition=Acquisition,
+        Detection=Detection,
+        Gene_map=Gene_map,
+        Cell=Cell
+    )
+
 
     return Gene_map, Detection, Spots
 
@@ -240,7 +250,7 @@ def _cache_colocalization_data(
     run_coloc_truth_table = False
 
     cached_data_path = os.path.join(run_path,"result_tables", "coloc_truth_table.feather")
-    cache_attr = ["coloc_distance", "FILTER_CYCLE", "RENAME_RULE"] # cached data contains all run RNAs on purpose they are filtered when loading the table and using it for figures.
+    cache_attr = ["coloc_distance", "FILTER_CYCLE", "RENAME_RULE","foci_rnas"] # cached data contains all run RNAs on purpose they are filtered when loading the table and using it for figures.
     if os.path.isfile(cached_data_path) : 
         df = pd.read_feather(cached_data_path, columns=["spot_id"])
         attrs : dict = df.attrs
@@ -260,7 +270,8 @@ def _cache_colocalization_data(
             colocalization_distance=analysis_parameters.coloc_distance, 
             cycle_filter_rule=analysis_parameters.FILTER_CYCLE,
             rename_rule=analysis_parameters.RENAME_RULE,
-            reference_wv=analysis_parameters.reference_wavelength
+            reference_wv=analysis_parameters.reference_wavelength,
+            foci_rnas=analysis_parameters.foci_rnas
             )
 
         for key in cache_attr :
@@ -275,7 +286,8 @@ def _create_cache_colocalization_truth_table(
         colocalization_distance : int, 
         cycle_filter_rule : dict,
         rename_rule : dict,
-        reference_wv : int
+        reference_wv : int,
+        foci_rnas : list[str] | None
 ) -> pd.DataFrame :
 
     result_path = os.path.join(run_path,"result_tables")
@@ -285,22 +297,23 @@ def _create_cache_colocalization_truth_table(
     Spots = pd.read_feather(os.path.join(result_path,"Spots.feather"))
     Cell = pd.read_feather(os.path.join(result_path,"Cell.feather"))
 
-    Gene_map, Detection, Spots = apply_user_configuration(
-        Gene_map=Gene_map,
-        Detection=Detection,
-        Spots=Spots,
-        rename_rule=rename_rule,
-        filter_cycle=cycle_filter_rule,
-        filter_rna=None
-    )
-
     Spots = Spots_post_processing(
         Spots=Spots,
         Cell=Cell,
         Detection=Detection,
-        Acquisition=Acquisition,
-        Gene_map=Gene_map,
         reference_wavelength=reference_wv
+    )
+
+    Gene_map, Detection, Spots = apply_user_configuration(
+        Gene_map=Gene_map,
+        Detection=Detection,
+        Spots=Spots,
+        Cell=Cell,
+        Acquisition=Acquisition,
+        rename_rule=rename_rule,
+        filter_cycle=cycle_filter_rule,
+        filter_rna=None,
+        foci_rnas=foci_rnas
     )
 
     coloc_truth_df= colocalisation_truth_df(
@@ -316,3 +329,31 @@ def _create_cache_colocalization_truth_table(
     )
 
     return coloc_truth_df
+
+
+
+def _add_foci_to_analysis(
+    Spots : pd.DataFrame, 
+    foci_rnas : list[str]
+    ) :
+    """
+    Separate part of Spots data to analyse spots by populations : clustered and free.
+    """
+
+    foci_spots = Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "clustered")]
+    foci_spots.loc[:,["target"]] = foci_spots["target"].str.cat(['_clustered']*len(foci_spots))
+    free_spots = Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "free")]
+    free_spots.loc[:,["target"]] = free_spots["target"].str.cat(['_free']*len(free_spots))
+
+    free_spots["spot_id"] = np.arange(1, len(free_spots)+1) + Spots["spot_id"].max()
+    foci_spots["spot_id"] = np.arange(1, len(foci_spots)+1) + free_spots["spot_id"].max()
+
+    Spots = pd.concat([
+        Spots,
+        foci_spots,
+        free_spots
+    ], ignore_index=True)
+
+
+
+    return Spots

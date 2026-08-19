@@ -54,24 +54,25 @@ def run(run_path,*args) :
     Gene_map = pd.read_feather(run_path + "/result_tables/Gene_map.feather")
     Cell = pd.read_feather(run_path + "/result_tables/Cell.feather")
 
-    #User defined filters
-    Gene_map, Detection, Spots = apply_user_configuration(
-        Gene_map=Gene_map,
-        Detection=Detection,
-        Spots=Spots,
-        rename_rule=analysis_parameters.RENAME_RULE,
-        filter_cycle=analysis_parameters.FILTER_CYCLE,
-        filter_rna= analysis_parameters.FILTER_RNA
-    )
-
     #Post-processing
     Spots = Spots_post_processing(
         Spots=Spots,
         Cell=Cell,
         Detection=Detection,
-        Acquisition=Acquisition,
-        Gene_map=Gene_map,
         reference_wavelength = analysis_parameters.reference_wavelength
+    )
+
+    #User defined filters
+    Gene_map, Detection, Spots = apply_user_configuration(
+        Gene_map=Gene_map,
+        Detection=Detection,
+        Cell=Cell,
+        Spots=Spots,
+        Acquisition=Acquisition,
+        rename_rule=analysis_parameters.RENAME_RULE,
+        filter_cycle=analysis_parameters.FILTER_CYCLE,
+        filter_rna= analysis_parameters.FILTER_RNA,
+        foci_rnas=analysis_parameters.foci_rnas
     )
 
     # Call to analysis submodules
@@ -116,12 +117,6 @@ def run(run_path,*args) :
     ))
     if any_paircoloc or "all" in args:
 
-        if not analysis_parameters.foci_rnas is None :
-            Spots = _add_foci_to_analysis(
-                Spots,
-                foci_rnas=analysis_parameters.foci_rnas
-            )
-
         coloc_main(
             filtered_Spots=Spots,
             Cell=Cell,
@@ -164,28 +159,3 @@ def run(run_path,*args) :
         )
         if not sucess :
             print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")
-
-
-def _add_foci_to_analysis(
-    Spots : pd.DataFrame, 
-    foci_rnas : list[str]
-    ) :
-    """
-    Separate part of Spots data to analyse spots by populations : clustered and free.
-    """
-
-    save_len = len(Spots.dropna())
-
-    foci_spots = Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "clustered")]
-    foci_spots.loc[:,["target"]] = foci_spots["target"].str.cat(['_clustered']*len(foci_spots))
-    Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "clustered")] = foci_spots
-
-    free_spots = Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "free")]
-    free_spots.loc[:,["target"]] = free_spots["target"].str.cat(['_free']*len(free_spots))
-    Spots.loc[(Spots["target"].isin(foci_rnas)) & (Spots["population"] == "free")] = free_spots
-
-    assert save_len == len(Spots.dropna())
-
-    return Spots
-
-

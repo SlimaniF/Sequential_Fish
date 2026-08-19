@@ -1,4 +1,3 @@
-from concurrent import futures
 import os
 from typing import cast
 
@@ -11,7 +10,6 @@ import seaborn as sns
 import pandas as pd
 from scipy.cluster.hierarchy import linkage, dendrogram
 
-import time as t
 from pebble import ThreadPool
 
 
@@ -21,7 +19,7 @@ def plot_cell_number_per_location(
     cell_distribution : pd.DataFrame
     ) -> Axes:
 
-    g = sns.barplot(
+    sns.barplot(
         data=cell_distribution, 
         x="cell number", y="location", 
         hue="location",palette="bright",
@@ -30,8 +28,8 @@ def plot_cell_number_per_location(
         ax=ax,
         )
     sns.despine(left=True)
-    xlabel = ax.set_xlabel("Cell number")
-    ylabel = ax.set_ylabel("Location")
+    ax.set_xlabel("Cell number", size=17)
+    ax.set_ylabel("Location", size=17)
 
     yticks = ax.get_yticks()
     yticklabels = ax.get_yticklabels()
@@ -41,7 +39,7 @@ def plot_cell_number_per_location(
 
     #Display mean value
     mean = float(cell_distribution["cell number"].median())
-    mean_line = ax.plot(
+    ax.plot(
         [mean,mean],
         [-1,len(cell_distribution)],
         "--",
@@ -49,9 +47,8 @@ def plot_cell_number_per_location(
         color="#231A42"
     )
     ax.set_ylim(len(cell_distribution),-0.5,)
-    ax.legend()
+    ax.legend(prop={"size":15})
 
-    plt.setp([xlabel,ylabel],  size=15)
 
     return ax
 
@@ -78,7 +75,7 @@ def plot_analyzed_cell_number(
     central_text = ax.text(0,0,f"{total_cell_number}\ndetected\ncells")
 
     plt.setp(outer_pie, width=0.5, edgecolor='black',)
-    plt.setp(labels, weight="bold", horizontalalignment="center",va="center")
+    plt.setp(labels, weight="bold", horizontalalignment="center",va="center", size=12)
     plt.setp(central_text, size= 30, weight="bold", horizontalalignment="center",va="center")
 
     return ax
@@ -146,8 +143,8 @@ def plot_spot_is_found_heatmap(
     sns.despine(ax=ax, bottom=False, left=False,top=False,right=False)
     ax.set_ylabel("")
 
-    ax.set_yticks(ax.get_yticks(), cast(list[str],ax.get_yticklabels()), rotation = -15, va="bottom")
-    ax.set_xlabel("Population was found in cell",size=15)
+    ax.set_yticks(ax.get_yticks(), cast(list[str],ax.get_yticklabels()), rotation = -15, va="bottom", size=15)
+    ax.set_xlabel("Population was found in cell indicator",size=20)
     ax.set_xticks([])
     ax.get_xaxis().set_label_position("top")
 
@@ -184,9 +181,9 @@ def plot_spot_per_cell_distribution(
         ax=ax
         )
 
-    xlabel = ax.set_xlabel("")
-    ylabel = ax.set_ylabel("Single molecule per cell (#)")
-    plt.setp([xlabel,ylabel],  size=15)
+    ax.set_xlabel("")
+    ax.set_ylabel("Single molecule per cell (#)", size=17)
+    ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), fontdict={"size":15, "rotation" : 30, "ha" : "right"})
 
 
     return ax
@@ -210,7 +207,7 @@ def cell_dashboard(
     #4.
 
 
-    fig = plt.figure(figsize=(40,20))
+    fig = plt.figure(figsize=(30,20))
     grid = gridspec.GridSpec(2,2,width_ratios=[1,3],height_ratios=[1,2])
     topleft = fig.add_subplot(grid[0,0])
     topright = fig.add_subplot(grid[0,1])

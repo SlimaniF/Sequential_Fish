@@ -641,7 +641,7 @@ def main(
 
         coloc_truth_df = pd.read_feather(
                 os.path.join(run_path,"result_tables","coloc_truth_table.feather"),
-            ).loc[:,filtered_Spots["target"].unique().tolist() + ['spot_id','location','target','coordinates']]
+            ).loc[:,filtered_Spots["target"].unique().tolist() + ['spot_id','location','target','coordinates', "cell_id"]]
 
         pairwise_colocalization_analysis(
             filtered_Spots=filtered_Spots,
@@ -674,7 +674,7 @@ def pairwise_colocalization_analysis(
     voxel_size = Detection['voxel_size'].at[0]
     output_path = os.path.join(run_path,"analysis")
     os.makedirs(output_path + "/data/",exist_ok=True)
-    os.makedirs(output_path + "/graph/",exist_ok=True)
+    os.makedirs(output_path + "/graph/colocalization/",exist_ok=True)
 
     RNA_list = list(filtered_Spots['target'].unique())
     RNA_list.sort()
