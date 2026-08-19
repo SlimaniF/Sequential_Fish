@@ -212,7 +212,6 @@ def colocalisation_truth_df(
     return coloc_truth_df.reset_index(drop=True)
 
 def create_cell_coloc_rates_df(
-    Spots : pd.DataFrame, 
     coloc_truth_df : pd.DataFrame,
     ) -> pd.DataFrame:
     """
@@ -223,17 +222,10 @@ def create_cell_coloc_rates_df(
     Result is ready for mean calculation or normalisation.
     
     """
-    RNA_list = list(Spots['target'].unique())
-    RNA_list.sort()
-    
-    coloc_truth_df= safe_merge_no_duplicates(
-        coloc_truth_df,
-        Spots,
-        on='spot_id',
-        keys='cell_id'
-    )
 
-    cell_coloc_rates = coloc_truth_df.groupby(['target','cell_id'])[RNA_list].mean() #Normalisation needs to happen after this
+    rna_list = coloc_truth_df.columns.to_list()[:-5]
+
+    cell_coloc_rates = coloc_truth_df.loc[:,rna_list + ["target","cell_id"]].groupby(['target','cell_id']).mean() #Normalisation needs to happen after this
 
 
     return cell_coloc_rates
@@ -247,7 +239,7 @@ def compute_coloc_rates_mean(
     Colocalization rate of target i with target j is found at line i, column j (i.e `df.at[i,j]`)
     """
     
-    coloc_rates = cell_coloc_rates.groupby('target', axis=0, level=0).mean()
+    coloc_rates = cell_coloc_rates.groupby('target', level=0).mean()
     return coloc_rates
     
 
@@ -722,9 +714,9 @@ def pairwise_colocalization_analysis(
         expected_event_count_std.loc[product_index, :] = prod.values
 
     # Coloc measurements
-    coloc_truth_df = pd.merge(
+    coloc_truth_df = pd.merge( #Filter spots belonging to RNA distributions removed in user configuration
         coloc_truth_df,
-        filtered_Spots.loc[:,["spot_id","cell_id"]],
+        filtered_Spots.loc[:,["spot_id"]],
         on='spot_id',
     )
 
@@ -743,13 +735,13 @@ def pairwise_colocalization_analysis(
     mean_coloc_rates = coloc_rates.groupby('target',level=0,dropna=True).mean()
     mean_coloc_rates.to_csv(output_path + "/data/coloc_rates_mean.csv", sep=";")
     median_zscore = zscore_frame.groupby('target',level=0).median()
-    median_zscore.to_csv(output_path + "/data/zscore.csv", sep=";")
+    median_zscore.to_csv(output_path + "/data/coloc_zscores.csv", sep=";")
     
     #p-values computation
     pvalue_frame = compute_pvalue_frame(
         zscore_frame=zscore_frame
     )
-    pvalue_frame.to_csv(output_path + "/data/pvalue_frame.csv", sep=";")
+    pvalue_frame.to_csv(output_path + "/data/coloc_pvalues.csv", sep=";")
     pvalue_mask = pvalue_frame <= significance
     
     #Create graph
@@ -762,7 +754,7 @@ def pairwise_colocalization_analysis(
     )
 
     #Save graph
-    pairwise_coloc_fig.savefig(output_path + f"/graph/pairwise_colocalisation_heatmap_{colocalisation_distance}nm.svg")
+    pairwise_coloc_fig.savefig(output_path + f"/graph/colocalization/pairwise_colocalisation_heatmap_{colocalisation_distance}nm.svg")
     plt.close()
 
     return True

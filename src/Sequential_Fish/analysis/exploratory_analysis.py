@@ -34,8 +34,6 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
 
 
-
-
 def main(
         run_path : str,
         Spots : pd.DataFrame,
@@ -44,7 +42,7 @@ def main(
         threshold_coloc_zscore : float,
 ) :
 
-    exploration_path = os.path.join(run_path,"analysis","multivariate","exploration")
+    exploration_path = os.path.join(run_path,"analysis","graph","multivariate","exploration")
     os.makedirs(exploration_path,exist_ok=True)
 
     try :
@@ -70,6 +68,8 @@ def main(
         warnings.warn("Exception raised during multivariate colocalization analysis. Check log")
         logging.error(msg=traceback.format_exc())
         return False
+    else:
+        logging.info("Co-localization exploratory analysis sucess.")
 
     try :
         logging.info("Starting expression exploratory analysis.")
@@ -81,9 +81,8 @@ def main(
         warnings.warn("Exception raised during multivariate expression analysis. Check log")
         logging.error(msg=traceback.format_exc())
         return False
-
-    
-        
+    else:
+        logging.info("Expression exploratory analysis sucess.")
 
     return True
 
@@ -120,11 +119,10 @@ def colocalization_exploration(
 
     data_path = os.path.join(run_path,"result_tables","coloc_truth_table.feather")
     if os.path.isfile(data_path) :
-        print(f"Using cached data at {data_path}. If you modified cycle filtering relaunch co-localization analysis first.")
-        logging.info(f"Using cached data at  : {data_path} if you modified cycle filtering remember to relaunch co-localization analysis first.")
-        data = pd.read_feather(data_path).loc[:,target_list]
+        data = pd.read_feather(data_path).loc[:,target_list + ["target"]]
         for rna in target_list :
             data.loc[data["target"] == rna, rna] = True
+        data = data.drop(columns="target")
     else :
         raise FileNotFoundError("Couldn't find coloc truth table. Did you run colocalization analysis first ?")
 
