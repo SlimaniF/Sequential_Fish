@@ -5,11 +5,8 @@ from math import log10
 import os
 from typing import Literal, TypedDict, cast
 
-from cycler import K
 import numpy as np
 import pandas as pd
-import warnings
-import logging
 
 from skimage.metrics import mean_squared_error
 from scipy.stats import pearsonr
@@ -20,13 +17,11 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import ListedColormap
-
-from Sequential_Fish.tools import safe_merge_no_duplicates, open_cycle
-import time as t
 from tqdm import tqdm
-import psutil
 
-from Sequential_Fish.tools.utils import open_location
+from ..colocalisation import compute_coloc_rates_mean, create_cell_coloc_rates_df
+from ...tools import safe_merge_no_duplicates
+from ...tools.utils import open_location
 
 class DriftMeans(TypedDict) :
     z_mean_drift : pd.Series
@@ -175,9 +170,14 @@ def plot_drift_heatmap(
     Drift
     ) :
 
-    Drift = Drift.loc[Drift["cycle"] != 0]
+    Drift = Drift.loc[Drift["cycle"] != 0] #No drift at cycle 0 ? Replace with reference cycle?
     Drift.loc[:,["found"]] = (Drift["drift_z"] != 0) | (Drift["drift_y"] != 0) | (Drift["drift_x"] != 0)
     Drift = Drift.pivot(index="location",columns = "cycle", values="found",)
+
+    print("INFO ON DRIFT")
+    # Drift.iat[2,3] = False
+    print(Drift)
+    Drift.info()
 
     sns.heatmap(
         Drift.transpose(), 
@@ -185,6 +185,8 @@ def plot_drift_heatmap(
         linecolor="white",
         linewidths=0.5,
         cbar=False,
+        vmin=0,
+        vmax=1,
         ax=ax
         )
 
@@ -195,6 +197,7 @@ def plot_drift_heatmap(
 
     ax.set_xlabel("Location", size=15)
     ax.set_ylabel("Cycle", size=15)
+    ax.set_title("Drift was detected indicator", size=16)
 
     sns.despine(ax=ax, top=False, right=False)
 
@@ -205,12 +208,14 @@ def _get_coloc_rates_for_checkers(
     **checkers : tuple[str,str]
     ) :
 
-    table_path = os.path.join(run_path,"analysis","data","coloc_rates_mean.csv")
+    table_path = os.path.join(run_path,"result_tables","coloc_truth_table.feather")
     if not os.path.isfile(table_path) : raise FileNotFoundError("Couldn't find coloc rates table, run first co-localization analysis")
-    coloc_table = pd.read_csv(table_path, sep=";")
-    coloc_table = coloc_table.set_index("target")
+    coloc_truth_table = pd.read_feather(table_path)
 
-    coloc_rates = {key : float(coloc_table.at[pair[0],pair[1]]) for key,pair in checkers.items()}
+    coloc_rate_table = create_cell_coloc_rates_df(coloc_truth_df=coloc_truth_table)
+    coloc_rate_table = compute_coloc_rates_mean(coloc_rate_table)
+
+    coloc_rates = {key : float(coloc_rate_table.at[pair[0],pair[1]]) for key,pair in checkers.items()}
 
     return coloc_rates
 
@@ -249,7 +254,6 @@ def compute_similarity_metrics(
 
     res = {
         "spatial_correlation" : pearsonr(image1.ravel(), image2.ravel())[0],
-        # "structural_similarity" : ssim(image1, image2, data_range=max_intensity),
         "mean_squared_error" : ms_err,
         "peak_snr" : peak_snr,
     }
@@ -290,21 +294,17 @@ def _process_location(
 def process_similarity_metrics(
     Gene_map : pd.DataFrame,
     Acquisition : pd.DataFrame,
-    Drift : pd.DataFrame,
     drift_namepair : tuple[str,str],
     abb_namepair : tuple[str,str],
     run_path : str,
     ) :
 
-    print(Gene_map)
-    print(Gene_map['target'])
     Gene_map = Gene_map.set_index("target", verify_integrity=True)
     drift_initcycle = Gene_map.at[drift_namepair[0],"cycle"], Gene_map.at[drift_namepair[0],"color_id"]
     drift_endcycle = Gene_map.at[drift_namepair[1],"cycle"], Gene_map.at[drift_namepair[1],"color_id"]
     abb_initcycle = Gene_map.at[abb_namepair[0],"cycle"], Gene_map.at[abb_namepair[0],"color_id"]
     abb_endcycle = Gene_map.at[abb_namepair[1],"cycle"], Gene_map.at[abb_namepair[1],"color_id"]
 
-    print("start pool")
     with ProcessPool(max_workers=4) as pool:
         locations = Acquisition["location"].unique()
         len_location = len(locations)
@@ -320,11 +320,7 @@ def process_similarity_metrics(
         res = [r for r in list(tqdm(futures.result(), desc="Computing similarity measures", total=len_location))]
     res = pd.concat(res,axis=0)
 
-    print("saving similarity metrics...")
     os.makedirs(os.path.join(run_path,"data"), exist_ok=True)
-    res.to_csv(os.path.join(run_path,"data","similarity.csv"), sep=';')
-    print("done")
-    
 
     return res
 
@@ -354,11 +350,6 @@ def signal_quality_dashboard(
         keys=["target"]
     )
 
-    if any((not checker in Detection["target"].unique().tolist() for checker in drift_checker + chroma_checker)) :
-        warnings.warn(f"Couldn't find one of {drift_checker +chroma_checker} in detection. Available columns are {Detection["target"].unique()}. \nEnsure correct spelling or that it was not filtered out for signal quality dashboard.")
-        logging.error(f"Couldn't find one of {drift_checker +chroma_checker} in detection. Available columns are {Detection["target"].unique()}. \nEnsure correct spelling or that it was not filtered out for signal quality dashboard.")
-        return None
-
     Cell = pd.merge(
         Cell,
         Detection.loc[:,["detection_id", "target","cycle","color_id","wavelength"]],
@@ -376,16 +367,17 @@ def signal_quality_dashboard(
     )
 
     #3. Similarity measurements
-    similarity_path = os.path.join(run_path,"data","similarity.csv")
+    similarity_path = os.path.join(run_path,"analysis","data","similarity.csv")
     if not os.path.isfile(similarity_path) :
         similarity_df = process_similarity_metrics(
             Gene_map=Gene_map,
             Acquisition=Acquisition,
-            Drift=Drift,
             drift_namepair=drift_checker,
             abb_namepair=chroma_checker,
             run_path=run_path
             )
+        similarity_df.to_csv(os.path.join(run_path,"analysis","data","similarity.csv"), sep=';')
+        
     else :
         similarity_df = pd.read_csv(similarity_path, sep=";")
 
@@ -394,7 +386,6 @@ def signal_quality_dashboard(
         Acquisition=Acquisition,
         Drift=Drift
     )
-
 
     fig = plt.figure(figsize=(20,13))
     grid = gridspec.GridSpec(5,color_number +2, 
