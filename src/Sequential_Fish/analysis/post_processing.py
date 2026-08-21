@@ -398,6 +398,7 @@ def _create_zscore_table(
         expected_colocalisation_events=expected_event_count,
         expected_standard_deviation= expected_event_count_std,
     )
+    zscore_frame = zscore_frame.groupby('target',level=0).median()
 
     return zscore_frame
 

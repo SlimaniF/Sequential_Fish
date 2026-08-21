@@ -735,7 +735,6 @@ def pairwise_colocalization_analysis(
     mean_coloc_rates = coloc_rates.groupby('target',level=0,dropna=True).mean()
     mean_coloc_rates.to_csv(output_path + "/data/coloc_rates_mean.csv", sep=";")
     median_zscore = zscore_frame.groupby('target',level=0).median()
-    median_zscore.to_csv(output_path + "/data/coloc_zscores.csv", sep=";")
     
     #p-values computation
     pvalue_frame = compute_pvalue_frame(

@@ -136,11 +136,11 @@ class AnalysisParameters(ParametersModel) :
     #Co-localization analysis
     coloc_distance : int = Field(default=0, json_schema_extra={"tab" : "Colocalization"})
     coloc_significance : float = Field(default=10e-3, json_schema_extra={"tab" : "Colocalization"})
-    foci_rnas : list[str] | None = Field(default=None, json_schema_extra={"tab" : "Colocalization"})
 
     #Dashboard
     drift_checker : tuple[str,str] = Field(default=("",""), json_schema_extra={"tab" : "General"})
     chroma_checker : tuple[str,str] = Field(default=("",""), json_schema_extra={"tab" : "General"})
+    foci_rnas : list[str] | None = Field(default=None, json_schema_extra={"tab" : "General"})
 
     #Multivariate_exploratory
     control_genes : list[str] | None = Field(default=None, json_schema_extra={"tab" : "Multivariate"})
