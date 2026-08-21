@@ -47,7 +47,7 @@ def main(
 
     try :
         logging.info("Starting colocalization exploratory analysis.")
-        zscore_path = os.path.join(run_path,"analysis","data","zscore.csv")
+        zscore_path = os.path.join(run_path,"analysis","data","coloc_zscores.csv")
         if not os.path.isfile(zscore_path) : 
             raise FileNotFoundError("Couldn't find colocalization zscore table. Run first co-localization analysis.")
 
