@@ -248,6 +248,7 @@ def _cache_colocalization_data(
     run_coloc_truth_table = False
 
     cached_data_path = os.path.join(run_path,"result_tables", "coloc_truth_table.feather")
+    zscore_path = os.path.join(run_path,"analysis","data","coloc_zscores.csv")
     cache_attr = ["coloc_distance", "FILTER_CYCLE", "RENAME_RULE","foci_rnas"] # cached data contains all run RNAs on purpose they are filtered when loading the table and using it for figures.
     if os.path.isfile(cached_data_path) : 
         coloc_truth_df = pd.read_feather(cached_data_path, columns=["spot_id"])
@@ -258,6 +259,9 @@ def _cache_colocalization_data(
             if attrs[key] != getattr(analysis_parameters,key) : run_coloc_truth_table = True
 
     else :
+        run_coloc_truth_table = True
+
+    if not os.path.isfile(zscore_path) :
         run_coloc_truth_table = True
 
     if run_coloc_truth_table :
@@ -307,7 +311,6 @@ def _cache_colocalization_data(
             coloc_truth_df.attrs[key] = getattr(analysis_parameters,key)
         coloc_truth_df.to_feather(cached_data_path)
 
-        zscore_path = os.path.join(run_path,"analysis","data","coloc_zscores.csv")
         os.makedirs(os.path.dirname(zscore_path),exist_ok=True)
         zscore_df.to_csv(zscore_path, sep=";")
 

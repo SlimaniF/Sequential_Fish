@@ -1,20 +1,17 @@
 import os
-import logging, traceback
+import logging, traceback, warnings
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from ..tools import safe_merge_no_duplicates
-from .utils import distribution_super_plot, merge_data
+from .utils import distribution_super_plot
 from .utils import get_xlabels
 
 def distributions_analysis(
-    Acquisition : pd.DataFrame,
     Detection : pd.DataFrame,
     Cell : pd.DataFrame,
-    Spots : pd.DataFrame,
-    Gene_map : pd.DataFrame,
     distributions_measures : 'list[str]',
     run_path :str,
+    washout_keyword : str | None = None,
 ) :
     
     output_path = run_path + "/analysis/distribution_analysis/"
@@ -22,41 +19,40 @@ def distributions_analysis(
     
     try :
         logging.info(f"Starting distributions plotting for following metrics : {distributions_measures}") 
-        
-        Detection, Cell, Spots = merge_data(
-            Acquisition=Acquisition,
-            Detection=Detection,
-            Cell=Cell,
-            Spots=Spots,
-            Gene_map=Gene_map
-        )
-        
-        Cell = safe_merge_no_duplicates(
-            Cell,
-            Detection,
-            on='detection_id',
-            keys='cycle'
-        )
-        Cell = Cell.loc[~Cell['target'].str.contains('Washout')]
 
+        if not washout_keyword is None :
+            Detection = Detection.loc[~Detection["target"].str.contains(washout_keyword)]
+
+        Cell=pd.merge(
+            Cell,
+            Detection.loc[:,["detection_id","target","cycle"]],
+            on="detection_id",
+        )
+        
         for measure in distributions_measures :
+
+            if not measure in Cell.columns : 
+                logging.error(f"{measure} was not found in Cell columns.")
+                warnings.warn(f"{measure} was not found in Cell columns.")
+                continue
         
             data = Cell.groupby('target')[measure].apply(list)
-
-            generate_distribution_graph(
+            fig = generate_distribution_graph(
                 data=data,
+                Cell=Cell,
                 measure=measure,
-                output_path=output_path
             )
-    
-    except Exception as e :
-        logging.error(f"\nDistributions plotting failed :\n{traceback.format_exc()}\n")
+            fig.savefig(output_path + f"/{measure}.svg")
+
+
+    except Exception :
+        logging.error(f"Distributions plotting failed :\n{traceback.format_exc()}\n")
         
         
         return False
         
     else :
-        logging.info(f"\nDistribution plotting success\n")
+        logging.info("Distribution plotting success\n")
         
         return True
 
@@ -65,7 +61,6 @@ def generate_distribution_graph(
         data : pd.Series,
         measure : str,
         Cell : pd.DataFrame,
-        output_path : str
 ) :
 
     fig = plt.figure(figsize=(16,8))
@@ -78,7 +73,7 @@ def generate_distribution_graph(
     )
 
     if 'index' in measure :
-        min_x,max_x,min_y,max_y = plt.axis()
+        min_x,max_x,*_ = plt.axis()
         ax.plot([min_x, max_x], [1,1], '--b')
     
     xlabels = get_xlabels(ax)
@@ -93,5 +88,4 @@ def generate_distribution_graph(
     else :
         ax.set_xticklabels(xlabels, rotation=0)
 
-    plt.savefig(output_path + f"/{measure}.svg")
-    plt.close()
+    return fig

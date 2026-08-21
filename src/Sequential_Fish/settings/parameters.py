@@ -123,6 +123,7 @@ class AnalysisParameters(ParametersModel) :
 
     #Distributions
     distribution_measures : list[str] | None = Field(default=None, json_schema_extra={"tab" : "Distribution"})
+    washout_keyworkd : str | None = Field(default=None, json_schema_extra={"tab" : "Distribution"})
 
     #Chromatic abberration
     reference_wavelength : int | None = Field(default=555, json_schema_extra={"tab" : "ChromaticAbberations"}) #None to ignore chromatic abberations correction

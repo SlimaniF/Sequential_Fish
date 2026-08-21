@@ -29,40 +29,6 @@ class updated_spots_DataFrame(pd.DataFrame) :
     x: pd.Series
     diversity : pd.Series
 
-# Preprocessing
-
-def merge_data_in_Spots(
-    Acquisition : pd.DataFrame,
-    Detection : pd.DataFrame,
-    Spots : pd.DataFrame,
-    Gene_map : pd.DataFrame
-) :
-    """
-    Add "target", "location" keys to Spots.
-    """
-    
-    Detection = safe_merge_no_duplicates(
-        Detection,
-        Acquisition,
-        on='acquisition_id',
-        keys= ['cycle']
-    )
-    
-    Detection = safe_merge_no_duplicates(
-        Detection,
-        Gene_map,
-        on= ['cycle', 'color_id'],
-        keys= 'target'
-    )
-    
-    Spots = safe_merge_no_duplicates(
-        Spots,
-        Detection,
-        on= 'detection_id',
-        keys= ["target", 'location']
-    )
-    
-    return Spots
 
 def group_coordinates_per_fov(Spots) :
     
@@ -310,7 +276,7 @@ def affinity_plots(
     min_nb_cluster : int,
     output_path : str,
 ) :
-    fig, axes = plt.subplots(nrows=len(RNA_list), ncols=1, figsize= (16,8*len(RNA_list)))
+    _, axes = plt.subplots(nrows=len(RNA_list), ncols=1, figsize= (16,8*len(RNA_list)))
 
     for ax, rna in zip(axes, RNA_list) :
         ax : plt.Axes
@@ -318,7 +284,6 @@ def affinity_plots(
         data : pd.DataFrame = affinity_dict[rna]
         cluster_number = len(data)
         data = data.mean(axis=0)
-        data_std = data.std(axis=0)
 
         ax.set_title(f"Affinity with {rna}; {cluster_number} clusters\nParameters : radius={cluster_radius} nm; min_spots={min_nb_cluster}")
         ax.bar(data.index, data)
@@ -328,10 +293,8 @@ def affinity_plots(
     plt.close()
    
 def density_analysis(
-    Acquisition : pd.DataFrame,
     Detection : pd.DataFrame,
     Spots : pd.DataFrame,
-    Gene_map : pd.DataFrame,
     run_path : str,
     min_number_spots = 3,
     min_diversity = 3,
@@ -353,25 +316,22 @@ def density_analysis(
     """
 
    
-    output_path = run_path + "/analysis/density_analysis/"
+    output_path = run_path + "/analysis/graph/density_analysis/"
     os.makedirs(output_path, exist_ok=True)
     
     try : 
         print("Starting density analysis...")
-        logging.info(f"New density analysis")
-        logging.info(f"min_number_spots :{min_number_spots}\nmin_diversity :{min_diversity}\ncluster_radius :{cluster_radius}\n")
-        
-        #Data processing
-        Spots = merge_data_in_Spots(
-            Acquisition=Acquisition,
-            Detection=Detection,
-            Spots=Spots,
-            Gene_map=Gene_map,
-        )
+        logging.info("New density analysis\n" 
+                     + f"\t--> min_number_spots :{min_number_spots}\n"
+                     + f"\t--> min_diversity :{min_diversity}\n"
+                     + f"\t--> cluster_radius :{cluster_radius}\n"
+                     )
 
         voxel_size = get_voxel_size(Detection)
         if cluster_radius is None :
             cluster_radius = get_min_cluster_radius(voxel_size)
+        elif cluster_radius == 0 : #Perfect colocalization
+            cluster_radius =1 #set to 1nm for numerical compatibility
 
         spots_coordinates_per_fov = group_coordinates_per_fov(Spots)
 
@@ -428,10 +388,10 @@ def density_analysis(
         )
     
     except Exception as e :
-        logging.error(f"analysis failed :\n{traceback.format_exc()}")
+        logging.error(f"Density analysis failed :\n{traceback.format_exc()}")
         return False
         
     else :
-        logging.info(f"analysis succeed")
+        logging.info(f"Density analysis succeed")
         
         return True

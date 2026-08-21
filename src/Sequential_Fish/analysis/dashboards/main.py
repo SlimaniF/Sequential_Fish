@@ -1,4 +1,5 @@
 import os
+import logging
 
 import pandas as pd
 from matplotlib.pyplot import close
@@ -19,6 +20,8 @@ def main(
     chroma_checker : tuple[str,str]
     ) :
 
+
+    logging.info("Generating cell data board.")
     cell_figure = cell_dashboard(
         run_path=run_path,
         Cell=Cell,
@@ -29,6 +32,7 @@ def main(
     cell_figure.savefig(os.path.join(save_folder,"cell_dashboard.svg"))
     close(cell_figure)
 
+    logging.info("Generating signal quality data board.")
     signal_figure = signal_quality_dashboard(
         run_path=run_path,
         Acquisition=Acquisition,

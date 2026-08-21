@@ -79,23 +79,19 @@ def run(run_path,*args) :
     if "distributions" in args or "all" in args :
         if not analysis_parameters.distribution_measures is None and len(analysis_parameters.distribution_measures) > 0:
             distribution_sucess = distributions_analysis(
-                Acquisition=Acquisition,
                 Detection=Detection,
                 Cell=Cell,
-                Spots=Spots,
-                Gene_map=Gene_map,
                 run_path=run_path,
-                distributions_measures= analysis_parameters.distribution_measures
+                distributions_measures= analysis_parameters.distribution_measures,
+                washout_keyword=analysis_parameters.washout_keyworkd
             )
             if not distribution_sucess :
                 print("Error raised during distribution analysis. Please check log in ~analysis/distribution_analysis folder.")
     
     if "density" in args  or "all" in args:
         density_sucess = density_analysis(
-            Acquisition=Acquisition,
             Detection=Detection,
             Spots=Spots,
-            Gene_map=Gene_map,
             run_path=run_path,
             min_number_spots=analysis_parameters.min_spots_number,
             min_diversity=analysis_parameters.min_diversity,
@@ -159,3 +155,5 @@ def run(run_path,*args) :
         )
         if not sucess :
             print("Error raised during dashboards analysis. Please check log in ~analysis/dashboards/ folder.")
+
+    logging.info("Analysis is done.")

@@ -671,7 +671,7 @@ def pairwise_colocalization_analysis(
         frameon = True,
 ) :
 
-    voxel_size = Detection['voxel_size'].at[0]
+    voxel_size = Detection['voxel_size'].iat[0]
     output_path = os.path.join(run_path,"analysis")
     os.makedirs(output_path + "/data/",exist_ok=True)
     os.makedirs(output_path + "/graph/colocalization/",exist_ok=True)
