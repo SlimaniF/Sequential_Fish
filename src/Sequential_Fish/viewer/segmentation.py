@@ -183,7 +183,12 @@ class SegmentationTester(SegmentationWidget) :
             layer_name = str(image.name) + "_segmentation"
             res = LayerDataTuple((
                 mask,
-                {"scale" : voxel_size, "name" : layer_name, "blending" : "additive"},
+                {
+                    "scale" : voxel_size,
+                    "name" : layer_name,
+                    "blending" : "additive",
+                    'units' : "nm",
+                    },
                 'Labels'
             ))
 

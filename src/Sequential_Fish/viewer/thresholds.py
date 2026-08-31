@@ -201,6 +201,7 @@ class ThresholdSelector(LoadWidget) :
                 'symbol' : 'disc', 
                 'opacity' : 0.7, 
                 'blending' : 'translucent', 
+                'units' : "nm",
                 'visible' : True,
                 }
 
@@ -210,6 +211,7 @@ class ThresholdSelector(LoadWidget) :
                 "blending" : 'additive',
                 "name" : f"{self.layer_name} filtered image",
                 "projection_mode" : "max",
+                'units' : "nm",
             }
 
             print(f"Thresholding done ({threshold})")

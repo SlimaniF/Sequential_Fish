@@ -1,7 +1,5 @@
-from itertools import cycle
 from typing import cast
 
-from napari._qt.utils import signal
 
 from .types import ThreadedWidget, NapariWidget, UserInputError
 from ..tools import get_datetime
@@ -97,6 +95,7 @@ class SpotCorrector(ChromaticWidget) :
                     "border_color" : Spots.border_color,
                     "symbol" : Spots.symbol,
                     "scale" : Spots.scale,
+                    'units' : "nm",
                 },
                 'Points'
             ))
@@ -163,6 +162,7 @@ class SignalCorrector(ChromaticWidget) :
                     "colormap" : Signal.colormap,
                     "contrast_limits" : Signal.contrast_limits,
                     "gamma" : Signal.gamma,
+                    'units' : "nm",
                 },
                 'Image'
             ))
@@ -284,6 +284,7 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
                     "scale" : image_abberation.scale,
                     "projection_mode" : image_abberation.projection_mode,
                     "colormap" : image_abberation.colormap,
+                    'units' : "nm",
                     "contrast_limits" : image_abberation.contrast_limits,
                     "gamma" : image_abberation.gamma,},
                 "Image"

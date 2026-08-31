@@ -12,15 +12,17 @@ def update_layer_from_LayerDataTuple(viewer : Viewer, layer_data_tuple : LayerDa
     
     if not isinstance(layer_data_tuple, list) :
         layer_data_tuple = [layer_data_tuple]
-    
+
     for datalayer in layer_data_tuple :
         if "name" in datalayer[1].keys() :
             layer_name = datalayer[1]["name"]
             if layer_name in viewer.layers :
-                print(f"updating existing layer : {layer_name}")
                 viewer.layers[layer_name].data = datalayer[0]
-                return None
-        viewer._add_layer_from_data(*datalayer)
+            else :
+                viewer._add_layer_from_data(*datalayer)
+
+    return None
+
 
 def pad_to_shape(array : np.ndarray, new_shape) :
     shape = array.shape

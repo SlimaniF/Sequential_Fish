@@ -237,16 +237,17 @@ class SpotsLoader(LoadWidget) :
             voxel_sizes = pd.Series(voxel_sizes).apply(tuple)
             layerdata = cast(LayerDataTuple, (spots_array, 
                          {
-                             "scale" : self.voxel_size,
-                             "size" : 10, 
-                             "name" : name, 
-                             'ndim' : 4, 
-                             'face_color' : '#0000' ,
-                             'border_color' : color, 
-                             'blending' : 'additive',
-                             'symbol' : symbol,
-                             'features' : {"voxel size" : voxel_sizes, "spot size" : spots_sizes}
-                             },
+                            "scale" : self.voxel_size,
+                            "size" : 10, 
+                            "name" : name, 
+                            'ndim' : 4, 
+                            'face_color' : '#0000' ,
+                            'border_color' : color, 
+                            'blending' : 'additive',
+                            'symbol' : symbol,
+                            'units' : "nm",
+                            'features' : {"voxel size" : voxel_sizes, "spot size" : spots_sizes}
+                            },
                         'Points'))
             return layerdata
         return load
@@ -383,6 +384,7 @@ class ClustersLoader(LoadWidget) :
                           'ndim' : 4, 
                           'face_color' : color,
                           'symbol' : symbol, 
+                          'units' : "nm",
                           'blending' : 'additive'}
                           , 'Points')
             )
@@ -496,7 +498,10 @@ class SignalLoader(LoadWidget) :
                     "scale" : self.voxel_size, 
                     "name" : name, 
                     'blending' : 'additive', 
-                    'colormap' : color if signal_type != "dapi" else "blue"},
+                    'colormap' : color if signal_type != "dapi" else "blue",
+                    'units' : "nm",
+                    'projection_mode' : "max",
+                    },
                 'Image'
             )
             )
