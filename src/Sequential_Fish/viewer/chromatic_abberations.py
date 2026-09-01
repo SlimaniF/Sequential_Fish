@@ -9,7 +9,7 @@ from ..chromatic_abberrations import apply_polynomial_transform_spots, apply_pol
 from ..chromatic_abberrations import CALIBRATION_FOLDER
 
 
-from napari import Viewer
+from napari.viewer import Viewer
 from napari.types import LayerDataTuple
 from napari.layers import Points, Image
 from magicgui import magicgui
@@ -56,9 +56,6 @@ def initiate_chromatic_widgets(
 
 @register_chromatic_widget
 class SpotCorrector(ChromaticWidget) :
-    def __init__(self, *, viewer: Viewer, wavelength_list : list[int], voxel_size : tuple[int,int,int]):
-        super().__init__(viewer=viewer, wavelength_list = wavelength_list, voxel_size = voxel_size)
-
     def _create_widget(self):
         
         @magicgui(
@@ -75,14 +72,26 @@ class SpotCorrector(ChromaticWidget) :
                 raise UserInputError(f"Not calibration was found for reference wavelength : {reference_wavelength}nm and layer wavelength : {layer_wavelenth}")
 
             calibration = load_calibration(reference_wavelength=reference_wavelength, corrected_wavelength=layer_wavelenth)
-            new_coordinates = apply_polynomial_transform_spots(
-                coords=Spots.data,
-                poly=calibration['polynomial_features_inv'],
-                model_x = calibration['x_inv_fit'],            
-                model_y = calibration['y_inv_fit'],
-                model_z = calibration['z_inv_fit'],       
-                voxel_size= np.array(self.voxel_size, dtype=int) 
-            ).round().astype(int)
+
+            if Spots.data.ndim == 3 :
+                spot_array = np.concat([
+                    np.zeros(len(Spots.data)).reshape(-1,1),
+                    Spots.data,
+                    ])
+            else :
+                spot_array = Spots.data
+
+            new_coordinates = np.concat([
+                spot_array[:,0].reshape(-1,1),
+                apply_polynomial_transform_spots(
+                    coords=spot_array[:,1:], #Selecting spots belonging to one specific fov
+                    poly=calibration['polynomial_features_inv'],
+                    model_x = calibration['x_inv_fit'],            
+                    model_y = calibration['y_inv_fit'],
+                    model_z = calibration['z_inv_fit'],       
+                    voxel_size= np.array(self.voxel_size, dtype=int)
+                ).round().astype(int)
+            ],axis=1)
 
             res = LayerDataTuple((
                 new_coordinates,
@@ -96,6 +105,7 @@ class SpotCorrector(ChromaticWidget) :
                     "symbol" : Spots.symbol,
                     "scale" : Spots.scale,
                     'units' : "nm",
+                    'ndim' : 4,
                 },
                 'Points'
             ))
@@ -106,8 +116,6 @@ class SpotCorrector(ChromaticWidget) :
 
 @register_chromatic_widget
 class SignalCorrector(ChromaticWidget) :
-    def __init__(self, *, viewer: Viewer, wavelength_list : list[int], voxel_size : tuple[int,int,int]):
-        super().__init__(viewer=viewer, wavelength_list = wavelength_list, voxel_size = voxel_size)
 
     def _create_widget(self):
         

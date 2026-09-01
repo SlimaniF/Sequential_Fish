@@ -22,7 +22,7 @@ def apply_polynomial_transform_to_signal(
     if isinstance(voxel_size, tuple) : voxel_size = np.array(voxel_size)
 
     X_poly = poly.transform(coords * voxel_size)
-    if not model_z is None : 
+    if not model_z is None or False: 
         new_z_nm = model_z.predict(X_poly)
     else :
         new_z_nm = coords[:,0]
@@ -47,6 +47,8 @@ def apply_polynomial_transform_spots(
     """
     Correct chromatic abberrations for spots using pre-calibrated polynomial interpolation.
     """
+
+    print(coords.shape)
 
     monosomes = poly.transform(coords * voxel_size)
     new_y_nm = model_y.predict(monosomes)

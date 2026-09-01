@@ -6,7 +6,7 @@ import torch
 from typing import cast
 import numpy as np
 
-from napari import Viewer
+from napari.viewer import Viewer
 from napari.layers import Image
 from napari.types import LayerDataTuple
 from napari.qt.threading import create_worker
@@ -102,7 +102,7 @@ class SegmentationTester(SegmentationWidget) :
     def _create_widget(self):
         
         @magicgui(
-            use_gpu = {"widget_type" : "CheckBox", "enabled" : gpu_is_available},
+            use_gpu_ = {"widget_type" : "CheckBox", "enabled" : gpu_is_available},
             model = {"choices" : available_models},
             anisotropy = {"enabled" : False}, # computed from voxel size, just to show user
             min_size = {"max" : 2**32},
@@ -117,13 +117,13 @@ class SegmentationTester(SegmentationWidget) :
             flow_threshold : float = 0.4,
             min_size : int = 15,
             do_3D : bool = False,
-            use_gpu : bool = gpu_is_available,
+            use_gpu_ : bool = gpu_is_available,
         ) :
 
             # Init model
             if model != self.model_name or self.model is None:
                 self.model = models.CellposeModel(
-                    gpu=use_gpu,
+                    gpu=use_gpu_,
                     pretrained_model=model
                 )
                 self.model_name = model
@@ -161,7 +161,7 @@ class SegmentationTester(SegmentationWidget) :
                 do_3D=do_3D,
                 z_axis= 0 if do_3D else None,
                 anisotropy=anisotropy if do_3D else None,
-                batch_size= self.batch_size if use_gpu else 2 # Recommendation from cellpose doc can be increase to 16 for large memory GPU
+                batch_size= self.batch_size if use_gpu_ else 2 # Recommendation from cellpose doc can be increase to 16 for large memory GPU
             )
             
             if isinstance(mask,list) :

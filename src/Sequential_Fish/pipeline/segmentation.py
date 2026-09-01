@@ -96,6 +96,7 @@ def main(run_path) :
 
         #Cytoplasm segmentation
         if SEGMENT_ONLY_NUCLEI :
+            cytoplasm_image = None
             cytoplasm_label = np.empty_like(nucleus_label)
         else :
 
@@ -134,15 +135,17 @@ def main(run_path) :
             if DO_3D_SEGMENTATION_CYTOPLASM or DO_3D_SEGMENTATION_NUCLEUS :
                 logging.warning("Cannot represent 3D segmentation in 2D png file. To check segmentation results use viewer module.") 
             else :
-                plot.plot_segmentation_boundary(
-                    image=cytoplasm_image,
-                    cell_label=cytoplasm_label,
-                    nuc_label=nucleus_label,
-                    boundary_size=3,
-                    contrast=True,
-                    path_output=visual_path + "/{0}_segmentation_cyto_view.png".format(location),
-                    show=False
-                )
+                if not SEGMENT_ONLY_NUCLEI :
+                    plot.plot_segmentation_boundary(
+                        image=cytoplasm_image,
+                        cell_label=cytoplasm_label,
+                        nuc_label=nucleus_label,
+                        boundary_size=3,
+                        contrast=True,
+                        path_output=visual_path + "/{0}_segmentation_cyto_view.png".format(location),
+                        show=False
+                    )
+                    
                 plot.plot_segmentation_boundary(
                     image=nucleus_image,
                     cell_label=cytoplasm_label,

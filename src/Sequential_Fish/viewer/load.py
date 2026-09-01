@@ -5,7 +5,7 @@ Napari widgets used to load information in napari ()
 import os
 from typing import cast
 
-from napari import Viewer
+from napari.viewer import Viewer
 import numpy as np
 import pandas as pd
 
