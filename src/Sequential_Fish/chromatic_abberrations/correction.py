@@ -22,9 +22,11 @@ def apply_polynomial_transform_to_signal(
     if isinstance(voxel_size, tuple) : voxel_size = np.array(voxel_size)
 
     X_poly = poly.transform(coords * voxel_size)
-    if not model_z is None or False: 
+    if not model_z is None :
+        print("correcting z") 
         new_z_nm = model_z.predict(X_poly)
     else :
+        print("not correcting z")
         new_z_nm = coords[:,0]
     new_y_nm = model_y.predict(X_poly)
     new_x_nm = model_x.predict(X_poly)

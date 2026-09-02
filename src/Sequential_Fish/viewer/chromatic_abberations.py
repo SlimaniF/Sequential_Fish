@@ -192,7 +192,6 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
         self.inv_model_y = LinearRegression()
         self.inv_model_z = LinearRegression()
         self.calibration_folder = CALIBRATION_FOLDER
-        self.voxel_size = (1,1,1)
         self.degree = 2
         self.timestamp = get_datetime()
         self.save_widget = self._create_save_widget()
@@ -249,6 +248,9 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
                 max_dist= int(max(voxel_size) * 4)
             )
 
+            print("beads : ",beads.shape)
+            print("dist : ",dist.shape)
+            print("Fitting model")
             self.polynomial_features, self.model_x, self.model_y, self.model_z = fit_polynomial_transform_3d(
                                                 beads,
                                                 dist, 

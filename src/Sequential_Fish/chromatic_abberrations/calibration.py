@@ -11,7 +11,21 @@ def match_beads(coords1 : np.ndarray, coords2 : np.ndarray, max_dist=5):
     """Match nearest beads between two channels."""
     nn = NearestNeighbors(n_neighbors=1).fit(coords2)
     distances, indices = nn.kneighbors(coords1)
-    matches = distances[:, 0] < max_dist
+
+    if max_dist is None :
+        matches = distances[:, 0] >= 0 #all
+    else:
+        matches = distances[:, 0] < max_dist
+
+    # if len(matches) > 100 :
+        
+    #     # Sort matches by distance and keep the first half
+    #     sorted_indices = np.argsort(distances[matches, 0])
+    #     half = len(sorted_indices) // 2
+    #     selected_matches = np.zeros_like(matches, dtype=bool)
+    #     selected_matches[matches] = sorted_indices < half
+
+
     return coords1[matches], coords2[indices[matches, 0]]
 
 def fit_polynomial_transform_3d(src_points : np.ndarray, dst_points : np.ndarray, degree=2):
@@ -31,7 +45,7 @@ def _load_calibration_index() -> dict :
     index_path = CALIBRATION_FOLDER + "/index.json"
 
     if os.path.isfile(index_path) :
-        with open(index_path, 'r') as f:
+        with open(index_path, 'r', encoding='utf-8') as f:
             index = json.load(f)
     else:
         index = {}
@@ -65,7 +79,8 @@ def load_calibration(
         reference_wavelength: int,
         corrected_wavelength: int,
         ) -> Calibration :
-    
+
+    print("Loading CALIBRATION")
     index = _load_calibration_index()
     calibration_key = _make_calibration_key(reference_wavelength, corrected_wavelength)
 
