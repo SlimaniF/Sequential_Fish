@@ -63,6 +63,7 @@ class ThresholdSelector(LoadWidget) :
         
         self.viewer = viewer
         self.voxel_size = voxel_size
+        self.units = "nm"
         self.dim = len(voxel_size)
         self.default_threshold = default_threshold
         self.spot_radius = default_spot_size
@@ -139,6 +140,9 @@ class ThresholdSelector(LoadWidget) :
                 
             elif self.viewer.layers.selection.active.name != self.layer_name :
                 self.image = self.viewer.layers.selection.active.data
+                self.voxel_size = tuple(self.viewer.layers.selection.active.scale)
+                self.units = self.viewer.layers.selection.active.units
+                print("selected image scale : ",self.voxel_size)
                 self.layer_name = self.viewer.layers.selection.active.name
                 self.do_update = True
             
@@ -191,6 +195,8 @@ class ThresholdSelector(LoadWidget) :
                 )[0]
 
             scale = self.voxel_size
+
+            print("self.voxel_size : ", self.voxel_size)
     
             spot_layer_args = {
                 'name' : f"{self.layer_name} detection",
@@ -201,7 +207,7 @@ class ThresholdSelector(LoadWidget) :
                 'symbol' : 'disc', 
                 'opacity' : 0.7, 
                 'blending' : 'translucent', 
-                'units' : "nm",
+                'units' : self.units,
                 'visible' : True,
                 }
 
@@ -211,7 +217,7 @@ class ThresholdSelector(LoadWidget) :
                 "blending" : 'additive',
                 "name" : f"{self.layer_name} filtered image",
                 "projection_mode" : "max",
-                'units' : "nm",
+                'units' : self.units,
             }
 
             print(f"Thresholding done ({threshold})")

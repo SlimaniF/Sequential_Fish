@@ -245,7 +245,7 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
             beads, dist = match_beads(
                 coords1= coords1,
                 coords2= coords2,
-                max_dist= int(max(voxel_size) * 4)
+                max_dist= int(max(voxel_size) * 25)
             )
 
             print("beads : ",beads.shape)

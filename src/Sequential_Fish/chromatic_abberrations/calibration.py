@@ -13,18 +13,10 @@ def match_beads(coords1 : np.ndarray, coords2 : np.ndarray, max_dist=5):
     distances, indices = nn.kneighbors(coords1)
 
     if max_dist is None :
+        print("all")
         matches = distances[:, 0] >= 0 #all
     else:
         matches = distances[:, 0] < max_dist
-
-    # if len(matches) > 100 :
-        
-    #     # Sort matches by distance and keep the first half
-    #     sorted_indices = np.argsort(distances[matches, 0])
-    #     half = len(sorted_indices) // 2
-    #     selected_matches = np.zeros_like(matches, dtype=bool)
-    #     selected_matches[matches] = sorted_indices < half
-
 
     return coords1[matches], coords2[indices[matches, 0]]
 
@@ -34,8 +26,8 @@ def fit_polynomial_transform_3d(src_points : np.ndarray, dst_points : np.ndarray
     X_poly = poly.fit_transform(src_points)
     model_x = LinearRegression().fit(X_poly, dst_points[:, 2])  # x
     model_y = LinearRegression().fit(X_poly, dst_points[:, 1])  # y
-    model_z = LinearRegression().fit(X_poly, dst_points[:, 0])  # z
-    return poly, model_x, model_y, model_z
+    # model_z = LinearRegression().fit(X_poly, dst_points[:, 0])  # z
+    return poly, model_x, model_y, None
 
 def _load_calibration_index() -> dict :
     """

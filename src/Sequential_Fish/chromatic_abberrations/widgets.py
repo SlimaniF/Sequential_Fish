@@ -259,16 +259,18 @@ class ChromaticAberrationCorector(NapariWidget) :
             beads, dist = match_beads(
                 coords1= coords1,
                 coords2= coords2,
-                max_dist= int(max(voxel_size) * 4)
+                max_dist= None #int(max(voxel_size) * 4)
             )
 
-            self.polynomial_features, self.model_x, self.model_y, self.model_z = fit_polynomial_transform_3d(
+            # self.polynomial_features, self.model_x, self.model_y, self.model_z = fit_polynomial_transform_3d(
+            self.polynomial_features, self.model_x, self.model_y = fit_polynomial_transform_3d(
                                                 beads,
                                                 dist, 
                                                 degree=degree
                                                 )
             
-            self.polynomial_features_inv, self.inv_model_x, self.inv_model_y, self.inv_model_z = fit_polynomial_transform_3d(
+            # self.polynomial_features_inv, self.inv_model_x, self.inv_model_y, self.inv_model_z = fit_polynomial_transform_3d(
+            self.polynomial_features_inv, self.inv_model_x, self.inv_model_y = fit_polynomial_transform_3d(
                                                 dist, 
                                                 beads,
                                                 degree=degree
@@ -286,7 +288,7 @@ class ChromaticAberrationCorector(NapariWidget) :
                 poly=self.polynomial_features,
                 model_x=self.model_x,
                 model_y=self.model_y,
-                model_z=self.model_z,
+                model_z=None, #self.model_z,
                 voxel_size=voxel_size
             )
             if image_corrected.ndim == 3 : image_corrected = image_corrected.reshape((1,) + tuple(image_corrected.shape))
