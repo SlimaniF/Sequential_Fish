@@ -223,6 +223,7 @@ class ChromaticAberrationCalibrator(ChromaticWidget) :
         ) :
             
             voxel_size = spatial_reference.scale
+            print("voxel size for calibration")
             if len(voxel_size) == 4 :
                 voxel_size = voxel_size[1:]
             self.voxel_size = tuple([int(v) for v in voxel_size]) # save as reference if user save calibration
