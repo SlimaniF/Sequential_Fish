@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "Sequential_Fish"
-version = "0.1"
+version = "1.2.1b0"
 authors = [
 	{ name="Slimani Floric", email="floric.slimani@live.fr" },
 ]
@@ -17,7 +17,7 @@ classifiers = [
 	"Operating System :: OS Independent",
 ]
 dependencies = [
-"big_fish_reloaded==0.6.2",
+"big_fish_reloaded>=0.6.3",
 "AF-eraser >= 0.1.0",
 "czifile",
 "magicgui",
@@ -30,11 +30,13 @@ dependencies = [
 "scikit-learn",
 "scipy",
 "tqdm",
-"smfishtools",
 "pebble",
 "openpyxl",
 "ome_types",
-"lxml"
+"lxml",
+"prince",
+"igraph",
+"leidenalg",
 ]
 
 [project.urls]
